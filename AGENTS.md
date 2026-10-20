@@ -1,6 +1,6 @@
 # Familieblikk — planning graph
 
-Read context.md and rules.md first. BMAD 6.12.4 owns the authoritative product/design/architecture documents under _bmad-output/planning-artifacts/. Project Init owns evidence and review projections only. Approved scope and implementation approval are distinct.
+Read context.md and rules.md first. BMAD 6.12.4 owns the authoritative product/design/architecture documents under _bmad-output/planning-artifacts/ and feature kernels under _bmad-output/specs/. Project Init owns evidence and review projections only. Approved scope and implementation approval are distinct.
 
 ## Graph
 
@@ -30,3 +30,17 @@ One job/output per node. Declared inputs only. Cross-node receipts/verdicts use 
 ## Private family source
 
 The user's actual Excel data is authorized for preservation and eventual import into the user's own family profile. Store actual data only under gitignored private-data/. Never embed it in the public prototype, commit it, use it as global seed data or expose it to newly registering families. Copy verification, extraction and validation scripts are allowed now; this is not final design acceptance or permission to provision infrastructure. Owner account must be bound explicitly to a verified email; never infer it from a workbook name.
+
+## Shared calendar extension
+
+The user requests a calendar integrated into this existing application and explicitly declined a separate calendar chat. Continue this feature here. Existing preregistered-account authorization in context.md remains authoritative; do not reintroduce an email-code requirement.
+
+- producer-calendar-spec: derive the native BMAD calendar spec from work/calendar-request.json; contract graph/nodes/producer-calendar-spec.md.
+- producer-calendar-preview: create one fictional integrated calendar preview from the native spec; contract graph/nodes/producer-calendar-preview.md.
+- verifier-calendar-preview: independently check the candidate and execution evidence; contract graph/nodes/verifier-calendar-preview.md.
+- Calendar spec -> fictional preview -> deterministic browser checks -> independent review -> exact human design acceptance -> bounded implementation and runtime verification.
+
+Do not alter the accepted budget preview or its screenshot baselines. Calendar capability discovery is approved; calendar visual acceptance is not yet recorded. No new dependency, commit, push or external-calendar integration is authorized by this request.
+
+## Budget usability repairs
+User explicitly approved all current dashboard/category/Poster's usability and brand repairs alongside calendar design refinement. Contract: graph/nodes/producer-budget-usability.md. Existing accepted budget design remains authoritative; no fabricated monthly limits or source data changes. Calendar runtime acceptance remains pending. Independent fresh-context review must cover both the repaired app evidence and updated fictional calendar candidate.

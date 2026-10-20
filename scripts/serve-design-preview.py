@@ -9,6 +9,8 @@ import socket
 
 ROOT = Path(__file__).resolve().parents[1]
 EXACT = {'/.project-init/review.html', '/.project-init/familieblikk-mockup.html',
+         '/.project-init/familieblikk-calendar-mockup.html', '/.project-init/calendar-review.html',
+         '/.project-init/familieblikk-spending-planning-mockup.html', '/.project-init/spending-planning-review.html',
          '/.project-init/lean/familieblikk-review.html',
          '/.project-init/evidence/design-desktop.png', '/.project-init/evidence/design-mobile.png'}
 

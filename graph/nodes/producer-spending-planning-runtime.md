@@ -1,0 +1,5 @@
+# Producer — accepted spending and planning runtime
+
+Input: context.md/rules.md, accepted spending-planning SPEC/calculation-rules, exact prototype and human acceptance receipt, existing Django models/services and accepted shared identity.
+
+Output: integrated spending exploration, graphical annual view and explicit confirmed next-month planning, with focused tests. Backend owns new spending_* Python modules/models/migration/API tests; frontend owns new spending templates/JS/CSS/tests. Root owns existing-route integration and verification. Preserve other agents' edits and existing calendar/budget/import data. No dependencies, external provider, secrets, commit or push. All data family-scoped; unsafe access rejected server-side. Drafts and GETs never write actual income/expenses or infer unresolved import facts. Save is explicit admin-only, atomic, version/conflict/idempotency protected and limited to target future monthly plans/expectations. Independent review is required before completion.

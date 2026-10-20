@@ -84,3 +84,38 @@ Første publisering er utført til privat Thugney/Familieblikk med main som stan
 
 
 Oppfølging av første innlogging: 404 ved tomt month-parameter er reparert. Manglende/tom/blank måned velger lokal inneværende måned; skjemasider genererer gyldige månedslenker og -felt. 57 tester, faktisk Docker-nettleserflyt på mobil/PC og avstemming av uendrede eierdata består. Uavhengig gjennomgang uten funn. Rettelsen publiseres som del av brukerens nylige godkjenning til å committe/pushe Familieblikk-koden for Synology; ingen NAS-utrulling.
+
+
+## Familiekalender — godkjent oppdagelse, design avventer
+
+Robel har bestilt en delt kalender som del av eksisterende Familieblikk, med samme innlogging/familie. Bekreftet: tittel, dato/tid, heldag, valgfritt sted/notat, alle familiemedlemmer ser avtalene, bare oppretter eller administrator endrer/sletter, og ukentlig/månedlig gjentakelse. Brukeren ønsker å fortsette her og presiserte at dette ikke er en separat app. Nye familier skal fortsatt være adskilte. Regningsforfall, ekstern kalendersynk og nye påminnelseskanaler inngår ikke i avklarte valg.
+
+Arbeid skjer på lokal codex/family-calendar. Native BMAD-kilde: _bmad-output/specs/spec-familieblikk-calendar/SPEC.md, avledet fra godkjent mottak work/calendar-request.json. Månedsgitter på PC, agenda på mobil og serieendringer er designforslag inntil konkret gjennomgang. Ingen kalenderimplementasjon, ny avhengighet, commit eller push er gjort eller godkjent for denne utvidelsen.
+
+### Kalender og oversikter — avklaring 2026-10-20
+Robel vil se hvert familiemedlems kalender og en felles kalender. En avtale kan gjelde flere valgte familiemedlemmer, med én felles avtale fremfor dubletter. Familiemedlemmer ser hverandres avtaler; tidligere regel om oppretter/admin for redigering beholdes. Kalenderdesign er fortsatt under justering. Robel har i samme runde uttrykkelig godkjent å rette septembergraf, gjøre oversikt og Poster lettere å finne frem i med filtre og begrensede lister, og bruke identisk fireflislogo/ordmerke også ved innlogging og registrering. Alle punkter tas i eksisterende lokale arbeidsgren og eksisterende endringer bevares. Ingen commit/push/avhengighet er godkjent for dette.
+
+
+Robel ber også om svar på felles avtaler, slik at familien ser om det passer og om hver deltaker har godtatt eller avslått. Hver person svarer for seg selv. Svar per forekomst og nullstilling ved endret dato/tid/personer vises som forslag før kalenderaksept.
+
+Apprettelsene er ferdige lokalt i Docker: felles merkevare på alle sider, seks kategorier med søk/utvidelse og ærlig farget fordeling uten ramme, postfiltre og ti poster per side. 71 Django/PostgreSQL-tester og 71 faktiske nettleserkontroller består, uavhengig verifikasjon uten blokkere; private Excel-rader/råverdier er uendret. Kalenderforslaget viser person-/fellesvalg og egne deltakelsessvar, 62 nettleserkontroller og uavhengig kildegjennomgang består. Kalender har fortsatt ingen backend eller menneskelig designaksept. Ingen commit/push.
+
+Kalenderdesign og implementasjon er nå eksplisitt godkjent av Robel: «Ja, bygg kalenderen inn nå». Eksakt kandidat og kildehashverdier er registrert i .project-init/calendar-human-acceptance.json. Bygg kalenderknapp i eksisterende app med delte/personlige visninger, flerdeltakeravtaler, egne svar og ukentlig/månedlig gjentakelse. Ingen commit/push eller ny avhengighet følger av aksepten.
+
+
+Robel avviser den tidligere listejusteringen som tilstrekkelig løsning: vil se hele forbruket med kategori-/tidsfilter, automatisk søk, grafisk årsanalyse og planlegge neste måned ut fra inntekt/utgift/sparing. Ny konkret opplevelse prosjekteres i _bmad-output/specs/spec-familieblikk-spending-planning/ og en fiktiv preview; dette større designet er ikke godkjent ennå. Automatisk søk i eksisterende kategoriliste er en autorisert direkte rettelse. Kalenderimplementasjonen fortsetter etter eksplisitt aksept.
+
+Kalenderen er nå ferdig i faktisk lokal Docker-app på /app/kalender/ med menyknapp, alle/person/felles-visning, egne svar og gjentakelser. 106 PostgreSQL/Django-tester, 6 Node-tester, 20 kilde-/previewbeskyttelsestester, 45 faktiske nettleserkontroller i separate testfamilier og 87 kontroller i faktisk eierapp består. Dockerens begrensede DB-rolle er også kontrollert med opprett/les/svar/slett i eksisterende fiktiv testfamilie. Private kilder/råverdier er identiske med opprinnelig avstemming. Uavhengig review uten gjenværende blokkere; bevis work/calendar-runtime-verification.json. Automatisk kategorisøk er i drift. Ny forbruks-/års-/planleggingsvisning er fortsatt fiktiv kandidat med 44 nettleserkontroller og uavhengig pass_source_review, ingen menneskelig designaksept eller backend ennå. Ingen commit/push.
+
+Robel har nå godkjent den eksakte forbruks-/års-/planleggingskandidaten med «ja» som svar på designakseptspørsmålet. Bygg i eksisterende app, se .project-init/spending-planning-human-acceptance.json. CAP1–7 og beregningsreglene er autoriserte, inkludert eksplisitt adminbekreftet lagring av fremtidige månedsplaner. Eksisterende faktiske poster/importdata og kalender skal bevares. Ingen commit/push eller ny avhengighet er godkjent.
+
+Forbruks-/års-/planleggingsvisningen er nå implementert og uavhengig sluttverifisert i lokal Docker på 4180. Alle kategorier med registrert forbruk vises, søk og kategori-/tidsvalg reagerer automatisk, årsgraf har tekstalternativ og pengeskala, og administrator bekrefter målmånedens plan før lagring. Historiske forslag viser ukjent/ufullstendig grunnlag; forventet inntekt er separat fra bokføring. Eksisterende videreføring av beløp til senere måneder er forklart, og synlige kalendernabodager viser egne avtaler korrekt. 147 PostgreSQL/Django-tester, 18 Node-tester, 20 kilde-/previewtester og 144 nettleserkontroller består. 26 kildehashverdier og 18 Docker-runtime-filer er avstemt; faktiske private kildeposter/råverdier er uendret. Uavhengig sluttdom pass_source_and_evidence_review uten blokkere, se work/spending-runtime-verification.json og work/spending-runtime-review.json. Ingen ny avhengighet, commit/push eller NAS-utrulling.
+
+
+## Hosting og publisering — eksplisitt godkjent 2026-10-21
+
+Robel krever standard host-nettverk for alle hostingtjenester og fast webport 6451. Domenet er blikk.betilab.com gjennom eksisterende Cloudflare Tunnel på NAS. Origin er HTTP; ingen ekstra Synology-reversproxy, lokale TLS-sertifikater eller tunnelinstallasjon. Standardmiljøet tillater domenet, CSRF-origin og betrodd HTTPS-header; eldre privat .env må oppdateres. PostgreSQL lytter kun på localhost, standard 6452, med SCRAM og separat begrenset approlle. Brukeren har uttrykkelig autorisert commit/push av ferdig kode for selv å hente/bygge på Synology. Ingen faktisk NAS-utrulling er utført. Historiske manglende commit-/pushgodkjenninger ovenfor er erstattet av denne avgrensede autorisasjonen.
+
+NAS-adresse bekreftet av Robel: 192.168.20.135. Eksisterende tunnel bruker HTTP-origin http://192.168.20.135:6451; databaseforbindelser forblir localhost.
+
+Hostingendringen er uavhengig verifisert: 149 PostgreSQL/Django-, 21 Node- og 20 kilde-/previewtester består, host-runtime på 6451, alternativ DB-port, omstart og separat restore er kontrollert. Alle fem reviewfunn er rettet, 11 kildehashverdier stemmer; work/host-network-review.json gir pass uten blokkere. Faktiske eierdata er identiske med opprinnelig avstemming. Ingen fysisk NAS-/tunnelutrulling er utført.

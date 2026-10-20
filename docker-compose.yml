@@ -3,13 +3,17 @@ services:
   db:
     image: postgres:17.11@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
     restart: unless-stopped
+    network_mode: host
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-familieblikk}
       POSTGRES_USER: ${POSTGRES_USER:-familieblikk_owner}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Sett eierpassord utenfor Git}
+      PGPORT: ${POSTGRES_PORT:-6452}
     volumes:
       - database:/var/lib/postgresql/data
-    networks: [database]
+      - ./docker/postgres/pg_hba.conf:/etc/familieblikk/pg_hba.conf:ro
+    # Host-nettverk deler vertens porter. PostgreSQL skal bare lytte på localhost.
+    command: [postgres, -c, 'listen_addresses=127.0.0.1', -c, 'hba_file=/etc/familieblikk/pg_hba.conf', -c, 'password_encryption=scram-sha-256', -p, '${POSTGRES_PORT:-6452}']
     healthcheck:
       test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
@@ -19,15 +23,16 @@ services:
     build: .
     image: familieblikk:local
     restart: 'no'
+    network_mode: host
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Sett Django-hemmelighet}
-      POSTGRES_HOST: db
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: ${POSTGRES_PORT:-6452}
       POSTGRES_DB: ${POSTGRES_DB:-familieblikk}
       POSTGRES_USER: ${POSTGRES_USER:-familieblikk_owner}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Sett eierpassord}
       POSTGRES_APP_USER: ${POSTGRES_APP_USER:-familieblikk_app}
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?Sett separat apppassord}
-    networks: [database]
     depends_on:
       db:
         condition: service_healthy
@@ -40,17 +45,19 @@ services:
     build: .
     image: familieblikk:local
     restart: unless-stopped
+    network_mode: host
     # Bare eksplisitte runtime-verdier. Eierpassord finnes aldri i appcontaineren.
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Sett Django-hemmelighet}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
       DJANGO_PREREGISTERED_LOGIN: ${DJANGO_PREREGISTERED_LOGIN:-1}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-blikk.betilab.com}
       DJANGO_HTTPS: ${DJANGO_HTTPS:-0}
-      DJANGO_TRUST_PROXY: ${DJANGO_TRUST_PROXY:-0}
+      DJANGO_TRUST_PROXY: ${DJANGO_TRUST_PROXY:-1}
       DJANGO_HSTS_SECONDS: ${DJANGO_HSTS_SECONDS:-0}
-      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
-      POSTGRES_HOST: db
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-https://blikk.betilab.com}
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: ${POSTGRES_PORT:-6452}
       POSTGRES_DB: ${POSTGRES_DB:-familieblikk}
       POSTGRES_USER: ${POSTGRES_APP_USER:-familieblikk_app}
       POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?Sett separat apppassord}
@@ -62,9 +69,6 @@ services:
       EMAIL_USE_TLS: ${EMAIL_USE_TLS:-1}
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-}
       PRIVATE_IMPORT_ROOT: /private-import
-    ports:
-      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8000}:8000"
-    networks: [database, web]
     depends_on:
       db:
         condition: service_healthy
@@ -74,10 +78,6 @@ services:
     tmpfs: [/tmp]
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
-    command: [gunicorn, familieblikk.wsgi:application, --bind, '0.0.0.0:8000', --workers, '2', --no-control-socket, --access-logfile, '-', --access-logformat, '%(s)s %(L)s']
-networks:
-  database:
-    internal: true
-  web: {}
+    command: [gunicorn, familieblikk.wsgi:application, --bind, '0.0.0.0:6451', --workers, '2', --no-control-socket, --access-logfile, '-', --access-logformat, '%(s)s %(L)s']
 volumes:
   database: {}

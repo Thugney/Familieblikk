@@ -10,7 +10,9 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Sum
+from django.core.paginator import Paginator
+from urllib.parse import urlencode
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -20,8 +22,8 @@ from . import forms, identity, importing, services
 from .models import Asset, BillOccurrence, BillTemplate, Category, Entry, ImportBatch, ImportRecord, Invitation, Membership, MonthPlan
 
 
-NAV = [('oversikt', 'Oversikt'), ('poster', 'Poster'), ('budsjett', 'Budsjett'), ('sparing', 'Sparing'), ('mer', 'Mer')]
-TITLES = dict(NAV + [('regninger', 'Regninger'), ('gjeld', 'Gjeld'), ('arsutgifter', 'Årsutgifter'), ('utland', 'Sendt utenlands'), ('arsoversikt', 'Årsoversikt'), ('familie', 'Familie og innstillinger'), ('tilpass', 'Tilpass appen'), ('import', 'Familiens kildeimport'), ('varsler', 'Varsler')])
+NAV = [('oversikt', 'Oversikt'), ('poster', 'Poster'), ('budsjett', 'Budsjett'), ('sparing', 'Sparing'), ('kalender', 'Kalender'), ('mer', 'Mer')]
+TITLES = dict(NAV + [('kategorier', 'Kategorier og rammer'), ('regninger', 'Regninger'), ('gjeld', 'Gjeld'), ('arsutgifter', 'Årsutgifter'), ('utland', 'Sendt utenlands'), ('arsoversikt', 'Årsoversikt'), ('familie', 'Familie og innstillinger'), ('tilpass', 'Tilpass appen'), ('import', 'Familiens kildeimport'), ('varsler', 'Varsler')])
 
 
 def source_money(value):
@@ -157,6 +159,9 @@ def add_calendar_months(day, count):
 
 @login_required
 def page_view(request, page='oversikt'):
+    if page in ('budsjett', 'arsoversikt'):
+        from .spending_views import render_shell
+        return render_shell(request, 'annual' if page == 'arsoversikt' else 'spending')
     if page not in TITLES: raise Http404
     member = get_member(request)
     if not member: return redirect('family_gate')
@@ -178,16 +183,53 @@ def page_view(request, page='oversikt'):
         chart.append({'month': period, 'amount': amount, 'has_data': has_data, 'current': offset == 0})
     ceiling = max([item['amount'] for item in chart] + [1])
     for item in chart: item['height'] = max(item['amount'] * 100 // ceiling, 0)
-    entries = Entry.objects.filter(household=house, effective_date__range=(month, services.month_end(month))).select_related('category', 'asset', 'created_by').order_by('-effective_date', '-created_at')
-    filter_kind = request.GET.get('kind', '')
-    if filter_kind: entries = entries.filter(kind=filter_kind)
-    if page == 'utland': entries = entries.filter(Q(kind='remittance') | Q(kind='refund', original__kind='remittance'))
+    # Listefiltre påvirker aldri månedens regnskapsgrunnlag eller andre seksjoner.
+    entries = month_entries.select_related('category', 'asset', 'created_by').order_by('-effective_date', '-sequence', '-pk')
+    filter_form, page_obj = None, None
+    entry_query = ''
+    entry_scope_has_rows = False
+    if page in ('poster', 'utland'):
+        if page == 'utland': entries = entries.filter(Q(kind='remittance') | Q(kind='refund', original__kind='remittance'))
+        entry_scope_has_rows = entries.exists()
+        filter_form = forms.EntryFilterForm(request.GET, household=house, month=month, remittances_only=page == 'utland')
+        if filter_form.is_valid():
+            filters = filter_form.cleaned_data
+            if filters['q']: entries = entries.filter(Q(description__icontains=filters['q']) | Q(category__name__icontains=filters['q']) | Q(asset__name__icontains=filters['q']) | Q(kind='refund', original__category__name__icontains=filters['q']))
+            if filters['kind']: entries = entries.filter(kind=filters['kind'])
+            if filters['category']: entries = entries.filter(Q(category=filters['category']) | Q(kind='refund', original__category=filters['category']))
+            if filters['creator']: entries = entries.filter(created_by_id=filters['creator'])
+            if filters['date_from']: entries = entries.filter(effective_date__gte=filters['date_from'])
+            if filters['date_to']: entries = entries.filter(effective_date__lte=filters['date_to'])
+            if filters.get('status'): entries = entries.filter(kind='income', received=filters['status'] == 'received')
+        else:
+            entries = entries.none()
+        page_obj = Paginator(entries, 10).get_page(request.GET.get('page'))
+        entries = page_obj.object_list
+        entry_query = urlencode({**{key: request.GET[key] for key in filter_form.fields if request.GET.get(key)}, 'month': month.strftime('%Y-%m')})
+    spent_by_category = dict(month_entries.filter(kind__in=['expense', 'remittance']).values('category_id').annotate(amount=Sum('amount_ore')).values_list('category_id', 'amount'))
+    refunds_by_category = dict(month_entries.filter(kind='refund', original__kind__in=['expense', 'remittance']).values('original__category_id').annotate(amount=Sum('amount_ore')).values_list('original__category_id', 'amount'))
+    plans_by_category = {plan.category_id: plan for plan in MonthPlan.objects.filter(household=house, month=month, category__isnull=False)}
     categories = []
-    for category in Category.objects.filter(household=house):
-        plan = MonthPlan.objects.filter(category=category, month=month).first()
-        spent = services.total(entries.filter(category=category, kind__in=['expense', 'remittance'])) - services.total(entries.filter(kind='refund', original__category=category, original__kind__in=['expense', 'remittance']))
+    for category in Category.objects.filter(household=house).order_by('name', 'id'):
+        plan = plans_by_category.get(category.pk)
+        spent = spent_by_category.get(category.pk, 0) - refunds_by_category.get(category.pk, 0)
         limit = plan.amount_ore if plan else None
-        categories.append({'row': category, 'spent': spent, 'plan': plan, 'limit': limit, 'over': max(spent - (limit or 0), 0) if limit is not None else None, 'percent': min(max(spent * 100 // limit, 0), 100) if limit else 0})
+        categories.append({'row': category, 'spent': spent, 'plan': plan, 'limit': limit, 'over': max(spent - limit, 0) if limit is not None else None, 'progress_value': min(max(spent, 0), limit) if limit else 0})
+    positive_spending = sum(max(item['spent'], 0) for item in categories)
+    for item in categories:
+        share = Decimal(max(item['spent'], 0)) * 100 / positive_spending if positive_spending else Decimal(0)
+        item.update(share=share, share_width=format(share, '.4f'))
+    category_count_total = len(categories)
+    category_q = request.GET.get('category_q', '').strip()[:120]
+    category_status = request.GET.get('category_status', 'active' if page == 'oversikt' else 'all')
+    if category_status not in ('active', 'all', 'archived'): category_status = 'all'
+    if category_status == 'active': categories = [item for item in categories if not item['row'].archived or item['spent'] != 0]
+    if category_status == 'archived': categories = [item for item in categories if item['row'].archived]
+    if category_q: categories = [item for item in categories if category_q.casefold() in item['row'].name.casefold()]
+    categories.sort(key=lambda item: (-max(item['spent'], 0), item['row'].archived, item['row'].name.casefold(), str(item['row'].pk)))
+    category_matched_count = len(categories)
+    category_show_all = request.GET.get('category_all') == '1'
+    category_expand_query = urlencode({'month': month.strftime('%Y-%m'), 'category_q': category_q, 'category_status': category_status, 'category_all': '0' if category_show_all else '1'})
     assets = []
     kind_map = {'sparing': 'savings', 'gjeld': 'debt', 'arsutgifter': 'fund', 'utland': 'recipient'}
     all_assets = Asset.objects.filter(household=house)
@@ -206,7 +248,10 @@ def page_view(request, page='oversikt'):
     if comparison and month == services.month_start(timezone.localdate()):
         end_previous = previous.replace(day=min(timezone.localdate().day, services.month_end(previous).day))
         comparison['ordinary'] = services.ordinary_for_period(house, previous, end_previous)
-    ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart}
+    ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
+    if page == 'oversikt':
+        ctx['spending_embedded'] = True
+        ctx['spending_boot'] = {'initial_tab': 'spending', 'month': month.strftime('%Y-%m'), 'can_save': member.role == 'admin', 'urls': {'spending': reverse('spending_data'), 'planning': reverse('planning_data'), 'preview': reverse('planning_preview'), 'save': reverse('planning_save')}}
     if page == 'familie':
         ctx.update(members=Membership.objects.filter(household=house).select_related('user'), invitations=Invitation.objects.filter(household=house, accepted=False, revoked=False), invite_form=forms.EmailForm(), email_invitations_enabled=settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend' and bool(settings.EMAIL_HOST))
     if page == 'arsoversikt':
@@ -501,7 +546,7 @@ def worker_view(request):
 def public_asset(request, name):
     from pathlib import Path
     from django.http import FileResponse
-    allowed = {'app.css': 'text/css', 'app.js': 'application/javascript', 'icon.svg': 'image/svg+xml'}
+    allowed = {'app.css': 'text/css', 'app.js': 'application/javascript', 'icon.svg': 'image/svg+xml', 'calendar.css': 'text/css', 'calendar.js': 'application/javascript', 'spending.css': 'text/css', 'spending.js': 'application/javascript'}
     if name not in allowed: raise Http404
     response = FileResponse((Path(__file__).parent / 'static/budget' / name).open('rb'), content_type=allowed[name])
     response['Cache-Control'] = 'public, max-age=0, must-revalidate'

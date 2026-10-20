@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, calendar_views, spending_views
 urlpatterns = [
     path('static/budget/<str:name>', views.public_asset),
     path('', views.family_gate, name='home'),
@@ -9,6 +9,13 @@ urlpatterns = [
     path('registrer/familie/', views.register_account_view, {'new_household': True}, name='register_household'),
     path('familieport/', views.family_gate, name='family_gate'), path('utlogging/', views.logout_view, name='logout'),
     path('invitasjon/<str:token>/', views.invitation_view, name='invitation'),
+    path('app/kalender/', calendar_views.calendar_page, name='calendar'),
+    path('app/kalender/data/', calendar_views.calendar_data, name='calendar_data'),
+    path('app/kalender/api/', calendar_views.calendar_api, name='calendar_api'),
+    path('app/forbruk/data/', spending_views.spending_data, name='spending_data'),
+    path('app/plan/data/', spending_views.planning_data, name='planning_data'),
+    path('app/plan/preview/', spending_views.planning_preview, name='planning_preview'),
+    path('app/plan/save/', spending_views.planning_save, name='planning_save'),
     path('app/<str:page>/', views.page_view, name='page'),
     path('ny/<str:kind>/', views.edit_view, name='create'), path('endre/<str:kind>/<uuid:row_id>/', views.edit_view, name='edit'),
     path('slett/<uuid:row_id>/', views.delete_view, name='delete'), path('betal/<uuid:row_id>/', views.pay_view, name='pay'),

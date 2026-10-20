@@ -8,5 +8,5 @@ COPY familieblikk /app/familieblikk
 COPY budget /app/budget
 RUN DJANGO_SECRET_KEY=static-collection-only python manage.py collectstatic --noinput && chown -R familieblikk:familieblikk /app
 USER familieblikk
-EXPOSE 8000
-CMD ["gunicorn", "familieblikk.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--no-control-socket", "--access-logfile", "-", "--access-logformat", "%(s)s %(L)s", "--error-logfile", "-"]
+EXPOSE 6451
+CMD ["gunicorn", "familieblikk.wsgi:application", "--bind", "0.0.0.0:6451", "--workers", "2", "--no-control-socket", "--access-logfile", "-", "--access-logformat", "%(s)s %(L)s", "--error-logfile", "-"]

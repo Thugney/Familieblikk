@@ -1,0 +1,15 @@
+{
+  "accepted": true,
+  "date": "2026-10-20",
+  "user_answer": "ja",
+  "question": "Godkjenner du denne nye utformingen?",
+  "scope": "complete spending, reactive category/time exploration, graphical annual view, editable and explicitly confirmed next-month planning",
+  "candidate_hashes": {
+    ".project-init/familieblikk-spending-planning-mockup.html": "80c06f0610b6efa8cce0c63a21754f6629bfe4a19e8147ece616f83f0ea511e0",
+    "_bmad-output/specs/spec-familieblikk-spending-planning/SPEC.md": "bb27248c5b5061d328d8a5f3e0c5e1ee8049f0412c770fa51ffba49aa41bd365",
+    "_bmad-output/specs/spec-familieblikk-spending-planning/calculation-rules.md": "025480f42762954a246a1df21e4623dfa454f8f73e76ca7d0ebdcada24780795"
+  },
+  "browser_receipt": "work/spending-planning-browser-checks.json",
+  "independent_review": "work/spending-planning-design-verdict.json",
+  "commit_push_authorized": false
+}

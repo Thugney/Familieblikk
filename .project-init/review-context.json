@@ -5,7 +5,11 @@
     "_bmad-output/planning-artifacts/prds/prd-familieblikk-2026-10-20/addendum.md",
     "_bmad-output/planning-artifacts/ux-designs/ux-familieblikk-2026-10-20/DESIGN.md",
     "_bmad-output/planning-artifacts/ux-designs/ux-familieblikk-2026-10-20/EXPERIENCE.md",
-    "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md"
+    "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+    "_bmad-output/specs/spec-familieblikk-calendar/SPEC.md",
+    "_bmad-output/specs/spec-familieblikk-calendar/recurrence-rules.md",
+    "_bmad-output/specs/spec-familieblikk-spending-planning/SPEC.md",
+    "_bmad-output/specs/spec-familieblikk-spending-planning/calculation-rules.md"
   ],
   "journeys": [
     {
@@ -72,6 +76,29 @@
         "Ukjent valutakurs",
         "Underfinansiert fond",
         "Skjult modul med åpne forpliktelser"
+      ]
+    },
+    {
+      "label": "Felles familiekalender – designforslag",
+      "nodes": [
+        {
+          "label": "Eksisterende innlogging og familie"
+        },
+        {
+          "label": "Kalender måned/liste"
+        },
+        {
+          "label": "Ny avtale eller les detalj"
+        },
+        {
+          "label": "Enkeltavtale eller ukentlig/månedlig serie"
+        }
+      ],
+      "failurePaths": [
+        "Annen familie har ingen tilgang",
+        "Annet medlem får bare lese",
+        "Ugyldig tid eller utløpt/redigert versjon skal avvises",
+        "Uten nett skal ingen privat endring lagres"
       ]
     }
   ],
@@ -148,16 +175,12 @@
   ],
   "questions": [
     {
-      "question": "Godkjenn visuell kandidat og foreslåtte beregningsregler, inkludert valgfrie moduler.",
-      "status": "Avventer Robel"
+      "question": "Den konkrete forbruks-, års- og planleggingsutformingen er godkjent av Robel med «ja». Eksakt historisk kandidat og kildehashverdier er bevart i spending-planning-human-acceptance.json.",
+      "status": "Menneskelig designaksept registrert; implementasjon under uavhengig sluttkontroll"
     },
     {
-      "question": "Django/PostgreSQL er anbefalt startpunkt, ikke installert appstakk. Hosting/e-post og personvern-/gjenopprettingsregler må avklares før ekte familiedata.",
-      "status": "Åpent før implementasjon/lansering"
-    },
-    {
-      "question": "Mørkt tema er ikke bestilt. Project Init visual plan krever likevel mørke sammenligningscaser; denne verktøybegrensningen skal ikke tolkes som godkjent produktomfang.",
-      "status": "Verktøygap dokumentert"
+      "question": "Preview bruker bare fiktive beløp og lagrer ingenting. Gjeldende Django-/Docker-app og private data bevares.",
+      "status": "Tydelig avgrensning"
     }
   ]
 }

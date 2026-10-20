@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "project": "Familieblikk",
-  "status": "draft",
+  "status": "spending-planning-design-accepted",
   "theme": {
     "primary": "#17644B",
     "sidebar": "#FCFDFB",
     "font": "system-ui"
   },
-  "referenceMockup": ".project-init/familieblikk-mockup.html",
+  "referenceMockup": ".project-init/familieblikk-spending-planning-mockup.html",
   "screens": [
     {
       "id": "oversikt",
@@ -477,6 +477,217 @@
         "Error",
         "Member"
       ]
+    },
+    {
+      "id": "calendar-month",
+      "title": "Familiekalender – måned",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Sparing",
+        "Kalender",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Familiekalender – måned",
+          "description": "Sammenhengende månedsrutenett med ukestart mandag, datovalg, neste/forrige måned, I dag, måned/liste og Ny avtale. Samme Familieblikk-navigasjon og firefliserslogo. Filtrer Alle, Felles eller familiemedlem; personvisning viser avtaler som er knyttet til valgt person."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Ny avtale"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "ReadOnly"
+      ]
+    },
+    {
+      "id": "calendar-agenda",
+      "title": "Familiekalender – liste",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Sparing",
+        "Kalender",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Familiekalender – liste",
+          "description": "Dato-gruppert mobilagenda med heldag, klokkeslett, tittel, valgfritt sted og tydelig gjentakelse; samme måned/listevalg. Filtrer Alle, Felles eller familiemedlem; personvisning viser avtaler som er knyttet til valgt person."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Se avtale"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "ReadOnly"
+      ]
+    },
+    {
+      "id": "calendar-form",
+      "title": "Ny eller endret familieavtale",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Sparing",
+        "Kalender",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Ny eller endret familieavtale",
+          "description": "Tittel, lokal start/slutt eller heldag, valgfritt sted/notat, ingen/ukentlig/månedlig gjentakelse og valgfri siste dato. Feltfeil beholder inndata. Velg Felles familie eller flere familiemedlemmer; minst én person ved personvalg. Én felles avtale uten dubletter."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Vis fiktiv lagring"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "ReadOnly"
+      ]
+    },
+    {
+      "id": "calendar-detail",
+      "title": "Avtaledetalj og serieomfang",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Sparing",
+        "Kalender",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Avtaledetalj og serieomfang",
+          "description": "Les felles avtale; oppretter/admin får endre/slett. Seriehandling forklarer Bare denne eller Denne og fremtidige før bekreftelse. Andre medlemmer får lesetilgang. Hver deltaker svarer for seg selv: Ikke svart, Passer, Passer ikke. Hele familien ser svarene. Gjentakelsessvar gjelder valgt forekomst; administrator svarer ikke for andre."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Endre avtale"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "ReadOnly"
+      ]
+    },
+    {
+      "id": "spending-exploration",
+      "title": "Hvor gikk pengene?",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Sparing",
+        "Kalender",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Hvor gikk pengene?",
+          "description": "Hele forbruket med beløp, automatisk søk, kategori- og tidsfilter, negativ refusjon og tilhørende poster. Ingen stille topp-N-utvalg."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Utforsk fiktivt eksempel"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "ReadOnly"
+      ]
+    },
+    {
+      "id": "spending-year",
+      "title": "Grafisk årsoversikt",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Sparing",
+        "Kalender",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Grafisk årsoversikt",
+          "description": "Månedsutvikling og kategorivalg uten bred nullmatrise. Manglende historikk skilles fra null, inntekt fra forbruk."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Utforsk fiktivt eksempel"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "ReadOnly"
+      ]
+    },
+    {
+      "id": "next-month-draft",
+      "title": "Planlegg neste måned",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Sparing",
+        "Kalender",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Planlegg neste måned",
+          "description": "Redigerbart forventningsutkast fra inntekt, faste forpliktelser, sparing og øvrig forbruk. Historisk grunnlag vises, ukjent er ikke null, intet dobbelttrekk eller automatisk lagring."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Utforsk fiktivt eksempel"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "ReadOnly"
+      ]
     }
-  ]
+  ],
+  "scope": "Godkjent forbruks-, års- og planleggingsopplevelse bygges i eksisterende Familieblikk. Kalenderen er implementert. Historiske kandidat-/akseptkvitteringer bevares; automatiske registrerings- og driftporter hevdes ikke bestått."
 }
