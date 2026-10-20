@@ -4,7 +4,7 @@ Familieblikk er bygget og kjører lokalt i Docker på `http://127.0.0.1:4180`. I
 
 | Kontroll | Observert resultat |
 |---|---|
-| Django/PostgreSQL | 54 tester bestått; systemkontroll uten feil; ingen manglende migrasjoner |
+| Django/PostgreSQL | 57 tester bestått; systemkontroll uten feil; ingen manglende migrasjoner |
 | Avhengigheter | Hashlåste pakker; kompatibilitetskontroll bestått i prosjektets `.venv` |
 | Service worker | Kjørbar Node-test bestått for offentlig cache, utskifting og frakoblet side |
 | Privat kilde og forhåndsvisning | 20 bevarings-/tilgangstester bestått med eksisterende regnearkruntime |
@@ -38,6 +38,6 @@ Innloggingssiden bruker nå den godkjente demoens fire grønne fliser. Logo, skj
 
 Privat repository og grenene `main`, `develop` og `codex/build-familieblikk` er opprettet og pushet. `main` er standardgren. CI kan startes ved push, pull request eller manuelt.
 
-Den første manuelle [CI-kjøringen](https://github.com/Thugney/Familieblikk/actions/runs/39489965135) ble stoppet før noen teststeg startet. GitHub oppgir at nylige kontobetalinger har feilet eller at forbruksgrensen må økes. Dette er en kontoblokkering; GitHub-testene er derfor ikke bekreftet grønne. Lokalt består 54 PostgreSQL/Django-tester, og innlogging/logo er kontrollert på fem bredder.
+Den første manuelle [CI-kjøringen](https://github.com/Thugney/Familieblikk/actions/runs/39489965135) ble stoppet før noen teststeg startet. GitHub oppgir at nylige kontobetalinger har feilet eller at forbruksgrensen må økes. Dette er en kontoblokkering; GitHub-testene er derfor ikke bekreftet grønne. Lokalt består 57 PostgreSQL/Django-tester, og innlogging/logo er kontrollert på fem bredder.
 
 GitHubs grenbeskyttelses-API oppgir at private repoer på denne kontoen krever GitHub Pro. Grenbeskyttelse er derfor ikke aktivert. Repoet forblir privat. Ingen betalingsinnstillinger eller abonnement er endret.

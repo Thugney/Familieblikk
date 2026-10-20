@@ -81,3 +81,6 @@ Privat GitHub-repository er opprettet: https://github.com/Thugney/Familieblikk. 
 
 
 Første publisering er utført til privat Thugney/Familieblikk med main som standard og main/develop/codex/build-familieblikk pushet fra verifisert startgrunnlag. GitHub Actions-forsøk39489965135 ble stoppet førsteg av kontoens betalings-/forbruksgrense. Privat grenbeskyttelse avvist med krav om GitHub Pro. Kontoens betaling/abonnement er ikke endret, og ingen NAS-utrulling er utført.
+
+
+Oppfølging av første innlogging: 404 ved tomt month-parameter er reparert. Manglende/tom/blank måned velger lokal inneværende måned; skjemasider genererer gyldige månedslenker og -felt. 57 tester, faktisk Docker-nettleserflyt på mobil/PC og avstemming av uendrede eierdata består. Uavhengig gjennomgang uten funn. Rettelsen publiseres som del av brukerens nylige godkjenning til å committe/pushe Familieblikk-koden for Synology; ingen NAS-utrulling.

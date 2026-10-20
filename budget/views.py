@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -141,8 +142,11 @@ def get_member(request):
 
 
 def selected_month(request):
-    try: return date.fromisoformat(request.GET.get('month', timezone.localdate().strftime('%Y-%m') + '-01')[:7] + '-01')
-    except (ValueError, TypeError): raise Http404('Ugyldig måned')
+    value = request.GET.get('month', '').strip()
+    if not value: return timezone.localdate().replace(day=1)
+    if not re.fullmatch(r'[0-9]{4}-[0-9]{2}', value): raise Http404('Ugyldig måned')
+    try: return date.fromisoformat(value + '-01')
+    except ValueError: raise Http404('Ugyldig måned')
 
 
 def add_calendar_months(day, count):

@@ -33,6 +33,6 @@ Den faktiske arbeidsboken, importpakken, eieradressen og importkvitteringene lig
 
 ## Verifisert status
 
-Lokalt er 54 Django/PostgreSQL-tester og 78 nettleserkontroller bestått. Separat backup/gjenoppretting har identiske radantall, og approllens forsøk på skjemaendring avvises. Service worker har en egen kjørbar Node-test i CI.
+Lokalt er 57 Django/PostgreSQL-tester og 78 nettleserkontroller bestått. Separat backup/gjenoppretting har identiske radantall, og approllens forsøk på skjemaendring avvises. Service worker har en egen kjørbar Node-test i CI.
 
 Den faktiske arbeidsboken er nå importert til den eksplisitt forhåndsregistrerte eierens egen familie i den lokale Docker-installasjonen. Alle 72 kilderader er bevart nøyaktig som poster eller synlige avklaringsutkast. Reimport, ny passordinnlogging etter containerutskifting, separat avstemt gjenoppretting og annen families tilgangsavslag er dokumentert privat. Ukjente datoer/klasser må fortsatt avklares før bokføring. Faktisk NAS-utrulling gjenstår. Passordinnlogging er ikke e-postverifisering.
