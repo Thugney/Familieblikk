@@ -1,0 +1,14 @@
+{
+  "accepted": true,
+  "date": "2026-10-20",
+  "user_answer": "Ja, bygg kalenderen inn n\u00e5",
+  "scope": "shared/member calendars, multi-member appointments, own RSVP, weekly/monthly recurrence",
+  "candidate_hashes": {
+    ".project-init/familieblikk-calendar-mockup.html": "cbea37c7936ffbc1f8c01637fb40cedaa1eea332d0753edb199622e52ea5b199",
+    "_bmad-output/specs/spec-familieblikk-calendar/SPEC.md": "d56980b57de8fb2a7da09261818a2ab918f15091d3c9a569a3d6e4099bff8569",
+    "_bmad-output/specs/spec-familieblikk-calendar/recurrence-rules.md": "dabdaa6288c1dd0a74ff07eac76471f71b245c2e2b430314deab36718dead3da"
+  },
+  "browser_receipt": "work/calendar-browser-checks.json",
+  "independent_review": "work/calendar-design-verdict.json",
+  "commit_push_authorized": false
+}

@@ -31,7 +31,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test budget/tests/sw.test.cjs
+      - run: node --test budget/tests/sw.test.cjs budget/tests/category-search.test.cjs budget/tests/calendar-draft.test.cjs tests/spending-behavior.test.cjs tests/host-network.test.cjs
       - run: pip install --require-hashes -r requirements.lock
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run

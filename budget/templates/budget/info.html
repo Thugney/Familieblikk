@@ -1,1 +1,1 @@
-{% extends 'budget/base.html' %}{% block content %}<section class="auth-panel"><h1>{{ title }}</h1><p>{{ text }}</p><a href="/">Til Familieblikk</a></section>{% endblock %}
+{% extends 'budget/base.html' %}{% block content %}<section class="auth-panel">{% include 'budget/brand.html' %}<h1>{{ title }}</h1><p>{{ text }}</p><a href="/">Til Familieblikk</a></section>{% endblock %}

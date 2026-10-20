@@ -1,0 +1,77 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const {execFileSync} = require('node:child_process');
+const root = path.resolve(__dirname, '..');
+
+function config(extra = {}, includeImport = false) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'familieblikk-host-test-'));
+  const file = path.join(directory, '.env');
+  fs.writeFileSync(file, fs.readFileSync(path.join(root, '.env.example')));
+  const keep = /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|USERPROFILE|HOME|APPDATA|LOCALAPPDATA|TEMP|TMP|DOCKER_CONFIG|PROGRAMFILES(?:\(X86\))?|PROGRAMDATA|COMSPEC)$/i;
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => keep.test(key)));
+  Object.assign(env, {DJANGO_SECRET_KEY:'synthetic-host-test-key', POSTGRES_PASSWORD:'synthetic-owner-only', POSTGRES_APP_PASSWORD:'synthetic-app-only', ...extra});
+  if (includeImport) env.PRIVATE_IMPORT_PATH = directory;
+  const args = ['compose', '--env-file', file, '-f', 'docker-compose.yml'];
+  if (includeImport) args.push('-f', 'docker-compose.import.yml');
+  try {
+    return JSON.parse(execFileSync('docker', [...args, 'config', '--format', 'json'], {cwd:root, env, encoding:'utf8', stdio:['ignore','pipe','pipe']}));
+  } finally {
+    fs.unlinkSync(file);
+    fs.rmdirSync(directory);
+  }
+}
+
+test('host-nettverk og fast webport 6451 er standard for hele hostingprosjektet', () => {
+  const c = config({APP_PORT:'4180', APP_BIND:'127.0.0.1', POSTGRES_HOST:'db'});
+  assert.equal(c.name, 'familieblikk');
+  for (const name of ['db','migrate','app']) {
+    assert.equal(c.services[name].network_mode, 'host');
+    assert.equal(c.services[name].ports, undefined);
+    assert.equal(c.services[name].networks, undefined);
+  }
+  assert.ok(c.services.app.command.includes('0.0.0.0:6451'));
+  assert.equal(c.volumes.database.name, 'familieblikk_database');
+  assert.ok(c.services.db.volumes.some(v => v.type === 'volume' && v.source === 'database' && v.target === '/var/lib/postgresql/data'));
+  assert.equal(c.services.app.depends_on.migrate.condition, 'service_completed_successfully');
+  assert.equal(c.services.app.read_only, true);
+  assert.equal(c.services.app.environment.DJANGO_ALLOWED_HOSTS, 'blikk.betilab.com');
+  assert.equal(c.services.app.environment.CSRF_TRUSTED_ORIGINS, 'https://blikk.betilab.com');
+  assert.equal(c.services.app.environment.DJANGO_TRUST_PROXY, '1');
+  assert.equal(c.services.app.environment.DJANGO_HTTPS, '0');
+  assert.ok(c.services.app.environment.POSTGRES_PASSWORD !== c.services.migrate.environment.POSTGRES_PASSWORD, 'Appen skal ikke få databaseeierens passord');
+});
+
+test('localhost, PGPORT og valgfri databaseport er konsistente uten å endre webporten', () => {
+  for (const port of ['6452','16452']) {
+    const c = config({POSTGRES_PORT:port});
+    assert.equal(c.services.db.environment.PGPORT, port);
+    assert.ok(c.services.db.command.includes('listen_addresses=127.0.0.1'));
+    assert.ok(c.services.db.command.includes('hba_file=/etc/familieblikk/pg_hba.conf'));
+    assert.ok(c.services.db.command.includes('password_encryption=scram-sha-256'));
+    assert.equal(c.services.db.command.at(-1), port);
+    for (const name of ['app','migrate']) {
+      assert.equal(c.services[name].environment.POSTGRES_HOST, '127.0.0.1');
+      assert.equal(c.services[name].environment.POSTGRES_PORT, port);
+    }
+    const hba = c.services.db.volumes.find(v => v.target === '/etc/familieblikk/pg_hba.conf');
+    assert.ok(hba && hba.read_only);
+    assert.ok(c.services.app.command.includes('0.0.0.0:6451'));
+  }
+});
+
+test('Docker-image og privat import beholder host-nettverk og port 6451', () => {
+  const dockerfile = fs.readFileSync(path.join(root,'Dockerfile'),'utf8');
+  assert.match(dockerfile, /^EXPOSE 6451$/m);
+  const cmd = JSON.parse(dockerfile.match(/^CMD (.+)$/m)[1]);
+  assert.ok(cmd.includes('0.0.0.0:6451'));
+  const c = config({}, true);
+  assert.equal(c.services.app.network_mode, 'host');
+  assert.ok(c.services.app.volumes.some(v => v.target === '/private-import' && v.read_only));
+  const hba = fs.readFileSync(path.join(root,'docker/postgres/pg_hba.conf'),'utf8');
+  assert.match(hba, /^host\s+all\s+all\s+127\.0\.0\.1\/32\s+scram-sha-256$/m);
+  assert.match(hba, /^host\s+all\s+all\s+::1\/128\s+scram-sha-256$/m);
+  assert.doesNotMatch(hba, /^host\s+.*\s+trust\s*$/m);
+});

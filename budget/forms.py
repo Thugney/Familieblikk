@@ -21,6 +21,36 @@ class EmailForm(forms.Form):
     email = forms.EmailField(label='E-post', widget=forms.EmailInput(attrs={'autocomplete': 'email'}))
 
 
+class EntryFilterForm(forms.Form):
+    q = forms.CharField(label='Søk i poster', max_length=120, required=False, widget=forms.TextInput(attrs={'placeholder': 'Beskrivelse, kategori eller mål'}))
+    kind = forms.ChoiceField(label='Type', required=False, choices=[('', 'Alle typer')] + Entry.KINDS)
+    category = forms.ModelChoiceField(label='Kategori', required=False, queryset=Category.objects.none(), empty_label='Alle kategorier')
+    creator = forms.ChoiceField(label='Registrert av', required=False)
+    date_from = forms.DateField(label='Fra dato', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    date_to = forms.DateField(label='Til dato', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    status = forms.ChoiceField(label='Inntektsstatus', required=False, choices=[('', 'Alle statuser'), ('expected', 'Forventet inntekt'), ('received', 'Mottatt inntekt')])
+    def __init__(self, *args, household, month, remittances_only=False, **kwargs):
+        from .models import Membership
+        from .services import month_end
+        super().__init__(*args, **kwargs)
+        if remittances_only:
+            self.fields['kind'].choices = [('', 'Alle typer')] + [(key, label) for key, label in Entry.KINDS if key in ('remittance', 'refund')]
+            self.fields.pop('status')
+        self.fields['category'].queryset = Category.objects.filter(household=household).order_by('name', 'id')
+        self.fields['creator'].choices = [('', 'Alle familiemedlemmer')] + [(str(member.user_id), member.user.get_full_name() or member.user.email) for member in Membership.objects.filter(household=household).select_related('user').order_by('user__email', 'user_id')]
+        for key in ('date_from', 'date_to'): self.fields[key].widget.attrs.update(min=month.isoformat(), max=month_end(month).isoformat())
+    def clean(self):
+        result = super().clean()
+        if result.get('date_from') and result.get('date_to') and result['date_from'] > result['date_to']:
+            raise ValidationError('Fra dato må være før eller lik til dato.')
+        return result
+
+    @property
+    def advanced_open(self):
+        keys = ('category', 'creator', 'date_from', 'date_to', 'status')
+        return bool(self.errors) or any(self.data.get(key) for key in keys)
+
+
 class CodeForm(EmailForm):
     code = forms.RegexField(r'^\d{6}$', label='Engangskode', widget=forms.TextInput(attrs={'inputmode': 'numeric', 'autocomplete': 'one-time-code', 'maxlength': 6}))
 
