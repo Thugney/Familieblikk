@@ -32,3 +32,12 @@ Private kvitteringer og faktiske skjermbilder ligger i `private-data/runtime/own
 NAS-modell/arkitektur, Container Manager og HTTPS må konfigureres og verifiseres ved utrulling. SMTP er valgfritt for kode/invitasjoner. Privat GitHub-repository er opprettet, og første commit/push er eksplisitt autorisert av brukeren. Ingen faktisk NAS-utrulling er utført. Avklaringsutkast må gjennomgås av familien før de brukes som bokførte beløp; bevaring som utkast er ikke en bekreftelse på korrekt regnskapsklasse eller manglende dato.
 
 Innloggingssiden bruker nå den godkjente demoens fire grønne fliser. Logo, skjemabredder og fravær av horisontal overflyt er kontrollert ved 360, 390, 768, 1024 og 1440 px. Passordinnlogging og faktiske kildeposter er kontrollert igjen etter Docker-rebuild.
+
+
+## GitHub-status ved første publisering
+
+Privat repository og grenene `main`, `develop` og `codex/build-familieblikk` er opprettet og pushet. `main` er standardgren. CI kan startes ved push, pull request eller manuelt.
+
+Den første manuelle [CI-kjøringen](https://github.com/Thugney/Familieblikk/actions/runs/39489965135) ble stoppet før noen teststeg startet. GitHub oppgir at nylige kontobetalinger har feilet eller at forbruksgrensen må økes. Dette er en kontoblokkering; GitHub-testene er derfor ikke bekreftet grønne. Lokalt består 54 PostgreSQL/Django-tester, og innlogging/logo er kontrollert på fem bredder.
+
+GitHubs grenbeskyttelses-API oppgir at private repoer på denne kontoen krever GitHub Pro. Grenbeskyttelse er derfor ikke aktivert. Repoet forblir privat. Ingen betalingsinnstillinger eller abonnement er endret.

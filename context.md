@@ -78,3 +78,6 @@ Robel har uttrykkelig godkjent opprettelse av privat Thugney/Familieblikk, commi
 
 
 Privat GitHub-repository er opprettet: https://github.com/Thugney/Familieblikk. Første commit skal gjøres på codex/build-familieblikk, og main/develop opprettes fra dette verifiserte startgrunnlaget. Brukerens korrigering av logo er ivaretatt: identiske fire fliser fra demoen brukes nå i app, innlogging og ikon. Ingen privat kilde, passord eller .env inngår i publiseringsindeksen; 394 filer er kontrollert. GitHub-resultat må bekreftes fra faktiske refs/CI; NAS-utrulling gjenstår.
+
+
+Første publisering er utført til privat Thugney/Familieblikk med main som standard og main/develop/codex/build-familieblikk pushet fra verifisert startgrunnlag. GitHub Actions-forsøk39489965135 ble stoppet førsteg av kontoens betalings-/forbruksgrense. Privat grenbeskyttelse avvist med krav om GitHub Pro. Kontoens betaling/abonnement er ikke endret, og ingen NAS-utrulling er utført.
