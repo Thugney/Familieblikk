@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+work/
+__pycache__/
+*.pyc
+node_modules/
+.venv/
+_bmad/config.user.toml
+_bmad/custom/*.user.toml
+.project-init/visual/actual/
+# Private original workbook, import staging and owner-account binding.
+private-data/

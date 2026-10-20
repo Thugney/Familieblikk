@@ -1,0 +1,33 @@
+name: PostgreSQL og Django
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_USER: familieblikk
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: familieblikk
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U familieblikk"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DJANGO_SECRET_KEY: ci-only-key-never-use-in-production
+      POSTGRES_PASSWORD: ci-only-password
+      EMAIL_BACKEND: django.core.mail.backends.locmem.EmailBackend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test budget/tests/sw.test.cjs
+      - run: pip install --require-hashes -r requirements.lock
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py test budget.tests --verbosity 2

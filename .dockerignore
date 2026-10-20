@@ -1,0 +1,11 @@
+*
+!requirements.lock
+!manage.py
+!familieblikk/
+!familieblikk/**
+!budget/
+!budget/**
+**/__pycache__/
+**/*.pyc
+budget/tests/
+budget/tests/**

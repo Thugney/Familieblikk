@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "checks": [],
+  "description": "Configure explicit argv checks here; nothing runs automatically."
+}

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "verdict": "pass",
+  "findings": [],
+  "sources": [
+    {
+      "url": "https://www.djangoproject.com/download/",
+      "claim": "Checked 2026-10-20: 5.2.18 is the current 5.2 LTS patch, supported through April 2028; it is not the latest overall Django release."
+    },
+    {
+      "url": "https://www.postgresql.org/support/versioning/",
+      "claim": "Checked 2026-10-20: 17.11 is the current supported PostgreSQL 17 minor; major 17 support ends November 8, 2029."
+    },
+    {
+      "url": "https://docs.djangoproject.com/en/5.2/ref/databases/",
+      "claim": "Django 5.2 supports PostgreSQL 14+ and requires psycopg 3.1.8+ or psycopg2 2.8.4+. PostgreSQL 17 is a compatible proposal."
+    },
+    {
+      "url": "https://docs.djangoproject.com/en/5.2/faq/install/",
+      "claim": "Django 5.2 supports Python 3.10 through 3.14 (3.14 added in 5.2.8), with supported latest micro releases. The document explicitly defers choosing and locking Python and the driver until authorized app setup; their absence is not an installed-runtime claim."
+    },
+    {
+      "url": "https://docs.djangoproject.com/en/5.2/topics/db/transactions/",
+      "claim": "Explicit atomic blocks can commit or roll back linked payment and ledger writes together; this establishes feasibility, not correctness of an unimplemented command."
+    },
+    {
+      "url": "https://docs.djangoproject.com/en/5.2/ref/models/querysets/#select-for-update",
+      "claim": "PostgreSQL supports row locking through select_for_update inside transactions. Meaningful concurrency verification must use PostgreSQL and TransactionTestCase rather than rely on SQLite or automatically wrapped TestCase transactions."
+    },
+    {
+      "url": "https://docs.djangoproject.com/en/5.2/ref/csrf/",
+      "claim": "Django supplies CSRF middleware and form protection including login CSRF. Native JavaScript requests must carry the token and unsafe state changes must not be GET requests."
+    },
+    {
+      "url": "https://docs.djangoproject.com/en/5.2/topics/http/sessions/",
+      "claim": "Django supports server-side sessions; signed-cookie session replay is not invalidated by logout, which motivates the session-backend finding."
+    },
+    {
+      "url": "https://www.w3.org/TR/appmanifest/",
+      "claim": "The web manifest standard defines web-app identity, icons and standalone display; it does not require a frontend framework, so server-generated HTML with native JavaScript remains a feasible PWA approach."
+    },
+    {
+      "url": "https://www.w3.org/TR/service-workers/",
+      "claim": "Service workers and Cache API are web-platform capabilities. A deliberate public-assets-only cache policy is compatible with online-only private operations; no application or browser verification has occurred."
+    },
+    {
+      "url": "https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable",
+      "claim": "Supporting browser installation requires a manifest and HTTPS or local development origin; installation behavior differs across browsers. Used as supplementary browser guidance alongside primary W3C standards."
+    }
+  ],
+  "limitations": [
+    "Independent draft technology review only; no human design acceptance, implementation authorization, production approval or successful app tests are implied.",
+    "Local _bmad/_config/manifest.yaml confirms core and bmm 6.12.4 installation. It does not attest Django, PostgreSQL, Docker, Python app runtime or driver installation.",
+    "Docker is an explicitly proposed deployment approach, not a selected installed release; hosting, mail delivery, concrete runtime versions, supported browser matrix and operational recovery/retention targets remain deferred with pre-build or pre-launch gates.",
+    "No infrastructure/provider selection, provisioning, dependency installation, secrets access or application changes were performed."
+  ],
+  "reviewHistory": [
+    {
+      "round": 0,
+      "verdict": "needs-work",
+      "findings": [
+        {
+          "severity": "medium",
+          "file": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+          "issue": "AD-3 specifies session cookie flags but leaves the session backend and server-side logout invalidation silent. Django's signed-cookie sessions do not invalidate a copied session on logout. Two implementations can therefore satisfy the written cookie flags while providing materially different logout protection for private household data.",
+          "fix": "Bind identity to server-side sessions (the existing PostgreSQL database is sufficient), require session rotation after code verification and server-side invalidation on logout, and prohibit financial data or OTP secrets in session cookies. This is a proposed architecture rule, not dependency installation or implementation approval."
+        }
+      ]
+    },
+    {
+      "round": 1,
+      "verdict": "pass",
+      "recheck": "Independently reread current AD-3 on 2026-10-20. It now requires PostgreSQL-backed Django sessions, opaque session-ID cookies, rotation following code verification, server-side invalidation plus cookie deletion on logout, and expressly excludes signed-cookie sessions. The original medium finding is resolved at the draft contract level. Runtime enforcement and replay tests remain future implementation evidence."
+    }
+  ]
+}

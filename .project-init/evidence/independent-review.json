@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 1,
+  "verdict": "pass",
+  "scope": "Independent review of planning/design candidate only",
+  "humanApproved": false,
+  "applicationImplemented": false,
+  "reviews": [
+    {
+      "path": "work/design-verdict.json",
+      "sha256": "12f5eb63da83a7bd8ec65d845c79295caf3c38c40fa5f98e701a85425f930a0a",
+      "review": {
+        "schemaVersion": 1,
+        "verdict": "pass",
+        "findings": [],
+        "checks": [
+          {
+            "result": "pass-with-findings",
+            "detail": "FR-1–21 cover the approved core and optional workbook capabilities, including isolation, individual entries/shared budgets, expected versus received income, historical limits, unpaid rollover, savings, debt, funds, FX, refunds and year view. No workbook private values reproduced.",
+            "id": "scope-reconciliation"
+          },
+          {
+            "result": "pass",
+            "detail": "Norwegian NOK, calm light mobile/desktop composition, understandable budget estimate, negative values, optional household modules, no bank movement and honest draft/approval boundaries retained.",
+            "id": "qualitative-intent"
+          },
+          {
+            "result": "pass-at-discussion-altitude",
+            "detail": "AD-1–13 bind family access, ownership, OTP, integer ore, authoritative calculation, idempotency, historical time, PWA caching, module accounting and operational boundaries. Detailed financial corrections are explicitly blocked before relevant implementation.",
+            "id": "rubric-real-divergence-points"
+          },
+          {
+            "result": "pass-as-proposal",
+            "detail": "Server-derived membership, role checks, unique constraints, transactional settlement, version conflicts, frozen currency values and no-store private responses are enforceable design rules. No runtime implementation proof exists.",
+            "id": "rubric-enforceability"
+          },
+          {
+            "result": "pass-at-discussion-altitude",
+            "detail": "Hosting/email, runtime compatibility, retention, recovery, account deletion, debt-balance update and complex correction details remain explicit before build/release gates. No build-ready certification implied.",
+            "id": "rubric-deferred"
+          },
+          {
+            "result": "pass",
+            "detail": "On 2026-10-20 official Django download page lists 5.2.18 LTS supported to April 2028; PostgreSQL version policy lists 17.11 supported to November 2029. These establish supported proposal versions only.",
+            "id": "rubric-technology",
+            "sources": [
+              "https://www.djangoproject.com/download/",
+              "https://www.postgresql.org/support/versioning/"
+            ]
+          },
+          {
+            "result": "not-applicable",
+            "detail": "Planning-only project; no application implementation or inherited parent spine supplied.",
+            "id": "rubric-brownfield-parent"
+          },
+          {
+            "result": "pass-with-low-finding",
+            "detail": "All finance domains have rules; environments, process/database topology, email adapter, secrets, backup restore and release checks are decided or explicitly deferred. Optional ownership map needs alignment.",
+            "id": "rubric-capability-and-envelope"
+          },
+          {
+            "result": "pass-by-inspection",
+            "detail": "62000-28450-8650-6500=18400; optional 1500 ordinary expense +3500 debt +2000 fund gives11400; 18400/12 floored to whole NOK=1533; annual fund7200+800+1600-9600=0 with current allocation2400; year cash results15000/16000/29050 reconcile.",
+            "id": "numeric-fixtures"
+          },
+          {
+            "result": "partial",
+            "detail": "Viewed design-desktop.png and design-mobile.png: clear draft banner, calm hierarchy, labeled primary amounts, mobile bottom navigation and visible estimate disclaimer. Screenshots alone cannot certify focus, contrast, 200% reflow or every optional screen.",
+            "id": "visual-review"
+          },
+          {
+            "result": "pass",
+            "detail": "Prototype banner and simulated toasts clearly identify fictional data and no saving; specifications keep product-scope approval distinct from visual/implementation authorization.",
+            "id": "claim-honesty"
+          },
+          {
+            "result": "pass",
+            "id": "repair-round1-controls",
+            "detail": "Inspected visibility state and admin-only switches for savings dashboard/year menu; used obligations survive hiding. Financial model stays intact."
+          },
+          {
+            "result": "pass",
+            "id": "repair-round1-ux",
+            "detail": "Stale defect assertions removed; 15px desktop/14px mobile and compact-label roles described; 15 screen roles and spine-only details are explicit."
+          },
+          {
+            "result": "pass",
+            "id": "repair-round1-ownership",
+            "detail": "Binds, seed, module list and capability map include debt, annual funds, remittances/currency, preferences and historical projection."
+          },
+          {
+            "result": "pass-by-inspection",
+            "id": "repair-round1-math",
+            "detail": "PRD/EXPERIENCE/AD-10 agree on net savings per goal. Withdrawal100/redeposit100 restores N=0 and original availability; no goal offsets another plan. Historical62000+1000-29950-3500-9600-4500=15450. Typed bill dispatch isolates ordinary/debt/fund effects; effective-date validation covers future dependent withdrawals. Annual Nov forecast9600-(8000+800)=800 matches rendered candidate."
+          },
+          {
+            "result": "pass-as-prototype-evidence",
+            "id": "repair-round1-evidence",
+            "detail": "Read92 checks, all passed; matched both recorded SHA256 hashes against current mock and UI design file. Viewed current desktop/mobile screenshots. These checks are supplied browser prototype evidence, not an independent rerun by this reviewer."
+          },
+          {
+            "detail": "Source override .eyebrow,.daily .eyebrow,.date-box span,th now12px follows earlier media rules. Source hashes match refreshed browser evidence;92/92 and36 screenshots recorded. Human summary preserves fictional/no-saving claims, planning scope, optional-module handling, deferred details, gate limitations and no human/implementation acceptance.12 passed numerical examples substantiated by .project-init/evidence/financial-example-checks.json; these are expressly arithmetic-only.",
+            "id": "repair-round2-labels-summary-freshness",
+            "result": "pass"
+          }
+        ],
+        "limitations": [
+          "Pass means independent planning/design consistency review, never human acceptance or implementation authorization.",
+          "No application implementation, backend behavior, runtime isolation, security, PWA installability, workbook correctness or full WCAG certification verified.",
+          "Detailed forms and full12month historical matrix remain explicitly spine-only.",
+          "Product is light-only; a generic dark visual-plan requirement does not authorize adding dark mode.",
+          "Financial algorithms/assumptions remain proposals for human acceptance; release/privacy/operations gates remain open.",
+          "Only work/design-verdict.json is owned and written by this node."
+        ],
+        "initialFindings": [
+          {
+            "file": ".project-init/optional-preview.js",
+            "fix": "Add presentation-only hide preferences for savings and annual view, preserving underlying balances and obligations, or explicitly mark these controls as spine-only and replace the always-available claim. Do not hide the financial effect of existing savings plans.",
+            "severity": "medium",
+            "issue": "Tilpass appen exposes only Gjeld, Årsutgifter and Utland switches and explicitly calls Sparemål always available. PRD FR-15 says savings and annual view can also be hidden. This leaves the optional household choice inconsistent across the review candidate."
+          },
+          {
+            "file": "_bmad-output/planning-artifacts/ux-designs/ux-familieblikk-2026-10-20/DESIGN.md",
+            "fix": "Reconcile both UX files to the current mock: distinguish corrected defects from genuinely pending checks and choose one explicit necessary-text size contract. Label detailed forms and optional visual coverage accurately.",
+            "severity": "medium",
+            "issue": "The normative pair still describes already-repaired mock defects (Trygt dagsbeløp, mobile table and 38px controls), while its proposed 14px necessary-text floor still conflicts with current 12px necessary labels. EXPERIENCE also says optional screens are not finalized. The exact review candidate is therefore ambiguous."
+          },
+          {
+            "file": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+            "fix": "Extend the capability-to-module map and structural seed just enough to locate debt, annual funds, currency snapshots, linked refunds and module preferences. Keep table-level schema deferred.",
+            "severity": "low",
+            "issue": "AD-10–13 cover optional finance domains, but binds, structural seed, proposed module list and Capability → Architecture Map still describe only the original core. Two downstream implementers could assign debt/funds/FX ownership differently."
+          }
+        ],
+        "auditChronology": [
+          {
+            "detail": "Three original findings retained in initialFindings.",
+            "verdict": "changes-requested",
+            "round": 0
+          },
+          {
+            "detail": "Presentation preferences added without releasing commitments; current UX reconciles updated candidate and explicitly labels spine-only areas; optional modules mapped to architecture owners. Review passes for discussion/human design review only.",
+            "verdict": "pass",
+            "round": 1
+          },
+          {
+            "verdict": "pass",
+            "detail": "Final label override raises eyebrow/date/table labels to12px; refreshed evidence has92 passed checks,36 screenshots and matching current source hashes. Human summary reviewed;12 arithmetic examples confirmed in financial-example-checks.json with applicationTests=false.",
+            "round": 2
+          }
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/reviews/review-technology.json",
+      "sha256": "901bcbbee751d450c12d1e5427015c13eaf0170acb54549fe82527bc3641a705",
+      "review": {
+        "schemaVersion": 1,
+        "verdict": "pass",
+        "findings": [],
+        "sources": [
+          {
+            "url": "https://www.djangoproject.com/download/",
+            "claim": "Checked 2026-10-20: 5.2.18 is the current 5.2 LTS patch, supported through April 2028; it is not the latest overall Django release."
+          },
+          {
+            "url": "https://www.postgresql.org/support/versioning/",
+            "claim": "Checked 2026-10-20: 17.11 is the current supported PostgreSQL 17 minor; major 17 support ends November 8, 2029."
+          },
+          {
+            "url": "https://docs.djangoproject.com/en/5.2/ref/databases/",
+            "claim": "Django 5.2 supports PostgreSQL 14+ and requires psycopg 3.1.8+ or psycopg2 2.8.4+. PostgreSQL 17 is a compatible proposal."
+          },
+          {
+            "url": "https://docs.djangoproject.com/en/5.2/faq/install/",
+            "claim": "Django 5.2 supports Python 3.10 through 3.14 (3.14 added in 5.2.8), with supported latest micro releases. The document explicitly defers choosing and locking Python and the driver until authorized app setup; their absence is not an installed-runtime claim."
+          },
+          {
+            "url": "https://docs.djangoproject.com/en/5.2/topics/db/transactions/",
+            "claim": "Explicit atomic blocks can commit or roll back linked payment and ledger writes together; this establishes feasibility, not correctness of an unimplemented command."
+          },
+          {
+            "url": "https://docs.djangoproject.com/en/5.2/ref/models/querysets/#select-for-update",
+            "claim": "PostgreSQL supports row locking through select_for_update inside transactions. Meaningful concurrency verification must use PostgreSQL and TransactionTestCase rather than rely on SQLite or automatically wrapped TestCase transactions."
+          },
+          {
+            "url": "https://docs.djangoproject.com/en/5.2/ref/csrf/",
+            "claim": "Django supplies CSRF middleware and form protection including login CSRF. Native JavaScript requests must carry the token and unsafe state changes must not be GET requests."
+          },
+          {
+            "url": "https://docs.djangoproject.com/en/5.2/topics/http/sessions/",
+            "claim": "Django supports server-side sessions; signed-cookie session replay is not invalidated by logout, which motivates the session-backend finding."
+          },
+          {
+            "url": "https://www.w3.org/TR/appmanifest/",
+            "claim": "The web manifest standard defines web-app identity, icons and standalone display; it does not require a frontend framework, so server-generated HTML with native JavaScript remains a feasible PWA approach."
+          },
+          {
+            "url": "https://www.w3.org/TR/service-workers/",
+            "claim": "Service workers and Cache API are web-platform capabilities. A deliberate public-assets-only cache policy is compatible with online-only private operations; no application or browser verification has occurred."
+          },
+          {
+            "url": "https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable",
+            "claim": "Supporting browser installation requires a manifest and HTTPS or local development origin; installation behavior differs across browsers. Used as supplementary browser guidance alongside primary W3C standards."
+          }
+        ],
+        "limitations": [
+          "Independent draft technology review only; no human design acceptance, implementation authorization, production approval or successful app tests are implied.",
+          "Local _bmad/_config/manifest.yaml confirms core and bmm 6.12.4 installation. It does not attest Django, PostgreSQL, Docker, Python app runtime or driver installation.",
+          "Docker is an explicitly proposed deployment approach, not a selected installed release; hosting, mail delivery, concrete runtime versions, supported browser matrix and operational recovery/retention targets remain deferred with pre-build or pre-launch gates.",
+          "No infrastructure/provider selection, provisioning, dependency installation, secrets access or application changes were performed."
+        ],
+        "reviewHistory": [
+          {
+            "round": 0,
+            "verdict": "needs-work",
+            "findings": [
+              {
+                "severity": "medium",
+                "file": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+                "issue": "AD-3 specifies session cookie flags but leaves the session backend and server-side logout invalidation silent. Django's signed-cookie sessions do not invalidate a copied session on logout. Two implementations can therefore satisfy the written cookie flags while providing materially different logout protection for private household data.",
+                "fix": "Bind identity to server-side sessions (the existing PostgreSQL database is sufficient), require session rotation after code verification and server-side invalidation on logout, and prohibit financial data or OTP secrets in session cookies. This is a proposed architecture rule, not dependency installation or implementation approval."
+              }
+            ]
+          },
+          {
+            "round": 1,
+            "verdict": "pass",
+            "recheck": "Independently reread current AD-3 on 2026-10-20. It now requires PostgreSQL-backed Django sessions, opaque session-ID cookies, rotation following code verification, server-side invalidation plus cookie deletion on logout, and expressly excludes signed-cookie sessions. The original medium finding is resolved at the draft contract level. Runtime enforcement and replay tests remain future implementation evidence."
+          }
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/reviews/review-seams.json",
+      "sha256": "6ac57870edccd34da9fc5f65252ce0306d5d21184d6050edea7412f80cca24be",
+      "review": {
+        "schemaVersion": 1,
+        "verdict": "no-material-residual-findings-in-reviewed-seams",
+        "findings": [],
+        "checks": [
+          "Read context.md, rules.md, PRD and EXPERIENCE together with the architecture spine.",
+          "AD-1 provides server-derived tenant scope, same-household relation validation and tenant-qualified caches; no material conflicting tenant contract found in the declared inputs.",
+          "AD-2 keeps immutable creator separate from income owner and rechecks roles; system bill-payment permission is explicitly proposed, not accepted.",
+          "Europe/Oslo effective dates, integer øre and negative daily allowance rounding are materially consistent with the PRD.",
+          "AD-11 explicitly defers chronological debt balance estimation before building; this is a declared blocker, not an unmarked architecture defect.",
+          "AD-12 explicitly defers cancellation/reversal details and simultaneous annual obligations before implementation acceptance; do not reinterpret these as completed implementations.",
+          "Module archiving explicitly preserves financial history and open obligations; precise wind-down behavior remains an acknowledged PRD OQ-8/OQ-9 proposal.",
+          "No bank execution, feed or workbook-import scope inferred.",
+          "Repair round 1 independently reread current ARCHITECTURE-SPINE and reconciled PRD; optional domains now present in binds, structural seed and capability map."
+        ],
+        "limitations": [
+          "Document review only; no application code exists or was executed.",
+          "Draft status and human acceptance boundaries are respected. Findings request repair of internal seams before implementation, not approval of the candidate.",
+          "No source edits outside this review output; parent review orchestration must triage and independently validate the findings."
+        ],
+        "initialFindings": [
+          {
+            "severity": "high",
+            "file": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+            "issue": "AD-10's withdrawal/deposit formula contradicts its no-new-headroom cycle invariant. With a 1,000 NOK monthly plan, no deposits and opening goal balance 100, S=1,000. Withdraw 100 and redeposit 100 in the same month: goal balance is restored, S remains 1,000, but W=100 permanently increases A by 100. The savings service can correctly record both transactions while the calculation service correctly applies the written formula and manufactures headroom.",
+            "fix": "Define one explicit treatment for redeposits of released goal money, including within-plan deposits, and amend W/S together so a completed withdrawal/redeposit cycle restores A. Add this exact scenario alongside an ordinary withdrawal and a deposit exceeding plan. Keep the resulting rule proposed for human acceptance."
+          },
+          {
+            "severity": "high",
+            "file": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+            "issue": "AD-5 binds all history and defines historical cash result as I minus E minus actual deposits, but AD-10 excludes debt and annual-fund payments from E and adds W separately. A reporting unit obeying AD-5 omits actual debt/fund outflows and savings withdrawals; a ledger unit obeying AD-10 correctly classifies them separately. The same year therefore reports different cash result depending on which contract is followed. AD-10 calls A an extended formula but never supersedes the historical cash-result definition.",
+            "fix": "Explicitly scope AD-5's simple A formula to the core projection and make AD-10 the authoritative expanded calculation. Define the signed historical cash-result projection across every actual posting class, including refunds and withdrawals, separately from allocations/reservations; include an example with a fund-funded payment and debt payment. Update the capability map's reporting references."
+          },
+          {
+            "severity": "high",
+            "file": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+            "issue": "AD-6 requires every paid occurrence to create one linked expense and puts paid bills in category consumption (AD-5), while AD-10 requires linked debt/fund occurrences to point to their single non-E-class posting. A generic bills implementation can obey AD-6 by creating an ordinary expense, while debt/fund modules obey AD-10 by creating their own payment, resulting in two effects or a class conflict. The exception and dispatch ownership are not expressed in the shared payment command contract.",
+            "fix": "State that the bill payment command creates exactly one posting whose class comes from the occurrence's ordinary/debt/fund obligation type; ordinary postings alone enter E, with debt/fund settlement delegated atomically to their respective rules. Define whether category actuals include each class, and apply the same dispatch to undo/refund without creating a second posting."
+          },
+          {
+            "severity": "medium",
+            "file": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+            "issue": "AD-4 permits historical effective-date corrections and AD-10 allows withdrawal up to available goal balance, but it does not define available balance as of the withdrawal date or the validity of later events after correction. A goal service can check today's balance under a lock and accept a September withdrawal against an October deposit; a historical reporting service then reconstructs a negative September goal balance while still obeying the date rules. The dated opening balance creates the same seam if used before its effective date.",
+            "fix": "Specify an effective-date balance rule for withdrawals/opening balances and a minimal rule for later withdrawals made invalid by editing/deleting earlier funding. Validate the affected chronological goal history atomically, or explicitly prohibit those mutations until a correction flow is agreed; add one backdated withdrawal example."
+          }
+        ],
+        "repairRecheck": {
+          "round": 1,
+          "scope": "Current architecture spine and reconciled PRD; four initial findings",
+          "results": [
+            "Resolved: AD-10 uses per-goal net flows; plan 1000, withdrawal 100, redeposit 100 restores the original A. PRD matches.",
+            "Resolved: AD-5 explicitly scopes core projection and yields to AD-10; all actual classes enter historical cash result; 15450 NOK example reconciles with PRD.",
+            "Resolved: immutable obligation type selects one posting via common atomic dispatcher; debt/fund excluded from ordinary category consumption; undo/refund follows same class.",
+            "Resolved: effective-date opening and locked full-prefix/suffix validation apply to all mutations; immutable same-day sequence and rejection of later uncovered withdrawals are explicit."
+          ],
+          "residualFindings": [],
+          "arithmeticEvidence": "Inspected .project-init/evidence/financial-example-checks.json: 12 numerical checks report passed. This is specification arithmetic evidence, not application execution.",
+          "gate": "No app readiness, implementation authorization or human acceptance implied."
+        }
+      }
+    }
+  ],
+  "aggregationRule": "Accept explicit pass or no-material-residual-findings-in-reviewed-seams with an empty residual findings array; preserve original review outputs."
+}

@@ -1,0 +1,80 @@
+{
+  "kind": "proposed-specification-arithmetic-only",
+  "passed": true,
+  "checks": [
+    {
+      "name": "core-fixture-ore",
+      "actual": 1840000,
+      "expected": 1840000,
+      "passed": true
+    },
+    {
+      "name": "extended-fixture-ore",
+      "actual": 1140000,
+      "expected": 1140000,
+      "passed": true
+    },
+    {
+      "name": "per-goal-reserve-cannot-offset",
+      "actual": 350000,
+      "expected": 350000,
+      "passed": true
+    },
+    {
+      "name": "withdraw-redeposit-roundtrip",
+      "actual": 900000,
+      "expected": 900000,
+      "passed": true
+    },
+    {
+      "name": "withdrawal-release",
+      "actual": 910000,
+      "expected": 910000,
+      "passed": true
+    },
+    {
+      "name": "over-plan-contribution",
+      "actual": 850000,
+      "expected": 850000,
+      "passed": true
+    },
+    {
+      "name": "fund-before-payment-month-charge",
+      "actual": 240000,
+      "expected": 240000,
+      "passed": true
+    },
+    {
+      "name": "fund-after-payment-balance",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "name": "historical-all-actual-classes",
+      "actual": 1545000,
+      "expected": 1545000,
+      "passed": true
+    },
+    {
+      "name": "bill-payment-invariant",
+      "actual": 1250000,
+      "expected": 1250000,
+      "passed": true
+    },
+    {
+      "name": "no-income-new-month-negative",
+      "actual": -300000,
+      "expected": -300000,
+      "passed": true
+    },
+    {
+      "name": "same-day-count-inclusive",
+      "actual": 12,
+      "expected": 12,
+      "passed": true
+    }
+  ],
+  "applicationTests": false,
+  "limitation": "Only numerical examples; does not implement/verify transactions, isolation, corrections or time reconstruction."
+}

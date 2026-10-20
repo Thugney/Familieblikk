@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 1,
+  "framework": "bmad",
+  "specPaths": [
+    "context.md",
+    "_bmad-output/planning-artifacts/prds/prd-familieblikk-2026-10-20/prd.md",
+    "_bmad-output/planning-artifacts/prds/prd-familieblikk-2026-10-20/addendum.md",
+    "_bmad-output/planning-artifacts/ux-designs/ux-familieblikk-2026-10-20/DESIGN.md",
+    "_bmad-output/planning-artifacts/ux-designs/ux-familieblikk-2026-10-20/EXPERIENCE.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md"
+  ],
+  "hash": "a8233c8bb932bb6b715b9b1fc4ddebd01516ac18d4649842800b7145882904f1",
+  "files": [
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+      "sha256": "21c482c73fde62dea926b47ee4fd407bb9f1a8267ed4fb37e8fd7f588d0eedd2"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-familieblikk-2026-10-20/addendum.md",
+      "sha256": "e78d8c58bf91cc3a2eaa67b8d7e602675ca796ed3234f175c70a821b32b15724"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-familieblikk-2026-10-20/prd.md",
+      "sha256": "e879dab34782af066ab0a6980457ed80a930c56d76172f9428c71d2ff2b6d03c"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/ux-designs/ux-familieblikk-2026-10-20/DESIGN.md",
+      "sha256": "a400c291c2e96f15d1037eb43c78893ee387e9ca084d94cc953405836d3b529f"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/ux-designs/ux-familieblikk-2026-10-20/EXPERIENCE.md",
+      "sha256": "7b59acd95d9ae46d3e092f0ca136ef0e6f3abd62d2b284ad1f615cd670cffb13"
+    },
+    {
+      "path": ".project-init/familieblikk-mockup.html",
+      "sha256": "e0cb46f1eb459b07b4269f2d06968a868ea4ac1dcd10ee82a905ea24b182a9de"
+    },
+    {
+      "path": ".project-init/requirements.json",
+      "sha256": "a940ed6e8d9d0901cc6958ba0700f37ece125820d92629259061b387fb5efb42"
+    },
+    {
+      "path": ".project-init/review-context.json",
+      "sha256": "c3ea49df42c480e780c2562ac06e27f0b8ee06328fe7ef0cae2c90e49a8bb3b2"
+    },
+    {
+      "path": ".project-init/ui-design.json",
+      "sha256": "55fcfb8be1c69a2bd4c1cc2a181dd8602d7352d0678e4ac4c515cc0bf34d18e8"
+    },
+    {
+      "path": ".project-init/visual-cases.json",
+      "sha256": "ac5c956112ac9de84ccdf771ad4a67b54137a66ffd99c03f70b4ad5bf7b75480"
+    },
+    {
+      "path": ".project-init/visual/baselines/arsoversikt-desktop-light-default.png",
+      "sha256": "e42ce6fd6c72bca01f4f761e9fdd49f759021ed466c0c1c3000190a41ae5b8b6"
+    },
+    {
+      "path": ".project-init/visual/baselines/arsoversikt-mobile-light-default.png",
+      "sha256": "a126d77cf518e388de23f409f323b4a96c3358f7aa81f1dfd51649f3ebef9a3a"
+    },
+    {
+      "path": ".project-init/visual/baselines/arsutgifter-desktop-light-default.png",
+      "sha256": "796a45dd5ad4a7efc299f66d58126f300d1cdc6f2a4297352c00f23eb29530c2"
+    },
+    {
+      "path": ".project-init/visual/baselines/arsutgifter-mobile-light-default.png",
+      "sha256": "e5f1234e0782b287613d884f7dbe852d384fb9bf8b311701104b0aa53ae02d08"
+    },
+    {
+      "path": ".project-init/visual/baselines/budsjett-desktop-light-default.png",
+      "sha256": "45d5fcb76809f774f0d5d0cb6fa7ece52ffc30e92731b23794b76fd35cb8b2bc"
+    },
+    {
+      "path": ".project-init/visual/baselines/budsjett-mobile-light-default.png",
+      "sha256": "6b88dd72cef7b287105f72238dcc7bda1bd7f90c4c1d25325cd6de0eebc76545"
+    },
+    {
+      "path": ".project-init/visual/baselines/familie-desktop-light-default.png",
+      "sha256": "89053e200a7fa56d4f7aab4451578a525ab8f13a66857f1eeea24effd83e31a4"
+    },
+    {
+      "path": ".project-init/visual/baselines/familie-mobile-light-default.png",
+      "sha256": "0bcf4aee4d47246b458995693017037dc55df2244c6e6df328df007f395ef9ae"
+    },
+    {
+      "path": ".project-init/visual/baselines/gjeld-desktop-light-default.png",
+      "sha256": "3e3265e9c20078725e4ea212083ca9c1f31ebd4389edc7b9c7776535dab1fad5"
+    },
+    {
+      "path": ".project-init/visual/baselines/gjeld-mobile-light-default.png",
+      "sha256": "94faf533868e93be8f29ab04aa704186ffa7a312a597a50f740e48804f0ffba7"
+    },
+    {
+      "path": ".project-init/visual/baselines/innlogging-desktop-light-default.png",
+      "sha256": "481fa3b7f249d56bb92f80b7d23b22a28fc3e6f578bf9946b035400d1e146c96"
+    },
+    {
+      "path": ".project-init/visual/baselines/innlogging-mobile-light-default.png",
+      "sha256": "eba6b605b1db59d6043b6b740cf533d03c8db2e3835ac2bebc34b3b12a557a20"
+    },
+    {
+      "path": ".project-init/visual/baselines/invitasjon-desktop-light-default.png",
+      "sha256": "0323b2c990f8afe3ef888807fc12e5798fbeaa6b5fbfc77423ca016a480d114a"
+    },
+    {
+      "path": ".project-init/visual/baselines/invitasjon-mobile-light-default.png",
+      "sha256": "d9708b3cac3be1cf8ca71c11122bf7ed8b200f4cf028f2051bb5a4c07e767a62"
+    },
+    {
+      "path": ".project-init/visual/baselines/mer-desktop-light-default.png",
+      "sha256": "9d4e8d2120177acff5e06d72bb78c2f66b8d64f7b19851fd5c1c830478b81521"
+    },
+    {
+      "path": ".project-init/visual/baselines/mer-mobile-light-default.png",
+      "sha256": "9b1ff3b5a246d34fda2315537148ef9f779acdd0a662807d6017c4915890eea4"
+    },
+    {
+      "path": ".project-init/visual/baselines/opprett-desktop-light-default.png",
+      "sha256": "4141074ca91b9b41034caf8c52b59f3119994281d4e803857e632701f44d08c6"
+    },
+    {
+      "path": ".project-init/visual/baselines/opprett-mobile-light-default.png",
+      "sha256": "e32c0bd2bf9081d2a879506c99cb4dea3187b6e7f0e57a2b02fbe303df09f4b9"
+    },
+    {
+      "path": ".project-init/visual/baselines/oversikt-desktop-light-default.png",
+      "sha256": "2124bbee367a873207a33b59b5ed2bf4c93e5e752a1e1866d2d1a6e037212e5a"
+    },
+    {
+      "path": ".project-init/visual/baselines/oversikt-mobile-light-default.png",
+      "sha256": "178b5b826602f0ac4baa2f86e6f6e0a7ea1fb7c9345897cd5f55ebf2a2e14ed7"
+    },
+    {
+      "path": ".project-init/visual/baselines/oversikt-mobile-light-empty.png",
+      "sha256": "0256b3d459c737d6ac468662a1b746d245397cb289d2ff10aac8e4120e88bc93"
+    },
+    {
+      "path": ".project-init/visual/baselines/oversikt-mobile-light-error.png",
+      "sha256": "5835c37d3dfb4b0e57f4df2d1c56eff93daa3de3f1fcf0c554126af305672aad"
+    },
+    {
+      "path": ".project-init/visual/baselines/oversikt-mobile-light-loading.png",
+      "sha256": "2650ca38b199cf3de311a5b2527728bc426bcf1191d481f19c712a178e2bc8bd"
+    },
+    {
+      "path": ".project-init/visual/baselines/oversikt-mobile-light-member.png",
+      "sha256": "178b5b826602f0ac4baa2f86e6f6e0a7ea1fb7c9345897cd5f55ebf2a2e14ed7"
+    },
+    {
+      "path": ".project-init/visual/baselines/oversikt-mobile-light-negative.png",
+      "sha256": "785d3c151b56ecacec1b09ad149773617aa0279fc0c44d4c057e1e5f24c962b9"
+    },
+    {
+      "path": ".project-init/visual/baselines/oversikt-mobile-light-offline.png",
+      "sha256": "0a1cae631ec9b228d50a02f3bb3594b5ba8e887bebaa6090161885679aa2e8c8"
+    },
+    {
+      "path": ".project-init/visual/baselines/poster-desktop-light-default.png",
+      "sha256": "73d4828b83c0d50ba981a81afd1642acea1240209556ac743156a915a0c6ed94"
+    },
+    {
+      "path": ".project-init/visual/baselines/poster-mobile-light-default.png",
+      "sha256": "a471a38d36e0c5272870ac9d1079d6de4ff7a72d4fcd16613307bc3d681e4211"
+    },
+    {
+      "path": ".project-init/visual/baselines/regninger-desktop-light-default.png",
+      "sha256": "285e5594f1a23125362686be512dc94b0b7d6a0a5cdd0a450796173dc54a4832"
+    },
+    {
+      "path": ".project-init/visual/baselines/regninger-mobile-light-default.png",
+      "sha256": "f9a678605a8bccc11bed965ca7a12bb910a5ac4dfa7ad23d6fb40afd7df3aa90"
+    },
+    {
+      "path": ".project-init/visual/baselines/sparing-desktop-light-default.png",
+      "sha256": "fe5a931432722e19a5fd592993828acf30e82a9b9de8c28aa7c23f657796cf11"
+    },
+    {
+      "path": ".project-init/visual/baselines/sparing-mobile-light-default.png",
+      "sha256": "5e63ef17e03429e9b85e192972ee3f96f6e14a0a6c402c34bb2d6734a96b7719"
+    },
+    {
+      "path": ".project-init/visual/baselines/tilpass-desktop-light-default.png",
+      "sha256": "3d50ab2e14e3ed8ad96adee23906fbcf1889d4a9f2bb98c637d6c0ca1a01f113"
+    },
+    {
+      "path": ".project-init/visual/baselines/tilpass-mobile-light-default.png",
+      "sha256": "0ea93f3c62c5ee9a059844ce09d5f99407fdb43445a1dd2853352570e71b7b10"
+    },
+    {
+      "path": ".project-init/visual/baselines/utland-desktop-light-default.png",
+      "sha256": "db7b98bb09b659a793940fb59fe0dc9b2db2342742a8ded6b04fa47da202a8c6"
+    },
+    {
+      "path": ".project-init/visual/baselines/utland-mobile-light-default.png",
+      "sha256": "2bef51ef895123d27209732887609ed19817ab19ee042018393e316423c9ebec"
+    },
+    {
+      "path": "context.md",
+      "sha256": "c98dd0544ee99e357fdd3286691192b81ac0ea0d41442a4247f57ff7a9fd448e"
+    }
+  ],
+  "recordedAt": "2026-10-20T18:54:35.665Z",
+  "sourceRevision": null
+}

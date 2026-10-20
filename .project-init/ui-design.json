@@ -1,0 +1,482 @@
+{
+  "schemaVersion": 1,
+  "project": "Familieblikk",
+  "status": "draft",
+  "theme": {
+    "primary": "#17644B",
+    "sidebar": "#FCFDFB",
+    "font": "system-ui"
+  },
+  "referenceMockup": ".project-init/familieblikk-mockup.html",
+  "screens": [
+    {
+      "id": "oversikt",
+      "title": "Oversikt",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Oversikt",
+          "description": "Igjen å bruke, veiledende dagsbeløp, mottatt/forventet inntekt, kategorier, kommende regninger, sparemål og sammenlignbar historikk."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Ny post"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member",
+        "Negative"
+      ],
+      "metrics": [
+        {
+          "label": "Igjen å bruke",
+          "value": "18 400 kr"
+        },
+        {
+          "label": "Dagsbeløp",
+          "value": "1 533 kr"
+        },
+        {
+          "label": "Mottatt inntekt",
+          "value": "62 000 kr"
+        },
+        {
+          "label": "Utgifter",
+          "value": "28 450 kr"
+        }
+      ]
+    },
+    {
+      "id": "poster",
+      "title": "Poster",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Poster",
+          "description": "Inntekter og utgifter med eier, dato, kategori, mottatt/forventet status og refusjon."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Ny post"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "budsjett",
+      "title": "Budsjett",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Budsjett",
+          "description": "Felles kategorigrenser, faktisk forbruk, reservasjoner, overforbruk og admin-/medlemstilgang."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Endre grenser"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "regninger",
+      "title": "Regninger",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Regninger",
+          "description": "Forfalte og kommende forekomster; betaling erstatter reservasjon med én post."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Marker betalt"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "sparing",
+      "title": "Sparing",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Sparing",
+          "description": "Mål, åpningssaldo, innskudd, uttak, plan og anslått måldato."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Registrer innskudd"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "familie",
+      "title": "Familie og innstillinger",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Familie og innstillinger",
+          "description": "Medlemmer, roller, familieinvitasjon, språk, valuta og utlogging."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Inviter medlem"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "mer",
+      "title": "Mer",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Mer",
+          "description": "Mobilinngang til ekstra oversikter, familie og valgfritt oppsett."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Åpne oversikt"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "innlogging",
+      "title": "Innlogging",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Innlogging",
+          "description": "E-post og engangskode. Prototype sender ingen e-post."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Send engangskode"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "opprett",
+      "title": "Opprett familie",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Opprett familie",
+          "description": "Navn på ny privat familie og forklaring av administratorrollen."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Opprett familie"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "invitasjon",
+      "title": "Godta invitasjon",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Godta invitasjon",
+          "description": "Inviterende familie, mottaker, rolle og adressebekreftelse."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Bekreft adresse og bli med"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "gjeld",
+      "title": "Gjeld",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Gjeld",
+          "description": "Valgfri gjeldsoversikt med rente/minimum, Avalanche/Snowball, 360 måneders anslag og renter sammenlignet med uten ekstra."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Registrer gjeldsbetaling"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "arsutgifter",
+      "title": "Årsutgifter",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Årsutgifter",
+          "description": "Valgfrie års-/uregelmessige regninger med månedlig øremerking, fondssaldo og udekket beløp."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Registrer betaling fra fond"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "utland",
+      "title": "Utland",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Utland",
+          "description": "Valgfrie mottakere, opprinnelig valuta, bekreftet NOK-konvertering, måned og YTD. Ingen penger sendes."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Registrer overføring"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "arsoversikt",
+      "title": "Årsoversikt",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Årsoversikt",
+          "description": "Måneder, kategori, budsjett/faktisk, YTD og akkumulert historikk uten å videreføre fritt overskudd. Deler av tabelloppsettet er spine-only."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Se foreslåtte kolonner"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    },
+    {
+      "id": "tilpass",
+      "title": "Tilpass appen",
+      "navigation": [
+        "Oversikt",
+        "Poster",
+        "Budsjett",
+        "Regninger",
+        "Sparing",
+        "Mer"
+      ],
+      "sections": [
+        {
+          "title": "Tilpass appen",
+          "description": "Administrator velger gjeld, årsutgifter og utland. Skjuling må bevare forpliktelser og historikk."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Endre modulvalg"
+        }
+      ],
+      "states": [
+        "Empty",
+        "Loading",
+        "Offline",
+        "Error",
+        "Member"
+      ]
+    }
+  ]
+}

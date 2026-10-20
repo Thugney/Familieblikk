@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "acceptedBy": "Robel",
+  "date": "2026-10-20",
+  "userStatement": "make sure it is only on the left below and i accept it",
+  "condition": "Desktop personal profile only at bottom left; no top-right duplicate",
+  "conditionImplemented": true,
+  "scope": "Visual design only; no new dependencies, commit, push or deployment authorized",
+  "sources": [
+    {
+      "path": ".project-init/familieblikk-mockup.html",
+      "sha256": "e0cb46f1eb459b07b4269f2d06968a868ea4ac1dcd10ee82a905ea24b182a9de"
+    },
+    {
+      "path": ".project-init/connected-design.js",
+      "sha256": "61eb8471d41d34c2a41f744f8a56d5f4ce03d4132d4c7c99dc9f28fc695b0d39"
+    },
+    {
+      "path": ".project-init/connected-design.css",
+      "sha256": "1063855e4609bd673131673bc1c4e0769d3c5f6ecc8f484fc05aeef8bbe3bfb2"
+    }
+  ]
+}

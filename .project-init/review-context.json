@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "specPaths": [
+    "_bmad-output/planning-artifacts/prds/prd-familieblikk-2026-10-20/prd.md",
+    "_bmad-output/planning-artifacts/prds/prd-familieblikk-2026-10-20/addendum.md",
+    "_bmad-output/planning-artifacts/ux-designs/ux-familieblikk-2026-10-20/DESIGN.md",
+    "_bmad-output/planning-artifacts/ux-designs/ux-familieblikk-2026-10-20/EXPERIENCE.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md"
+  ],
+  "journeys": [
+    {
+      "label": "Inn i familiens budsjett",
+      "nodes": [
+        {
+          "label": "E-postkode"
+        },
+        {
+          "label": "Opprett eller godta invitasjon"
+        },
+        {
+          "label": "Riktig familie"
+        },
+        {
+          "label": "Oversikt"
+        }
+      ],
+      "failurePaths": [
+        "Utløpt kode",
+        "Annen familie",
+        "Ugyldig invitasjon"
+      ]
+    },
+    {
+      "label": "Regning og sparing teller én gang",
+      "nodes": [
+        {
+          "label": "Se reservasjon"
+        },
+        {
+          "label": "Registrer betaling eller innskudd"
+        },
+        {
+          "label": "Autoritativ post"
+        },
+        {
+          "label": "Ny beregning"
+        }
+      ],
+      "failurePaths": [
+        "Dobbeltklikk",
+        "Samtidig endring",
+        "Uten nett"
+      ]
+    },
+    {
+      "label": "Familien velger verktøy",
+      "nodes": [
+        {
+          "label": "Tilpass appen"
+        },
+        {
+          "label": "Gjeld / årsutgifter / utland"
+        },
+        {
+          "label": "Registrer med kobling"
+        },
+        {
+          "label": "Årsoversikt"
+        }
+      ],
+      "failurePaths": [
+        "Ukjent valutakurs",
+        "Underfinansiert fond",
+        "Skjult modul med åpne forpliktelser"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "id": "ui",
+      "label": "Responsiv PWA",
+      "responsibility": "Visning, skjema og tilgjengelig navigasjon",
+      "evidenceStatus": "Forslag; ikke implementert"
+    },
+    {
+      "id": "identity",
+      "label": "Innlogging og familiepolicy",
+      "responsibility": "E-postkode, sesjon, medlemskap og rettigheter",
+      "evidenceStatus": "Forslag; ikke implementert"
+    },
+    {
+      "id": "domain",
+      "label": "Domeneoperasjoner",
+      "responsibility": "Én postmodell og beregningsmotor for kjerne og valgfrie moduler",
+      "evidenceStatus": "Forslag; ikke implementert"
+    },
+    {
+      "id": "db",
+      "label": "PostgreSQL",
+      "responsibility": "Familieavgrensede data, transaksjoner og unike koblinger",
+      "evidenceStatus": "Forslag; ikke implementert"
+    },
+    {
+      "id": "mail",
+      "label": "E-postadapter",
+      "responsibility": "Kode/invitasjon; produksjonsleverandør avklares",
+      "evidenceStatus": "Forslag; ikke implementert"
+    }
+  ],
+  "edges": [
+    {
+      "from": "ui",
+      "to": "identity",
+      "label": "Autentisert forespørsel"
+    },
+    {
+      "from": "identity",
+      "to": "domain",
+      "label": "Serverutledet familie og rolle"
+    },
+    {
+      "from": "domain",
+      "to": "db",
+      "label": "Én transaksjon / autoritativ post"
+    },
+    {
+      "from": "domain",
+      "to": "mail",
+      "label": "Kode eller invitasjon"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Medlem",
+      "scope": "Les familiens data; opprett og endre egne poster",
+      "enforcedAt": "Planlagt serverpolicy og relasjonsvalidering"
+    },
+    {
+      "role": "Administrator",
+      "scope": "Alle familieposter, invitasjoner, kategorier, grenser og moduloppsett",
+      "enforcedAt": "Planlagt serverpolicy; ikke bare skjulte knapper"
+    },
+    {
+      "role": "Annen familie",
+      "scope": "Ingen tilgang",
+      "enforcedAt": "Planlagt familieavgrensning på alle oppslag og koblinger"
+    }
+  ],
+  "questions": [
+    {
+      "question": "Godkjenn visuell kandidat og foreslåtte beregningsregler, inkludert valgfrie moduler.",
+      "status": "Avventer Robel"
+    },
+    {
+      "question": "Django/PostgreSQL er anbefalt startpunkt, ikke installert appstakk. Hosting/e-post og personvern-/gjenopprettingsregler må avklares før ekte familiedata.",
+      "status": "Åpent før implementasjon/lansering"
+    },
+    {
+      "question": "Mørkt tema er ikke bestilt. Project Init visual plan krever likevel mørke sammenligningscaser; denne verktøybegrensningen skal ikke tolkes som godkjent produktomfang.",
+      "status": "Verktøygap dokumentert"
+    }
+  ]
+}

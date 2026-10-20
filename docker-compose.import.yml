@@ -1,0 +1,8 @@
+# Bruk bare under eierens autoriserte import. Ikke legg private data i repoet.
+services:
+  app:
+    volumes:
+      - type: bind
+        source: ${PRIVATE_IMPORT_PATH:?Angi privat importmappe på NAS}
+        target: /private-import
+        read_only: true

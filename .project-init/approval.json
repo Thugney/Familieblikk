@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "actor": "Robel",
+  "evidence": ".project-init/human-design-acceptance.json",
+  "baselineHash": "a8233c8bb932bb6b715b9b1fc4ddebd01516ac18d4649842800b7145882904f1",
+  "sourceHash": "d13f9f90ab3cc2371225c2820b50f48c5edb41fc802fc21519e1c227872eda26",
+  "sourceFiles": 298,
+  "recordedAt": "2026-10-20T18:54:41.099Z",
+  "scope": "Design approval only. Not application execution, merge or deployment authorization.",
+  "limitation": "Local user-supplied attestation is not an authenticated signature."
+}

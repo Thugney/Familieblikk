@@ -1,0 +1,1156 @@
+{
+  "schemaVersion": 1,
+  "kind": "design-prototype-only",
+  "checkedAt": "2026-10-20T18:43:39.820Z",
+  "sourceHashes": [
+    {
+      "path": ".project-init/familieblikk-mockup.html",
+      "sha256": "e0cb46f1eb459b07b4269f2d06968a868ea4ac1dcd10ee82a905ea24b182a9de"
+    },
+    {
+      "path": ".project-init/ui-design.json",
+      "sha256": "55fcfb8be1c69a2bd4c1cc2a181dd8602d7352d0678e4ac4c515cc0bf34d18e8"
+    }
+  ],
+  "browser": "Installed Microsoft Edge via bundled Playwright",
+  "screens": 15,
+  "widths": [
+    360,
+    390,
+    768,
+    1024,
+    1440
+  ],
+  "candidateScreenshots": 36,
+  "humanApproved": false,
+  "applicationImplemented": false,
+  "passed": true,
+  "checks": [
+    {
+      "name": "layout:oversikt:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Familiens økonomi",
+        "screen": "oversikt"
+      }
+    },
+    {
+      "name": "shared-layout:oversikt:360",
+      "passed": true
+    },
+    {
+      "name": "layout:poster:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Inntekter og utgifter",
+        "screen": "poster"
+      }
+    },
+    {
+      "name": "shared-layout:poster:360",
+      "passed": true
+    },
+    {
+      "name": "layout:budsjett:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Månedsbudsjett",
+        "screen": "budsjett"
+      }
+    },
+    {
+      "name": "shared-layout:budsjett:360",
+      "passed": true
+    },
+    {
+      "name": "layout:regninger:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Regningene er med i planen",
+        "screen": "regninger"
+      }
+    },
+    {
+      "name": "shared-layout:regninger:360",
+      "passed": true
+    },
+    {
+      "name": "layout:sparing:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Sparemål",
+        "screen": "sparing"
+      }
+    },
+    {
+      "name": "shared-layout:sparing:360",
+      "passed": true
+    },
+    {
+      "name": "layout:familie:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Familien vår",
+        "screen": "familie"
+      }
+    },
+    {
+      "name": "shared-layout:familie:360",
+      "passed": true
+    },
+    {
+      "name": "layout:mer:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Flere oversikter",
+        "screen": "mer"
+      }
+    },
+    {
+      "name": "shared-layout:mer:360",
+      "passed": true
+    },
+    {
+      "name": "layout:innlogging:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Litt mer oversikt. Sammen.",
+        "screen": "innlogging"
+      }
+    },
+    {
+      "name": "shared-layout:innlogging:360",
+      "passed": true
+    },
+    {
+      "name": "layout:opprett:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Gi familien et navn",
+        "screen": "opprett"
+      }
+    },
+    {
+      "name": "shared-layout:opprett:360",
+      "passed": true
+    },
+    {
+      "name": "layout:invitasjon:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Bli med i Familien Nordby",
+        "screen": "invitasjon"
+      }
+    },
+    {
+      "name": "shared-layout:invitasjon:360",
+      "passed": true
+    },
+    {
+      "name": "layout:gjeld:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Mer kontroll på gjelden",
+        "screen": "gjeld"
+      }
+    },
+    {
+      "name": "shared-layout:gjeld:360",
+      "passed": true
+    },
+    {
+      "name": "layout:arsutgifter:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Store regninger. Små avsetninger.",
+        "screen": "arsutgifter"
+      }
+    },
+    {
+      "name": "shared-layout:arsutgifter:360",
+      "passed": true
+    },
+    {
+      "name": "layout:utland:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Oversikt over det vi sender",
+        "screen": "utland"
+      }
+    },
+    {
+      "name": "shared-layout:utland:360",
+      "passed": true
+    },
+    {
+      "name": "layout:arsoversikt:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Hele året, i ett blikk",
+        "screen": "arsoversikt"
+      }
+    },
+    {
+      "name": "shared-layout:arsoversikt:360",
+      "passed": true
+    },
+    {
+      "name": "layout:tilpass:360",
+      "passed": true,
+      "details": {
+        "width": 360,
+        "scroll": 360,
+        "h1": "Akkurat det familien trenger",
+        "screen": "tilpass"
+      }
+    },
+    {
+      "name": "shared-layout:tilpass:360",
+      "passed": true
+    },
+    {
+      "name": "layout:oversikt:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Familiens økonomi",
+        "screen": "oversikt"
+      }
+    },
+    {
+      "name": "shared-layout:oversikt:390",
+      "passed": true
+    },
+    {
+      "name": "layout:poster:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Inntekter og utgifter",
+        "screen": "poster"
+      }
+    },
+    {
+      "name": "shared-layout:poster:390",
+      "passed": true
+    },
+    {
+      "name": "layout:budsjett:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Månedsbudsjett",
+        "screen": "budsjett"
+      }
+    },
+    {
+      "name": "shared-layout:budsjett:390",
+      "passed": true
+    },
+    {
+      "name": "layout:regninger:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Regningene er med i planen",
+        "screen": "regninger"
+      }
+    },
+    {
+      "name": "shared-layout:regninger:390",
+      "passed": true
+    },
+    {
+      "name": "layout:sparing:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Sparemål",
+        "screen": "sparing"
+      }
+    },
+    {
+      "name": "shared-layout:sparing:390",
+      "passed": true
+    },
+    {
+      "name": "layout:familie:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Familien vår",
+        "screen": "familie"
+      }
+    },
+    {
+      "name": "shared-layout:familie:390",
+      "passed": true
+    },
+    {
+      "name": "layout:mer:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Flere oversikter",
+        "screen": "mer"
+      }
+    },
+    {
+      "name": "shared-layout:mer:390",
+      "passed": true
+    },
+    {
+      "name": "layout:innlogging:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Litt mer oversikt. Sammen.",
+        "screen": "innlogging"
+      }
+    },
+    {
+      "name": "shared-layout:innlogging:390",
+      "passed": true
+    },
+    {
+      "name": "layout:opprett:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Gi familien et navn",
+        "screen": "opprett"
+      }
+    },
+    {
+      "name": "shared-layout:opprett:390",
+      "passed": true
+    },
+    {
+      "name": "layout:invitasjon:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Bli med i Familien Nordby",
+        "screen": "invitasjon"
+      }
+    },
+    {
+      "name": "shared-layout:invitasjon:390",
+      "passed": true
+    },
+    {
+      "name": "layout:gjeld:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Mer kontroll på gjelden",
+        "screen": "gjeld"
+      }
+    },
+    {
+      "name": "shared-layout:gjeld:390",
+      "passed": true
+    },
+    {
+      "name": "layout:arsutgifter:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Store regninger. Små avsetninger.",
+        "screen": "arsutgifter"
+      }
+    },
+    {
+      "name": "shared-layout:arsutgifter:390",
+      "passed": true
+    },
+    {
+      "name": "layout:utland:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Oversikt over det vi sender",
+        "screen": "utland"
+      }
+    },
+    {
+      "name": "shared-layout:utland:390",
+      "passed": true
+    },
+    {
+      "name": "layout:arsoversikt:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Hele året, i ett blikk",
+        "screen": "arsoversikt"
+      }
+    },
+    {
+      "name": "shared-layout:arsoversikt:390",
+      "passed": true
+    },
+    {
+      "name": "layout:tilpass:390",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "scroll": 390,
+        "h1": "Akkurat det familien trenger",
+        "screen": "tilpass"
+      }
+    },
+    {
+      "name": "shared-layout:tilpass:390",
+      "passed": true
+    },
+    {
+      "name": "layout:oversikt:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Familiens økonomi",
+        "screen": "oversikt"
+      }
+    },
+    {
+      "name": "shared-layout:oversikt:768",
+      "passed": true
+    },
+    {
+      "name": "layout:poster:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Inntekter og utgifter",
+        "screen": "poster"
+      }
+    },
+    {
+      "name": "shared-layout:poster:768",
+      "passed": true
+    },
+    {
+      "name": "layout:budsjett:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Månedsbudsjett",
+        "screen": "budsjett"
+      }
+    },
+    {
+      "name": "shared-layout:budsjett:768",
+      "passed": true
+    },
+    {
+      "name": "layout:regninger:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Regningene er med i planen",
+        "screen": "regninger"
+      }
+    },
+    {
+      "name": "shared-layout:regninger:768",
+      "passed": true
+    },
+    {
+      "name": "layout:sparing:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Sparemål",
+        "screen": "sparing"
+      }
+    },
+    {
+      "name": "shared-layout:sparing:768",
+      "passed": true
+    },
+    {
+      "name": "layout:familie:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Familien vår",
+        "screen": "familie"
+      }
+    },
+    {
+      "name": "shared-layout:familie:768",
+      "passed": true
+    },
+    {
+      "name": "layout:mer:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Flere oversikter",
+        "screen": "mer"
+      }
+    },
+    {
+      "name": "shared-layout:mer:768",
+      "passed": true
+    },
+    {
+      "name": "layout:innlogging:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Litt mer oversikt. Sammen.",
+        "screen": "innlogging"
+      }
+    },
+    {
+      "name": "shared-layout:innlogging:768",
+      "passed": true
+    },
+    {
+      "name": "layout:opprett:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Gi familien et navn",
+        "screen": "opprett"
+      }
+    },
+    {
+      "name": "shared-layout:opprett:768",
+      "passed": true
+    },
+    {
+      "name": "layout:invitasjon:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Bli med i Familien Nordby",
+        "screen": "invitasjon"
+      }
+    },
+    {
+      "name": "shared-layout:invitasjon:768",
+      "passed": true
+    },
+    {
+      "name": "layout:gjeld:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Mer kontroll på gjelden",
+        "screen": "gjeld"
+      }
+    },
+    {
+      "name": "shared-layout:gjeld:768",
+      "passed": true
+    },
+    {
+      "name": "layout:arsutgifter:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Store regninger. Små avsetninger.",
+        "screen": "arsutgifter"
+      }
+    },
+    {
+      "name": "shared-layout:arsutgifter:768",
+      "passed": true
+    },
+    {
+      "name": "layout:utland:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Oversikt over det vi sender",
+        "screen": "utland"
+      }
+    },
+    {
+      "name": "shared-layout:utland:768",
+      "passed": true
+    },
+    {
+      "name": "layout:arsoversikt:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Hele året, i ett blikk",
+        "screen": "arsoversikt"
+      }
+    },
+    {
+      "name": "shared-layout:arsoversikt:768",
+      "passed": true
+    },
+    {
+      "name": "layout:tilpass:768",
+      "passed": true,
+      "details": {
+        "width": 768,
+        "scroll": 768,
+        "h1": "Akkurat det familien trenger",
+        "screen": "tilpass"
+      }
+    },
+    {
+      "name": "shared-layout:tilpass:768",
+      "passed": true
+    },
+    {
+      "name": "layout:oversikt:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Familiens økonomi",
+        "screen": "oversikt"
+      }
+    },
+    {
+      "name": "shared-layout:oversikt:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:poster:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Inntekter og utgifter",
+        "screen": "poster"
+      }
+    },
+    {
+      "name": "shared-layout:poster:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:budsjett:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Månedsbudsjett",
+        "screen": "budsjett"
+      }
+    },
+    {
+      "name": "shared-layout:budsjett:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:regninger:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Regningene er med i planen",
+        "screen": "regninger"
+      }
+    },
+    {
+      "name": "shared-layout:regninger:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:sparing:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Sparemål",
+        "screen": "sparing"
+      }
+    },
+    {
+      "name": "shared-layout:sparing:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:familie:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Familien vår",
+        "screen": "familie"
+      }
+    },
+    {
+      "name": "shared-layout:familie:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:mer:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Flere oversikter",
+        "screen": "mer"
+      }
+    },
+    {
+      "name": "shared-layout:mer:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:innlogging:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Litt mer oversikt. Sammen.",
+        "screen": "innlogging"
+      }
+    },
+    {
+      "name": "shared-layout:innlogging:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:opprett:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Gi familien et navn",
+        "screen": "opprett"
+      }
+    },
+    {
+      "name": "shared-layout:opprett:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:invitasjon:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Bli med i Familien Nordby",
+        "screen": "invitasjon"
+      }
+    },
+    {
+      "name": "shared-layout:invitasjon:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:gjeld:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Mer kontroll på gjelden",
+        "screen": "gjeld"
+      }
+    },
+    {
+      "name": "shared-layout:gjeld:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:arsutgifter:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Store regninger. Små avsetninger.",
+        "screen": "arsutgifter"
+      }
+    },
+    {
+      "name": "shared-layout:arsutgifter:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:utland:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Oversikt over det vi sender",
+        "screen": "utland"
+      }
+    },
+    {
+      "name": "shared-layout:utland:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:arsoversikt:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Hele året, i ett blikk",
+        "screen": "arsoversikt"
+      }
+    },
+    {
+      "name": "shared-layout:arsoversikt:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:tilpass:1024",
+      "passed": true,
+      "details": {
+        "width": 1024,
+        "scroll": 1024,
+        "h1": "Akkurat det familien trenger",
+        "screen": "tilpass"
+      }
+    },
+    {
+      "name": "shared-layout:tilpass:1024",
+      "passed": true
+    },
+    {
+      "name": "layout:oversikt:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Familiens økonomi",
+        "screen": "oversikt"
+      }
+    },
+    {
+      "name": "shared-layout:oversikt:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:poster:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Inntekter og utgifter",
+        "screen": "poster"
+      }
+    },
+    {
+      "name": "shared-layout:poster:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:budsjett:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Månedsbudsjett",
+        "screen": "budsjett"
+      }
+    },
+    {
+      "name": "shared-layout:budsjett:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:regninger:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Regningene er med i planen",
+        "screen": "regninger"
+      }
+    },
+    {
+      "name": "shared-layout:regninger:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:sparing:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Sparemål",
+        "screen": "sparing"
+      }
+    },
+    {
+      "name": "shared-layout:sparing:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:familie:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Familien vår",
+        "screen": "familie"
+      }
+    },
+    {
+      "name": "shared-layout:familie:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:mer:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Flere oversikter",
+        "screen": "mer"
+      }
+    },
+    {
+      "name": "shared-layout:mer:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:innlogging:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Litt mer oversikt. Sammen.",
+        "screen": "innlogging"
+      }
+    },
+    {
+      "name": "shared-layout:innlogging:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:opprett:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Gi familien et navn",
+        "screen": "opprett"
+      }
+    },
+    {
+      "name": "shared-layout:opprett:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:invitasjon:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Bli med i Familien Nordby",
+        "screen": "invitasjon"
+      }
+    },
+    {
+      "name": "shared-layout:invitasjon:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:gjeld:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Mer kontroll på gjelden",
+        "screen": "gjeld"
+      }
+    },
+    {
+      "name": "shared-layout:gjeld:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:arsutgifter:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Store regninger. Små avsetninger.",
+        "screen": "arsutgifter"
+      }
+    },
+    {
+      "name": "shared-layout:arsutgifter:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:utland:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Oversikt over det vi sender",
+        "screen": "utland"
+      }
+    },
+    {
+      "name": "shared-layout:utland:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:arsoversikt:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Hele året, i ett blikk",
+        "screen": "arsoversikt"
+      }
+    },
+    {
+      "name": "shared-layout:arsoversikt:1440",
+      "passed": true
+    },
+    {
+      "name": "layout:tilpass:1440",
+      "passed": true,
+      "details": {
+        "width": 1440,
+        "scroll": 1440,
+        "h1": "Akkurat det familien trenger",
+        "screen": "tilpass"
+      }
+    },
+    {
+      "name": "shared-layout:tilpass:1440",
+      "passed": true
+    },
+    {
+      "name": "core-calculation-dialog",
+      "passed": true
+    },
+    {
+      "name": "optional-module-reconciliation",
+      "passed": true
+    },
+    {
+      "name": "optional-calculation-explained",
+      "passed": true
+    },
+    {
+      "name": "hiding-preserves-financial-obligations",
+      "passed": true
+    },
+    {
+      "name": "savings-card-visibility",
+      "passed": true
+    },
+    {
+      "name": "year-link-visibility",
+      "passed": true
+    },
+    {
+      "name": "member-own-record-controls",
+      "passed": true
+    },
+    {
+      "name": "member-cannot-manage-goals",
+      "passed": true
+    },
+    {
+      "name": "member-cannot-change-modules",
+      "passed": true
+    },
+    {
+      "name": "bill-confirmation",
+      "passed": true
+    },
+    {
+      "name": "dialog-escape-close",
+      "passed": true
+    },
+    {
+      "name": "negative-visible",
+      "passed": true
+    },
+    {
+      "name": "demo-auth-to-family",
+      "passed": true
+    },
+    {
+      "name": "debt-demo-has-model",
+      "passed": true
+    },
+    {
+      "name": "zero-page-errors",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "offline-reference-assets",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "project-init-review-loads",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "No backend, OTP delivery, real family isolation, persistence or installed PWA tested.",
+    "Candidate reference PNGs await human acceptance; no actual/reference implementation comparison.",
+    "Detailed secondary forms and annual 12-month table remain specified rather than fully interactive.",
+    "Project Init visual plan also demands dark-mode cases, outside approved light-only product scope."
+  ]
+}

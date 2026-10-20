@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "verdict": "no-material-residual-findings-in-reviewed-seams",
+  "findings": [],
+  "checks": [
+    "Read context.md, rules.md, PRD and EXPERIENCE together with the architecture spine.",
+    "AD-1 provides server-derived tenant scope, same-household relation validation and tenant-qualified caches; no material conflicting tenant contract found in the declared inputs.",
+    "AD-2 keeps immutable creator separate from income owner and rechecks roles; system bill-payment permission is explicitly proposed, not accepted.",
+    "Europe/Oslo effective dates, integer øre and negative daily allowance rounding are materially consistent with the PRD.",
+    "AD-11 explicitly defers chronological debt balance estimation before building; this is a declared blocker, not an unmarked architecture defect.",
+    "AD-12 explicitly defers cancellation/reversal details and simultaneous annual obligations before implementation acceptance; do not reinterpret these as completed implementations.",
+    "Module archiving explicitly preserves financial history and open obligations; precise wind-down behavior remains an acknowledged PRD OQ-8/OQ-9 proposal.",
+    "No bank execution, feed or workbook-import scope inferred.",
+    "Repair round 1 independently reread current ARCHITECTURE-SPINE and reconciled PRD; optional domains now present in binds, structural seed and capability map."
+  ],
+  "limitations": [
+    "Document review only; no application code exists or was executed.",
+    "Draft status and human acceptance boundaries are respected. Findings request repair of internal seams before implementation, not approval of the candidate.",
+    "No source edits outside this review output; parent review orchestration must triage and independently validate the findings."
+  ],
+  "initialFindings": [
+    {
+      "severity": "high",
+      "file": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+      "issue": "AD-10's withdrawal/deposit formula contradicts its no-new-headroom cycle invariant. With a 1,000 NOK monthly plan, no deposits and opening goal balance 100, S=1,000. Withdraw 100 and redeposit 100 in the same month: goal balance is restored, S remains 1,000, but W=100 permanently increases A by 100. The savings service can correctly record both transactions while the calculation service correctly applies the written formula and manufactures headroom.",
+      "fix": "Define one explicit treatment for redeposits of released goal money, including within-plan deposits, and amend W/S together so a completed withdrawal/redeposit cycle restores A. Add this exact scenario alongside an ordinary withdrawal and a deposit exceeding plan. Keep the resulting rule proposed for human acceptance."
+    },
+    {
+      "severity": "high",
+      "file": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+      "issue": "AD-5 binds all history and defines historical cash result as I minus E minus actual deposits, but AD-10 excludes debt and annual-fund payments from E and adds W separately. A reporting unit obeying AD-5 omits actual debt/fund outflows and savings withdrawals; a ledger unit obeying AD-10 correctly classifies them separately. The same year therefore reports different cash result depending on which contract is followed. AD-10 calls A an extended formula but never supersedes the historical cash-result definition.",
+      "fix": "Explicitly scope AD-5's simple A formula to the core projection and make AD-10 the authoritative expanded calculation. Define the signed historical cash-result projection across every actual posting class, including refunds and withdrawals, separately from allocations/reservations; include an example with a fund-funded payment and debt payment. Update the capability map's reporting references."
+    },
+    {
+      "severity": "high",
+      "file": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+      "issue": "AD-6 requires every paid occurrence to create one linked expense and puts paid bills in category consumption (AD-5), while AD-10 requires linked debt/fund occurrences to point to their single non-E-class posting. A generic bills implementation can obey AD-6 by creating an ordinary expense, while debt/fund modules obey AD-10 by creating their own payment, resulting in two effects or a class conflict. The exception and dispatch ownership are not expressed in the shared payment command contract.",
+      "fix": "State that the bill payment command creates exactly one posting whose class comes from the occurrence's ordinary/debt/fund obligation type; ordinary postings alone enter E, with debt/fund settlement delegated atomically to their respective rules. Define whether category actuals include each class, and apply the same dispatch to undo/refund without creating a second posting."
+    },
+    {
+      "severity": "medium",
+      "file": "_bmad-output/planning-artifacts/architecture/architecture-familieblikk-2026-10-20/ARCHITECTURE-SPINE.md",
+      "issue": "AD-4 permits historical effective-date corrections and AD-10 allows withdrawal up to available goal balance, but it does not define available balance as of the withdrawal date or the validity of later events after correction. A goal service can check today's balance under a lock and accept a September withdrawal against an October deposit; a historical reporting service then reconstructs a negative September goal balance while still obeying the date rules. The dated opening balance creates the same seam if used before its effective date.",
+      "fix": "Specify an effective-date balance rule for withdrawals/opening balances and a minimal rule for later withdrawals made invalid by editing/deleting earlier funding. Validate the affected chronological goal history atomically, or explicitly prohibit those mutations until a correction flow is agreed; add one backdated withdrawal example."
+    }
+  ],
+  "repairRecheck": {
+    "round": 1,
+    "scope": "Current architecture spine and reconciled PRD; four initial findings",
+    "results": [
+      "Resolved: AD-10 uses per-goal net flows; plan 1000, withdrawal 100, redeposit 100 restores the original A. PRD matches.",
+      "Resolved: AD-5 explicitly scopes core projection and yields to AD-10; all actual classes enter historical cash result; 15450 NOK example reconciles with PRD.",
+      "Resolved: immutable obligation type selects one posting via common atomic dispatcher; debt/fund excluded from ordinary category consumption; undo/refund follows same class.",
+      "Resolved: effective-date opening and locked full-prefix/suffix validation apply to all mutations; immutable same-day sequence and rejection of later uncovered withdrawals are explicit."
+    ],
+    "residualFindings": [],
+    "arithmeticEvidence": "Inspected .project-init/evidence/financial-example-checks.json: 12 numerical checks report passed. This is specification arithmetic evidence, not application execution.",
+    "gate": "No app readiness, implementation authorization or human acceptance implied."
+  }
+}

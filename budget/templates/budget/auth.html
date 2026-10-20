@@ -1,0 +1,21 @@
+{% extends 'budget/base.html' %}
+{% load static %}
+{% block content %}
+<section class="auth-panel">
+  <a class="brand auth-brand" href="{% url 'password_login' %}"><img src="{% static 'budget/icon.svg' %}" width="28" height="28" alt="">Familieblikk</a>
+  <h1>{{ title }}</h1>
+  <p class="auth-tagline">Et rolig overblikk over familiens budsjett.</p>
+  {% if password_login %}
+    <p class="auth-intro">Bruk e-postadressen og passordet du har fått fra administratoren.</p>
+  {% else %}
+    <p class="auth-intro"><a href="{% url 'password_login' %}">Har du en forhåndsregistrert konto? Logg inn med passord</a></p>
+  {% endif %}
+  {% if local_mail %}<p class="notice">Lokalt testmiljø: e-post sendes ikke til innboksen. Engangskoden lagres bare i den lokale testpostkassen.</p>{% endif %}
+  <form method="post">{% csrf_token %}{{ form.as_p }}<button class="primary auth-submit">{{ button }}</button></form>
+  {% if password_login %}
+    {% if email_code_available %}<a class="auth-secondary" href="{% url 'login' %}">Logg inn med e-postkode</a>{% endif %}
+  {% else %}
+    <a class="auth-secondary" href="{% url 'login' %}">Send ny kode / endre e-post</a>
+  {% endif %}
+</section>
+{% endblock %}

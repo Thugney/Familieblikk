@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "version": "2.1.0-preview.2",
+  "projectPath": "C:\\Users\\Editor\\Documents\\ChatGPT\\test 2",
+  "mode": "Existing",
+  "intent": "new-product",
+  "complexity": "unknown",
+  "uiRequired": true,
+  "framework": "bmad",
+  "installation": {
+    "state": "selected",
+    "selectedAt": "2026-10-20T17:39:40.894Z"
+  },
+  "createdAt": "2026-10-20T17:38:54.248Z",
+  "updatedAt": "2026-10-20T17:39:40.897Z",
+  "initialSource": {
+    "revision": null,
+    "gitClean": true,
+    "discoveredFiles": 0,
+    "existingV1Review": false
+  }
+}

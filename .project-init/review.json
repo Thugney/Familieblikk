@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "actor": "verify_connected_ui",
+  "evidence": "work/accepted-design-review.json",
+  "verdict": "pass",
+  "baselineHash": "a8233c8bb932bb6b715b9b1fc4ddebd01516ac18d4649842800b7145882904f1",
+  "recordedAt": "2026-10-20T18:54:40.654Z",
+  "limitation": "Local self-attestation; identity and semantic review are not independently authenticated."
+}
