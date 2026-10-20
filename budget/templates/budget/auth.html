@@ -2,7 +2,7 @@
 {% load static %}
 {% block content %}
 <section class="auth-panel">
-  <a class="brand auth-brand" href="{% url 'password_login' %}"><img src="{% static 'budget/icon.svg' %}" width="28" height="28" alt="">Familieblikk</a>
+  <div class="auth-brand">{% include 'budget/brand.html' %}</div>
   <h1>{{ title }}</h1>
   <p class="auth-tagline">Et rolig overblikk over familiens budsjett.</p>
   {% if password_login %}

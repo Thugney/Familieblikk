@@ -1,0 +1,7 @@
+# Verifier — host-nettverk på 6451
+
+Input: docker-compose.yml, Dockerfile, .env.example, docker/postgres/pg_hba.conf, familieblikk/settings.py, budget/tests/test_hosting.py, README.md, docs/DRIFT.md, docs/SYNOLOGY.md, tests/host-network.test.cjs, .github/workflows/test.yml og native spec-synology-host-network-6451.md. Bevis: work/host-runtime-before.json, work/host-runtime-after.json, work/host-runtime-alternate.json, work/host-backup-verification.json, work/host-backup-verification-16452.json, work/host-network-verification.json når de foreligger.
+
+Output: uavhengige konkrete kildefunn som tekst; etter triage/etterkontroll work/host-network-review.json. Bare lesing av runtime-/konfigurasjon, ingen eierdata/hemmeligheter. Kontroller standard host-nettverk for alle tre tjenester uten portmapping, faktisk Gunicorn 6451 også ved foreldet APP_PORT, DB-loopback/passord/PGPORT, eksisterende volum/roller/import/backup, sikker og korrekt NAS-veiledning, testdekning og presist skille mellom Docker Linux-hostnamespace og fysisk NAS/Windows-hoststøtte. Ingen modell gir menneskelig godkjenning eller kaller ikke-utført NAS-utrulling verifisert.
+
+Bekreftet sluttprofil: eksisterende Cloudflare Tunnel, blikk.betilab.com → HTTP 192.168.20.135:6451. Ingen ekstra reversproxy/TLS. Tillatt domene, CSRF-origin, sikre cookies og betrodd HTTPS-header kontrolleres; direkte origin begrenses til tunnelkoblingen. Brukeren har autorisert commit/push, men faktisk NAS-utrulling er ikke utført.

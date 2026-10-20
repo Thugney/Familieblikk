@@ -202,3 +202,6 @@ class ImportRecord(FamilyRow):
     approved_decision = models.JSONField(default=dict)
     class Meta:
         constraints = [models.UniqueConstraint(fields=['household', 'batch', 'source_id'], name='unique_import_source')]
+
+from .calendar_models import CalendarEvent, CalendarException, CalendarResponse, CalendarRequest  # noqa: E402,F401
+from .spending_models import MonthlyBudgetHeader, PlanningRequest  # noqa: E402,F401
