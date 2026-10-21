@@ -539,7 +539,7 @@ def worker_view(request):
     from pathlib import Path
     import hashlib
     root = Path(__file__).parent
-    public_files = [root / 'static/budget' / name for name in ['app.css', 'app.js', 'icon.svg', 'sw.js', 'calendar.css', 'calendar.js', 'spending.css', 'spending.js', 'push.js', 'loader.css', 'loader.js', 'loader-logo.png', 'loader-icon.png']] + [root / 'templates/budget/offline.html']
+    public_files = [root / 'static/budget' / name for name in ['app.css', 'app.js', 'icon.svg', 'sw.js', 'calendar.css', 'calendar.js', 'spending.css', 'spending.js', 'push.js', 'loader.css', 'loader.js', 'loader-logo.png', 'loader-icon.png', 'ui-refresh.css', 'ui-refresh.js', 'figtree-latin.woff2']] + [root / 'templates/budget/offline.html']
     version = hashlib.sha256(b''.join(file.read_bytes() for file in public_files)).hexdigest()[:20]
     source = (root / 'static/budget/sw.js').read_text(encoding='utf-8').replace('__PUBLIC_VERSION__', version)
     response = HttpResponse(source, content_type='application/javascript')
@@ -551,7 +551,7 @@ def worker_view(request):
 def public_asset(request, name):
     from pathlib import Path
     from django.http import FileResponse
-    allowed = {'app.css': 'text/css', 'app.js': 'application/javascript', 'push.js': 'application/javascript', 'loader.css': 'text/css', 'loader.js': 'application/javascript', 'loader-logo.png': 'image/png', 'loader-icon.png': 'image/png', 'icon.svg': 'image/svg+xml', 'calendar.css': 'text/css', 'calendar.js': 'application/javascript', 'spending.css': 'text/css', 'spending.js': 'application/javascript'}
+    allowed = {'ui-refresh.css': 'text/css', 'ui-refresh.js': 'application/javascript', 'figtree-latin.woff2': 'font/woff2', 'app.css': 'text/css', 'app.js': 'application/javascript', 'push.js': 'application/javascript', 'loader.css': 'text/css', 'loader.js': 'application/javascript', 'loader-logo.png': 'image/png', 'loader-icon.png': 'image/png', 'icon.svg': 'image/svg+xml', 'calendar.css': 'text/css', 'calendar.js': 'application/javascript', 'spending.css': 'text/css', 'spending.js': 'application/javascript'}
     if name not in allowed: raise Http404
     response = FileResponse((Path(__file__).parent / 'static/budget' / name).open('rb'), content_type=allowed[name])
     response['Cache-Control'] = 'public, max-age=0, must-revalidate'
