@@ -1,0 +1,21 @@
+{{ form.non_field_errors }}
+{% for field in form.hidden_fields %}{{ field.errors }}{{ field }}{% endfor %}
+<div class="entry-form-main">
+{% include 'budget/form_field_refresh.html' with field=form.kind %}
+{% include 'budget/form_field_refresh.html' with field=form.amount %}
+{% include 'budget/form_field_refresh.html' with field=form.description %}
+<div class="entry-form-pair">
+{% include 'budget/form_field_refresh.html' with field=form.effective_date %}
+{% include 'budget/form_field_refresh.html' with field=form.category %}
+</div>
+{% include 'budget/form_field_refresh.html' with field=form.asset %}
+{% include 'budget/form_field_refresh.html' with field=form.received %}
+</div>
+<details class="entry-form-advanced" {% if form.errors or form.kind.value == 'remittance' or form.kind.value == 'refund' %}open{% endif %}>
+<summary>Flere opplysninger <span>Inntekt, refusjon og utenlandsk valuta</span></summary>
+<div class="entry-form-extra">
+{% for field in form.visible_fields %}{% if field.name != 'kind' and field.name != 'amount' and field.name != 'description' and field.name != 'effective_date' and field.name != 'category' and field.name != 'asset' and field.name != 'received' %}
+{% include 'budget/form_field_refresh.html' with field=field %}
+{% endif %}{% endfor %}
+</div></details>
+<p class="entry-form-note">Posten registreres bare i Familieblikk. Ingen penger sendes fra banken. Forventet inntekt øker ikke «Igjen å bruke» før den er mottatt.</p>
