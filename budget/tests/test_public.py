@@ -43,6 +43,16 @@ class PublicContractTests(SimpleTestCase):
         self.assertNotEqual(first, second)
         self.assertNotIn(b'__PUBLIC_VERSION__', first)
 
+    def test_worker_version_includes_push_and_loader_assets(self):
+        from unittest.mock import patch
+        first = self.client.get('/sw.js').content
+        original = Path.read_bytes
+        for name in ['push.js', 'loader.js', 'loader.css', 'loader-logo.png', 'loader-icon.png']:
+            with self.subTest(name=name):
+                def changed(path): return original(path) + b'new-deploy' if path.name == name else original(path)
+                with patch.object(Path, 'read_bytes', changed):
+                    self.assertNotEqual(first, self.client.get('/sw.js').content)
+
     def test_calendar_and_projection(self):
         self.assertEqual(month_end(date(2028, 2, 1)), date(2028, 2, 29))
         self.assertEqual(next_month(date(2026, 12, 1)), date(2027, 1, 1))

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "userInstruction": "her er den loader jeg vile bruke i appen",
+  "scope": "Supplied loader and two logo sources for startup/loading states; not a new whole-app design approval",
+  "sourceFiles": [
+    {
+      "name": "Familieblikk Loader.html",
+      "sha256": "29f90e954f308bf4e2029995aa6dced3aeac00aeeab68c648617b029f4e10793"
+    },
+    {
+      "name": "Rounded four-tile green icon-1.png",
+      "sha256": "3e0b74f3a50aea95bc32d41a6c5415a6aed276864b14c1fd28334c10354f1253"
+    },
+    {
+      "name": "Familieblikk four-tile green logo-2.png",
+      "sha256": "f59512ac10267dc976ea18420c127a65fd02aa23d4670eccfa56c612af00f81a"
+    }
+  ],
+  "extractedVisualTemplates": [
+    "work/loader-design-0.html",
+    "work/loader-design-1.html"
+  ],
+  "bundlerRuntimeIsNotAnInstruction": true
+}

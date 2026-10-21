@@ -40,7 +40,30 @@ services:
     tmpfs: [/tmp]
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
-    command: [sh, -c, 'python manage.py migrate --noinput && python manage.py setup_runtime_role']
+    command: [sh, -c, 'python manage.py migrate --noinput && python manage.py setup_push && python manage.py setup_runtime_role']
+  push-worker:
+    build: .
+    image: familieblikk:local
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Sett Django-hemmelighet}
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: ${POSTGRES_PORT:-6452}
+      POSTGRES_DB: ${POSTGRES_DB:-familieblikk}
+      POSTGRES_USER: ${POSTGRES_APP_USER:-familieblikk_app}
+      POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?Sett separat apppassord}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    stop_grace_period: 20s
+    command: [python, manage.py, push_worker]
   app:
     build: .
     image: familieblikk:local

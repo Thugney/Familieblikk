@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, calendar_views, spending_views
+from . import views, calendar_views, spending_views, push_views
 urlpatterns = [
     path('static/budget/<str:name>', views.public_asset),
     path('', views.family_gate, name='home'),
@@ -12,6 +12,10 @@ urlpatterns = [
     path('app/kalender/', calendar_views.calendar_page, name='calendar'),
     path('app/kalender/data/', calendar_views.calendar_data, name='calendar_data'),
     path('app/kalender/api/', calendar_views.calendar_api, name='calendar_api'),
+    path('push/config/', push_views.config, name='push_config'),
+    path('push/device/', push_views.device, name='push_device'),
+    path('push/read/<uuid:notification_id>/', push_views.mark_read, name='push_read'),
+    path('push/open/<uuid:notification_id>/', push_views.open_notification, name='push_open'),
     path('app/forbruk/data/', spending_views.spending_data, name='spending_data'),
     path('app/plan/data/', spending_views.planning_data, name='planning_data'),
     path('app/plan/preview/', spending_views.planning_preview, name='planning_preview'),

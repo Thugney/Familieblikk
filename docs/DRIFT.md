@@ -72,3 +72,26 @@ Kommandoen oppretter en tom egen familie og en administrator med `identity_metho
 Passordinnlogging finnes på `/passord/`, og egen passordendring på `/passord/endre/`. Bare eksplisitt forhåndsregistrerte, aktive kontoer kan bruke passordveien. Feilforsøk begrenses per adresse og IP; mutasjoner krever CSRF og innlogging roterer sesjonen. `DJANGO_PREREGISTERED_LOGIN=0` deaktiverer denne innloggingsveien. Eksisterende e-postkodeflyt beholdes for senere bruk.
 
 I Familie og innstillinger kan administrator registrere nye medlemmer eller administratorer i sin egen familie med bekreftet startpassord. Den første eieren har i tillegg en særskilt registratortillatelse til å opprette en ny adskilt familie med egen administrator. Vanlige administratorer får ikke denne tillatelsen automatisk. Registrering gir aldri økonomitilgang til den nye familien, flytter ingen eksisterende konto og sender ingen e-post. Del startpassordet privat; den nye brukeren kan endre det etter innlogging. Importen av arbeidsboken er fortsatt begrenset til den eksakte private eierbindingen, også om andre familier er forhåndsregistrert.
+
+## Kalendervarsler og oppdatering av den overførte NAS-profilen
+
+Behold eksisterende `.env`, `POSTGRES_DB`, `DJANGO_SECRET_KEY`, databasevolum og privat importoverstyring når koden oppdateres. Ikke kopier `.env.example` over den private filen og ikke kjør eierklargjøring, import eller restore på nytt. `Familieblikk-Synology-overforing.zip`, eventuell mappe med samme navn og `private-data/` er ignorert av Git; Docker-bygget tillater bare applikasjonskilde og låste avhengigheter. Vanlig oppstart migrerer den eksisterende databasen, klargjør pushnøkkel og gir eksisterende approlle tilgang til de nye tabellene. Den oppretter ingen familier eller kontoer.
+
+Bruk samme prosjektmappe/-navn og Compose-filer som ved overføringen. Når importoverstyringen allerede brukes, er oppdateringskommandoen:
+
+```text
+git pull --ff-only
+docker compose -f docker-compose.yml -f docker-compose.import.yml config --quiet
+docker compose -f docker-compose.yml -f docker-compose.import.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.import.yml ps
+```
+
+Migrering skal avsluttes med kode 0, og `app`, `db` og `push-worker` skal kjøre. Pusharbeideren bruker host-nettverk og den samme begrensede approllen, uten eierpassord eller privat importmontering. Ingen nye `.env`-verdier kreves. VAPID-privatnøkkel og nettleserabonnementer er kryptert i eksisterende PostgreSQL med en nøkkel avledet fra opprinnelig `DJANGO_SECRET_KEY`. Ta med den uendrede hemmeligheten og databasen i privat backup. Endres hemmeligheten uten migrering av krypteringen, stopper oppstart fremfor å erstatte eksisterende pushidentitet.
+
+Hvert familiemedlem åpner **Varsler** og velger **Aktiver varsler** på sin egen enhet. Nettleserens tillatelsesprompt vises bare ved dette valget. HTTPS kreves utenfor localhost. På iPhone må appen legges til på Hjem-skjerm og åpnes derfra først. **Send testvarsel til meg** køer bare et varsel til den aktuelle innloggede enheten og er begrenset til én gang per minutt. Test aldri andre familiemedlemmers enheter uten deres separate samtykke. Regningsoversikten og private kalendervarsler er fortsatt tilgjengelige i appen når push er avslått eller mangler støtte.
+
+Kalenderlagring oppretter mottakervarsler og kø i samme databasetransaksjon. Kun nye avtaleserier og endrede godta/avslå-svar varsler; egne handlinger og uendrede svar sender ikke til personen selv. Worker sjekker familie, aktiv konto, ekte Django-økt, utløp og gjeldende passordhash før hver sending. Utlogging/deaktivering stopper fremtidig sending. Meldinger allerede overtatt av nettleserens pushtjeneste kan ikke trekkes tilbake; transportens TTL er fem minutter. Låseskjermen viser bare generisk aktivitetstype. Detaljer åpnes gjennom innlogging og mottaker-/familiekontroll.
+
+Nettfeil, HTTP 429 og 5xx prøves igjen opptil åtte forsøk innen 24 timer. Retry-After respekteres opptil én time per venting. HTTP 404/410 sperrer utgåtte abonnementer; øvrige avslag vises som leveringsfeil. Worker kan startes på nytt uten å miste køen. Lease og databaselås hindrer samtidige arbeidere i å sende samme jobb; etter prosessdød overtas jobben etter to minutter. En prosess kan dø etter at leverandøren har mottatt meldingen, før databasekvitteringen lagres: transporten gir derfor minst-én-gang-levering, med stabil Topic/varsel-tag som erstatter samme synlige varsel ved ny sending. Fysisk OS-visning avhenger av nettleser, tillatelse, nett og operativsystemets fokusinnstillinger.
+
+Ved feilsøking: `docker compose logs --tail=50 push-worker migrate` viser generiske feil uten abonnementstokener eller private nøkler. Ikke skriv ut full Compose-config eller databaseinnhold i delte logger. Offisiell transport: [pywebpush](https://github.com/web-push-libs/pywebpush), [Mozilla Autopush](https://mozilla-services.github.io/autopush-rs/http.html) og [Apple Web Push](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers).
