@@ -11,3 +11,6 @@ _bmad/custom/*.user.toml
 .project-init/visual/actual/
 # Private original workbook, import staging and owner-account binding.
 private-data/
+# Private Synology transfer archive and File Station extraction wrapper.
+/Familieblikk-Synology-overforing.zip
+/Familieblikk-Synology-overforing/

@@ -119,3 +119,12 @@ Robel krever standard host-nettverk for alle hostingtjenester og fast webport 64
 NAS-adresse bekreftet av Robel: 192.168.20.135. Eksisterende tunnel bruker HTTP-origin http://192.168.20.135:6451; databaseforbindelser forblir localhost.
 
 Hostingendringen er uavhengig verifisert: 149 PostgreSQL/Django-, 21 Node- og 20 kilde-/previewtester består, host-runtime på 6451, alternativ DB-port, omstart og separat restore er kontrollert. Alle fem reviewfunn er rettet, 11 kildehashverdier stemmer; work/host-network-review.json gir pass uten blokkere. Faktiske eierdata er identiske med opprinnelig avstemming. Ingen fysisk NAS-/tunnelutrulling er utført.
+
+
+## Web Push og brukerens loader — verifisert 2026-10-21
+
+Robel godkjente ekte kalendervarsler, pywebpush 2.5.0 med låste underavhengigheter i .venv/Docker, konkret BMAD-plan og commit/push for egen Synology-oppdatering. Nye avtaler og endrede godta/avslå-svar varsler berørte andre medlemmer; hver enhet aktiveres frivillig. Krypterte abonnementer er bundet til aktiv innlogging, og en vedvarende køarbeider bruker samme begrensede approlle. Nøkler opprettes automatisk i eksisterende DB uten nye .env-verdier. Brukerens leverte loader/PNG-er er integrert lokalt med redusert bevegelse og feilåpen oppførsel. Dato-/personkontroller i kalenderen er ryddet; Vis kalender bekrefter personvalg.
+
+Uavhengige reviewfunn er rettet og etterkontrollert. Isolert indeksert release består 180 PostgreSQL/Django-, 35 Node/Compose-, 20 bevarings- og 98 nettleserkontroller. 81 runtime-filer stemmer med Docker-imaget; testprofil/passord/importvalg, kryptert nøkkel og kø består containerutskifting. Faktisk lokal familieimport er uendret. Fysisk OS-visning og faktisk NAS-oppdatering er ikke observert; abonnementsfornyelse på fysiske enheter er utsatt, se deferred-work.md. Ingen privat dataoverføring skal gjentas.
+
+Robel godkjente samordning med den separate chatten «Describe the app and its UX». Dens samtidige designarbeid i samme checkout skal bevares ustaget og er ikke del av denne push/loader-releasen. Publisering bruker kontrollert indekskopi; ingen grenbytte eller reset som overskriver designarbeidet.

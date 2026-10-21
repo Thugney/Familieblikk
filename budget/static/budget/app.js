@@ -48,6 +48,7 @@ function enhanceCategoryFilters() {
     }
     results.setAttribute('aria-busy', 'true');
     status.textContent = 'Oppdaterer kategorier…';
+    const loading = window.FamilieblikkLoader?.start();
     try {
       const response = await fetch(url.href, {credentials: 'same-origin', cache: 'no-store', signal: controller.signal});
       if (!response.ok || response.redirected) throw new Error('Unavailable categories');
@@ -62,6 +63,7 @@ function enhanceCategoryFilters() {
       if (current !== sequence) return;
       status.textContent = 'Kunne ikke oppdatere kategoriene. Tidligere resultat vises. Prøv Finn på nytt.';
     } finally {
+      window.FamilieblikkLoader?.stop(loading);
       if (current === sequence) results.setAttribute('aria-busy', 'false');
     }
   };

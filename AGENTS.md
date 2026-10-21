@@ -1,5 +1,9 @@
 # Familieblikk — planning graph
 
+## Calendar Web Push — authorized 2026-10-21
+
+Robel requests real browser/OS push for calendar booking and accept/reject replies, repair of the calendar toolbar/person filters, preservation of the completed private Synology transfer, and commit/push when verified. pywebpush 2.5.0 with locked necessary dependencies is explicitly approved in .venv/Docker only. Follow the native build spec under _bmad-output/implementation-artifacts/spec-calendar-web-push.md. Graph nodes: producer-calendar-push (implementation and evidence), verifier-calendar-push (fresh-context source/runtime/security review). Existing accepted calendar design and preregistered accounts remain authoritative; no renewed email verification requirement. Private .env and private-data remain untracked and must survive updates. No actual NAS deployment or test notifications to family members without separate authorization.
+
 Read context.md and rules.md first. BMAD 6.12.4 owns the authoritative product/design/architecture documents under _bmad-output/planning-artifacts/ and feature kernels under _bmad-output/specs/. Project Init owns evidence and review projections only. Approved scope and implementation approval are distinct.
 
 ## Graph

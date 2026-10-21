@@ -1,0 +1,10 @@
+<section class="panel push-preferences" data-push-config="{% url 'push_config' %}" data-push-device="{% url 'push_device' %}" aria-labelledby="push-title">
+<h2 id="push-title">Varsler på denne enheten</h2>
+<p>Få et varsel når andre legger til en avtale som gjelder deg, eller svarer på en avtale. Låseskjermen viser aktivitetstype, uten avtalens tittel eller notat.</p>
+<form id="push-controls">{% csrf_token %}<p id="push-status" role="status" aria-live="polite">Kontrollerer støtte for varsler …</p><div class="actions"><button type="button" id="push-enable" hidden>Aktiver varsler</button><button type="button" id="push-disable" class="secondary" hidden>Deaktiver på denne enheten</button><button type="button" id="push-test" class="secondary" hidden>Send testvarsel til meg</button></div></form>
+<p class="muted">Du velger selv i nettleseren. Aktiver igjen etter utlogging eller ny innlogging. På iPhone: Del → Legg til på Hjem-skjerm, åpne appen derfra og aktiver varsler. Nettleseren og operativsystemet styrer visning og lyd.</p>
+<noscript><p>Slå på JavaScript for å aktivere enhetsvarsler. Kalenderoversikten nedenfor kan leses uten JavaScript.</p></noscript>
+</section>
+<section class="panel" aria-labelledby="calendar-notifications-title"><h2 id="calendar-notifications-title">Kalendervarsler</h2><p>De nyeste 100 varslene til deg i denne familien.</p>
+{% for notice in calendar_notifications %}<article class="notification-row"><div><p><strong>{% if not notice.read_at %}Ulest · {% endif %}{{ notice.detail }}</strong></p><p>{{ notice.created_at|date:'j. F Y H:i' }} · {{ notice.original_date|date:'j. F Y' }}</p><a href="{% url 'push_open' notice.pk %}">Åpne kalenderen</a></div>{% if not notice.read_at %}<form method="post" action="{% url 'push_read' notice.pk %}">{% csrf_token %}<button class="secondary">Merk som lest</button></form>{% endif %}</article>{% empty %}<p>Ingen kalendervarsler ennå. Dine egne handlinger varsler de andre berørte familiemedlemmene.</p>{% endfor %}
+</section>
