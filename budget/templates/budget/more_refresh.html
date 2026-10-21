@@ -1,0 +1,15 @@
+<div class="more-groups">
+<section><h2>Økonomi og planer</h2><div class="menu-grid">
+<a href="{% url 'page' 'regninger' %}"><span><strong>Regninger</strong><small>Betalte, forfalte og kommende</small></span><span aria-hidden="true">›</span></a>
+{% if household.modules.debt %}<a href="{% url 'page' 'gjeld' %}"><span><strong>Gjeld</strong><small>Månedsplan og nedbetalingsanslag</small></span><span aria-hidden="true">›</span></a>{% endif %}
+{% if household.modules.fund %}<a href="{% url 'page' 'arsutgifter' %}"><span><strong>Årsutgifter</strong><small>Avsetninger til større utgifter</small></span><span aria-hidden="true">›</span></a>{% endif %}
+{% if household.modules.remittance %}<a href="{% url 'page' 'utland' %}"><span><strong>Sendt utenlands</strong><small>Mottakere, registrerte beløp og kurser</small></span><span aria-hidden="true">›</span></a>{% endif %}
+{% if household.modules.annual_navigation != False %}<a href="{% url 'page' 'arsoversikt' %}"><span><strong>Årsoversikt</strong><small>Måned for måned og kategorier</small></span><span aria-hidden="true">›</span></a>{% endif %}
+</div></section>
+<section><h2>Familien og appen</h2><div class="menu-grid">
+<a href="{% url 'page' 'tilpass' %}"><span><strong>Tilpass appen</strong><small>Velg hvilke moduler familien bruker</small></span><span aria-hidden="true">›</span></a>
+<a href="{% url 'page' 'familie' %}"><span><strong>Familie og innstillinger</strong><small>Medlemmer, roller og konto</small></span><span aria-hidden="true">›</span></a>
+<a href="{% url 'page' 'varsler' %}"><span><strong>Varsler</strong><small>Avtaler, svar og enhetens varsler</small></span><span aria-hidden="true">›</span></a>
+<a href="{% url 'page' 'import' %}"><span><strong>Familiens kildeimport</strong><small>Private kildeposter og avklaringer</small></span><span aria-hidden="true">›</span></a>
+<a href="{% url 'info' 'hjelp' %}"><span><strong>Installering og hjelp</strong><small>Legg appen på hjemskjermen</small></span><span aria-hidden="true">›</span></a>
+</div></section></div>

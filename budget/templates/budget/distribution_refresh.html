@@ -1,0 +1,6 @@
+{% load budget_tags ui_tags %}{% budget_distribution totals as distribution %}
+<section class="budget-distribution" aria-label="Slik er pengene fordelt">
+{% if distribution.chartable %}<div class="distribution-bar" aria-hidden="true">{% for part in distribution.parts %}<span class="distribution-segment {{ part.kind }}" style="flex-grow:{{ part.weight }}"></span>{% endfor %}</div>{% endif %}
+<dl class="distribution-values">{% for part in distribution.parts %}<div class="{{ part.kind }}"><dt>{{ part.label }}</dt><dd>{{ part.amount|nok }}</dd></div>{% endfor %}</dl>
+<p>Forpliktelser omfatter regningsreserve, sparing, gjeld og årsavsetning i beregningen. Fordelingen inkluderer netto frigjort sparing.</p>
+</section>
