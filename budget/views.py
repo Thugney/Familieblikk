@@ -132,6 +132,8 @@ def invitation_view(request, token):
 
 @require_POST
 def logout_view(request):
+    from .push_services import disable_session
+    disable_session(request)
     logout(request)
     response = redirect('password_login')
     response['Clear-Site-Data'] = '"cache", "storage"'
@@ -254,6 +256,9 @@ def page_view(request, page='oversikt'):
         ctx['spending_boot'] = {'initial_tab': 'spending', 'month': month.strftime('%Y-%m'), 'can_save': member.role == 'admin', 'urls': {'spending': reverse('spending_data'), 'planning': reverse('planning_data'), 'preview': reverse('planning_preview'), 'save': reverse('planning_save')}}
     if page == 'familie':
         ctx.update(members=Membership.objects.filter(household=house).select_related('user'), invitations=Invitation.objects.filter(household=house, accepted=False, revoked=False), invite_form=forms.EmailForm(), email_invitations_enabled=settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend' and bool(settings.EMAIL_HOST))
+    if page == 'varsler':
+        from .models import CalendarNotification
+        ctx['calendar_notifications'] = CalendarNotification.objects.filter(household=house, recipient=request.user).order_by('-created_at')[:100]
     if page == 'arsoversikt':
         services.prepare_month(house, date(month.year, 12, 1))
         cumulative = 0
@@ -534,7 +539,7 @@ def worker_view(request):
     from pathlib import Path
     import hashlib
     root = Path(__file__).parent
-    public_files = [root / 'static/budget' / name for name in ['app.css', 'app.js', 'icon.svg', 'sw.js']] + [root / 'templates/budget/offline.html']
+    public_files = [root / 'static/budget' / name for name in ['app.css', 'app.js', 'icon.svg', 'sw.js', 'calendar.css', 'calendar.js', 'spending.css', 'spending.js', 'push.js', 'loader.css', 'loader.js', 'loader-logo.png', 'loader-icon.png']] + [root / 'templates/budget/offline.html']
     version = hashlib.sha256(b''.join(file.read_bytes() for file in public_files)).hexdigest()[:20]
     source = (root / 'static/budget/sw.js').read_text(encoding='utf-8').replace('__PUBLIC_VERSION__', version)
     response = HttpResponse(source, content_type='application/javascript')
@@ -546,7 +551,7 @@ def worker_view(request):
 def public_asset(request, name):
     from pathlib import Path
     from django.http import FileResponse
-    allowed = {'app.css': 'text/css', 'app.js': 'application/javascript', 'icon.svg': 'image/svg+xml', 'calendar.css': 'text/css', 'calendar.js': 'application/javascript', 'spending.css': 'text/css', 'spending.js': 'application/javascript'}
+    allowed = {'app.css': 'text/css', 'app.js': 'application/javascript', 'push.js': 'application/javascript', 'loader.css': 'text/css', 'loader.js': 'application/javascript', 'loader-logo.png': 'image/png', 'loader-icon.png': 'image/png', 'icon.svg': 'image/svg+xml', 'calendar.css': 'text/css', 'calendar.js': 'application/javascript', 'spending.css': 'text/css', 'spending.js': 'application/javascript'}
     if name not in allowed: raise Http404
     response = FileResponse((Path(__file__).parent / 'static/budget' / name).open('rb'), content_type=allowed[name])
     response['Cache-Control'] = 'public, max-age=0, must-revalidate'

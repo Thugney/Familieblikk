@@ -27,7 +27,7 @@ function config(extra = {}, includeImport = false) {
 test('host-nettverk og fast webport 6451 er standard for hele hostingprosjektet', () => {
   const c = config({APP_PORT:'4180', APP_BIND:'127.0.0.1', POSTGRES_HOST:'db'});
   assert.equal(c.name, 'familieblikk');
-  for (const name of ['db','migrate','app']) {
+  for (const name of ['db','migrate','app','push-worker']) {
     assert.equal(c.services[name].network_mode, 'host');
     assert.equal(c.services[name].ports, undefined);
     assert.equal(c.services[name].networks, undefined);
@@ -52,7 +52,7 @@ test('localhost, PGPORT og valgfri databaseport er konsistente uten å endre web
     assert.ok(c.services.db.command.includes('hba_file=/etc/familieblikk/pg_hba.conf'));
     assert.ok(c.services.db.command.includes('password_encryption=scram-sha-256'));
     assert.equal(c.services.db.command.at(-1), port);
-    for (const name of ['app','migrate']) {
+    for (const name of ['app','migrate','push-worker']) {
       assert.equal(c.services[name].environment.POSTGRES_HOST, '127.0.0.1');
       assert.equal(c.services[name].environment.POSTGRES_PORT, port);
     }
@@ -60,6 +60,19 @@ test('localhost, PGPORT og valgfri databaseport er konsistente uten å endre web
     assert.ok(hba && hba.read_only);
     assert.ok(c.services.app.command.includes('0.0.0.0:6451'));
   }
+});
+
+test('oppdatering bevarer eksplisitt gjenopprettet DB og privat import uten ny eierklargjøring', () => {
+  const c=config({POSTGRES_DB:'synthetic_restored_household',POSTGRES_APP_USER:'synthetic_limited_app'},true);
+  for(const name of ['db','migrate','app','push-worker'])assert.equal(c.services[name].environment.POSTGRES_DB,'synthetic_restored_household');
+  assert.equal(c.services['push-worker'].environment.POSTGRES_USER,'synthetic_limited_app');
+  assert.equal(c.services['push-worker'].environment.POSTGRES_PASSWORD,c.services.app.environment.POSTGRES_PASSWORD);
+  assert.ok(!c.services['push-worker'].volumes,'Worker trenger ikke privat importmontering');
+  assert.ok(c.services.app.volumes.some(v=>v.target==='/private-import'&&v.read_only));
+  assert.match(c.services.migrate.command.join(' '),/migrate --noinput.*setup_push.*setup_runtime_role/);
+  assert.doesNotMatch(c.services.migrate.command.join(' '),/provision_owner|restore|apply_import|seed/);
+  const ignore=fs.readFileSync(path.join(root,'.gitignore'),'utf8');
+  assert.ok(ignore.includes('/Familieblikk-Synology-overforing.zip'));assert.ok(ignore.includes('/Familieblikk-Synology-overforing/'));
 });
 
 test('Docker-image og privat import beholder host-nettverk og port 6451', () => {

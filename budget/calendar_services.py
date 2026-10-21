@@ -307,6 +307,9 @@ def mutate(actor, action, key, event_id=None, original=None, revision=None, payl
 
         event=CalendarEvent.objects.create(household=member.household,created_by=actor,payload=p)
 
+        from .push_services import record_calendar_action
+        record_calendar_action(actor, member, event, key, 'created', date.fromisoformat(p['start']), p)
+
     elif action=='respond':
 
         if status not in ('none','yes','no'): raise ValidationError('Ugyldig svar.')
@@ -317,11 +320,17 @@ def mutate(actor, action, key, event_id=None, original=None, revision=None, payl
 
         if type(response_revision) is not int or response_revision!=(response.revision if response else 0): raise Conflict('Svaret er endret. Last inn på nytt.')
 
+        changed = (response.status if response else 'none') != status
+
         if response:
 
             response.status=status; response.revision+=1; response.save()
 
         else: CalendarResponse.objects.create(event=event,original_date=original,member=member,status=status)
+
+        if changed and status in ('yes', 'no'):
+            from .push_services import record_calendar_action
+            record_calendar_action(actor, member, event, key, status, original, current)
 
     elif action in ('edit','delete'):
 

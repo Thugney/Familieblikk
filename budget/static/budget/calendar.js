@@ -23,6 +23,7 @@
     output.textContent = '';
     if (!navigator.onLine) { output.textContent = 'Du er frakoblet. Koble til og prøv igjen. Feltene dine er beholdt.'; return false; }
     const buttons = dialog.querySelectorAll('button');
+    const loading = window.FamilieblikkLoader?.start();
     buttons.forEach(b => b.disabled = true);
     try {
       const response = await fetch(root.dataset.api, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type':'application/json', 'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value}, body: JSON.stringify(data)});
@@ -32,7 +33,7 @@
       delete form.dataset.dirty;
       location.reload(); return true;
     } catch (error) { output.textContent = error.message || 'Lagring mislyktes. Prøv igjen.'; return false; }
-    finally { buttons.forEach(b => b.disabled = false); }
+    finally { window.FamilieblikkLoader?.stop(loading); buttons.forEach(b => b.disabled = false); }
   }
   function openDetail(event) {
     active = event;
@@ -135,6 +136,9 @@
   function view(agenda) { root.classList.toggle('agenda-mode',agenda); monthButton.setAttribute('aria-pressed',String(!agenda)); agendaButton.setAttribute('aria-pressed',String(agenda)); }
   view(window.matchMedia('(max-width:760px)').matches);
   monthButton.addEventListener('click',()=>view(false)); agendaButton.addEventListener('click',()=>view(true));
+  const target = new URLSearchParams(location.search);
+  const notifiedEvent = events.find(event => event.id === target.get('event') && event.original === target.get('original'));
+  if (notifiedEvent) { selectDay(notifiedEvent.start); openDetail(notifiedEvent); }
 })();
 
 // Closing the editor is an explicit discard action, including the native Escape key.
