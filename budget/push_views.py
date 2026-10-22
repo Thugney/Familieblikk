@@ -10,8 +10,9 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.cache import never_cache
 from . import push_services as push
-from .models import CalendarNotification, Membership, PushSubscription
+from .models import CalendarNotification, Membership, PushDelivery, PushSubscription
 
 
 def member_for(request):
@@ -28,6 +29,7 @@ def request_data(request):
 
 
 @login_required
+@never_cache
 @require_GET
 def config(request):
     member_for(request)
@@ -36,6 +38,7 @@ def config(request):
 
 
 @login_required
+@never_cache
 @require_POST
 def device(request):
     try:
@@ -59,6 +62,40 @@ def device(request):
         raise ValidationError('Ugyldig enhetshandling.')
     except (ValidationError, ValueError, TypeError) as exc:
         return JsonResponse({'error': ' '.join(exc.messages) if hasattr(exc, 'messages') else 'Ugyldig forespørsel.'}, status=400)
+
+
+@login_required
+@never_cache
+@require_POST
+def receipt(request):
+    """Only this session's own test job; never expose calendar jobs or endpoints."""
+    member = member_for(request)
+    try:
+        data = request_data(request)
+        if set(data) != {'delivery_id'}: raise ValidationError('Ugyldig testkvittering.')
+        row = PushDelivery.objects.filter(
+            pk=data['delivery_id'], notification__isnull=True,
+            subscription__user=request.user, subscription__household=member.household,
+            subscription__session_digest=push.digest(request.session.session_key or ''),
+        ).first()
+    except (ValidationError, ValueError, TypeError):
+        return JsonResponse({'error': 'Ugyldig testkvittering.'}, status=400)
+    if not row: return JsonResponse({'error': 'Testvarselet finnes ikke for denne innloggingen.'}, status=404)
+    state = 'retry' if row.state == 'pending' and row.attempts else row.state
+    result = {'state': state, 'attempts': row.attempts,
+              'provider_accepted': row.state == 'sent', 'os_display_confirmed': False}
+    if row.state == 'pending': result['next_attempt_at'] = row.available_at.isoformat()
+    if row.sent_at: result['sent_at'] = row.sent_at.isoformat()
+    return JsonResponse(result)
+
+
+@login_required
+@never_cache
+@require_GET
+def summary(request):
+    member = member_for(request)
+    return JsonResponse({'unread': CalendarNotification.objects.filter(
+        recipient=request.user, household=member.household, read_at__isnull=True).count()})
 
 
 @login_required

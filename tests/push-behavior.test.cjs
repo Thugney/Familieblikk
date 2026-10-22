@@ -6,27 +6,31 @@ const source = fs.readFileSync('budget/static/budget/push.js', 'utf8');
 const worker = fs.readFileSync('budget/static/budget/sw.js', 'utf8');
 const flush = async () => { for (let n = 0; n < 6; n++) await new Promise(resolve => setImmediate(resolve)); };
 
-function setup({permission='default', online=true, supported=true, ios=false, installed=false, serverState=null, browserSubscription=false, statusMode='', readyStalled=false, permissionStalled=false}={}) {
+function setup({permission='default', online=true, supported=true, ios=false, installed=false, serverState=null, browserSubscription=false, statusMode='', readyStalled=false, permissionStalled=false, unread=0, receiptState='pending', pushPage='varsler', subscriptionDeferred=false}={}) {
   const calls = [], handlers = {}, controls = {}, timers = new Map(); let timerId=0, stalledAction='';
-  for (const name of ['status','enable','disable','test']) controls[name] = {hidden:name !== 'status', disabled:false, textContent:'', addEventListener:(name, fn) => controls[name === 'click' ? 'unused' : name], handlers:{}};
-  for (const name of ['enable','disable','test']) controls[name].addEventListener = (event, fn) => controls[name].handlers[event] = fn;
+  for (const name of ['status','enable','disable','test','recheck','test-status','notification-badge','notification-count-text','notification-bell']) controls[name] = {hidden:name !== 'status', disabled:false, textContent:'', focus(){document.activeElement=this;calls.push('focus:'+name)}, setAttribute(name,value){this[name]=value}, handlers:{}};
+  for (const name of ['enable','disable','test','recheck']) controls[name].addEventListener = (event, fn) => controls[name].handlers[event] = fn;
   const subscription = {endpoint:'https://fcm.googleapis.com/fcm/send/synthetic', options:{}, toJSON(){return {endpoint:this.endpoint,keys:{p256dh:'synthetic-public',auth:'synthetic-auth'}}}, async unsubscribe(){calls.push('unsubscribe'); current=null; return true;}};
   let current = serverState || browserSubscription ? subscription : null;
-  const reg = {pushManager:{async getSubscription(){return current},async subscribe(options){calls.push({subscribe:options});current=subscription;return current}}};
+  let deferredSubscription = null;
+  const reg = {pushManager:{async getSubscription(){if(subscriptionDeferred){subscriptionDeferred=false;return new Promise(resolve=>{deferredSubscription=resolve})}return current},async subscribe(options){calls.push({subscribe:options});current=subscription;return current}}};
   const navigator = {onLine:online, userAgent:ios?'iPhone':'Synthetic Browser', platform:'', maxTouchPoints:0, serviceWorker:{async register(){calls.push('register');return reg},ready:readyStalled?new Promise(()=>{}):Promise.resolve(reg)}};
   const Notification = {permission,requestPermission(){calls.push('permission');if(permissionStalled)return new Promise(()=>{});Notification.permission='granted';return Promise.resolve('granted')}};
-  const root = {dataset:{pushConfig:'/push/config/',pushDevice:'/push/device/'},querySelector(){return {value:'csrf-synthetic'}}};
+  const root = {hidden:true,dataset:{pushConfig:'/push/config/',pushDevice:'/push/device/',pushReceipt:'/push/receipt/',pushSummary:'/push/summary/',pushPage},querySelector(){return {value:'csrf-synthetic'}}};
   let failure = false;
-  const context = {document:{querySelector(){return root},getElementById(id){return controls[id.replace('push-','')]}}, navigator, Notification, AbortController, setTimeout(fn){timers.set(++timerId,fn);return timerId},clearTimeout(id){timers.delete(id)},window:{isSecureContext:supported,PushManager:function(){},Notification,matchMedia(){return {matches:installed}},addEventListener(name,fn){handlers[name]=fn}},Uint8Array,Promise,atob:s=>Buffer.from(s,'base64').toString('binary'),fetch:async(url,options)=>{
+  const document = {visibilityState:'visible',addEventListener(name,fn){handlers[name]=fn},querySelector(){return root},getElementById(id){return controls[id.replace('push-','')]}};
+  const context = {document, navigator, Notification, AbortController, setTimeout(fn,delay){timers.set(++timerId,{fn,delay});return timerId},clearTimeout(id){timers.delete(id)},window:{isSecureContext:supported,PushManager:function(){},Notification,matchMedia(){return {matches:installed}},addEventListener(name,fn){handlers[name]=fn}},Uint8Array,Promise,atob:s=>Buffer.from(s,'base64').toString('binary'),fetch:async(url,options)=>{
     if(failure) throw Error('Synthetic network failure');
     if(url==='/push/config/')return stalledAction==='config'?new Promise(()=>{}):{ok:true,json:async()=>({public_key:Buffer.alloc(65).toString('base64url')})};
+    if(url==='/push/summary/'){calls.push('summary');return {ok:true,json:async()=>({unread})};}
     const data=JSON.parse(options.body);calls.push(data);
+    if(url==='/push/receipt/')return stalledAction==='receipt'?new Promise(()=>{}):{ok:true,json:async()=>({state:receiptState})};
     if(data.action===stalledAction || (data.action==='status'&&statusMode==='stall'))return new Promise(()=>{});
     if(data.action==='status'&&statusMode==='reject')throw Error('Synthetic rejected status');
-    return {ok:true,json:async()=>data.action==='status' ? {state:serverState || 'disabled',active:!!serverState,id:'device-id'} : {id:'device-id',state:data.action==='test'?'queued':'active'}};
+    return {ok:true,json:async()=>data.action==='status' ? {state:serverState || 'disabled',active:!!serverState,id:'device-id'} : {id:'device-id',state:data.action==='test'?'queued':'active',delivery_id:'test-job'}};
   }};
   vm.runInNewContext(source,context);
-  return {calls,handlers,controls,navigator,Notification,fail(){failure=true},stall(action){stalledAction=action},expire(){for(const [id,fn]of [...timers]){timers.delete(id);fn()}},click(name){return controls[name].handlers.click()}};
+  return {calls,handlers,controls,navigator,Notification,root,document,deferSubscription(){subscriptionDeferred=true},releaseSubscription(value=current){deferredSubscription(value)},focus(name){controls[name].focus()},setUnread(n){unread=n},setReceipt(state){receiptState=state},fail(){failure=true},stall(action){stalledAction=action},expire(delay=10000){for(const [id,t]of [...timers])if(t.delay===delay){timers.delete(id);t.fn()}},click(name){return controls[name].handlers.click()}};
 }
 
 test('push permission is requested only by explicit activation; test and disable target this device',async()=>{
@@ -53,7 +57,7 @@ test('server device status and reconnection show delayed delivery honestly',asyn
 test('rejected or stalled status keeps browser disable available without a confirmed test device',async()=>{
   for(const statusMode of ['reject','stall']){
     const h=setup({permission:'granted',browserSubscription:true,statusMode});await flush();
-    assert.equal(h.controls.disable.hidden,false);assert.equal(h.controls.test.hidden,true);
+    if(statusMode==='stall')assert.equal(h.root.hidden,true);assert.equal(h.controls.test.hidden,true);
     h.expire();await flush();assert.equal(h.controls.disable.disabled,false);assert.equal(h.controls.test.hidden,true);assert.match(h.controls.status.textContent,/Status er ukjent/);
     await h.click('test');assert.ok(!h.calls.some(x=>x.action==='test'));
     await h.click('disable');assert.ok(h.calls.includes('unsubscribe'));assert.match(h.controls.status.textContent,/Deaktivert/);
@@ -72,6 +76,58 @@ test('stalled test and disable requests release controls and preserve the browse
     const pending=h.click(action);await flush();assert.equal(h.controls.disable.disabled,true);
     h.expire();await pending;assert.equal(h.controls.disable.disabled,false);assert.equal(h.controls.disable.hidden,false);assert.match(h.controls.status.textContent,/lang tid/);
   }
+});
+
+test('shared controller offers activation on every family page and hides it only for an active device',async()=>{
+  const h=setup({pushPage:'oversikt',permission:'granted'});await flush();assert.equal(h.root.hidden,false);assert.equal(h.controls.enable.hidden,false);assert.ok(!h.calls.includes('permission'));
+  await h.click('enable');assert.equal(h.root.hidden,true);assert.ok(!h.calls.includes('permission'));
+  h.navigator.onLine=false;h.handlers.offline();assert.equal(h.root.hidden,false);
+});
+test('initial healthy active device panel stays hidden throughout asynchronous status checks',async()=>{
+  const h=setup({pushPage:'oversikt',permission:'granted',serverState:'active',subscriptionDeferred:true});
+  assert.equal(h.root.hidden,true);await flush();assert.equal(h.root.hidden,true);assert.equal(h.controls.enable.hidden,true);
+  h.releaseSubscription();await flush();assert.equal(h.root.hidden,true);assert.match(h.controls.status.textContent,/Aktivert/);
+  const template=fs.readFileSync('budget/templates/budget/push_preferences.html','utf8');
+  assert.match(template,/<section[^>]*hidden[^>]*data-push-config/);assert.match(template,/<\/section>\s*<noscript>/);
+});
+test('failed and retrying active device warnings remain actionable on ordinary pages',async()=>{
+  for(const serverState of ['failed','retrying']){
+    const h=setup({pushPage:'oversikt',permission:'granted',serverState});await flush();
+    assert.equal(h.root.hidden,false);assert.equal(h.controls.disable.hidden,false);assert.equal(h.controls.test.hidden,false);
+    assert.match(h.controls.status.textContent,serverState==='failed'?/feilet/:/forsinket/);
+  }
+});
+test('delayed old getSubscription cannot overwrite a successful activation',async()=>{
+  const h=setup({pushPage:'oversikt',permission:'granted'});await flush();h.deferSubscription();
+  const refreshing=h.handlers.online();await flush();await h.click('enable');assert.equal(h.root.hidden,true);
+  h.releaseSubscription(null);await refreshing;assert.equal(h.root.hidden,true);assert.equal(h.controls.disable.hidden,false);
+  await h.click('disable');assert.ok(h.calls.some(x=>x.action==='disable'&&x.endpoint.endsWith('/synthetic')));assert.ok(h.calls.includes('unsubscribe'));
+});
+test('hiding activated panel moves focused activation to bell but preserves focus moved elsewhere',async()=>{
+  for(const moved of [false,true]){
+    const h=setup({pushPage:'oversikt',permission:'granted'});await flush();h.focus('enable');
+    const activating=h.click('enable');if(moved)h.focus('status');await activating;
+    assert.equal(h.root.hidden,true);assert.equal(h.document.activeElement,h.controls[moved?'status':'notification-bell']);
+    assert.equal(h.calls.filter(x=>x==='focus:notification-bell').length,moved?0:1);
+  }
+});
+test('badge keeps private server count, caps display and refreshes on visibility and online',async()=>{
+  const h=setup({unread:102});await flush();assert.equal(h.controls['notification-badge'].textContent,'99+');assert.match(h.controls['notification-bell']['aria-label'],/102 uleste/);
+  h.document.visibilityState='hidden';h.handlers.visibilitychange();const before=h.calls.length;h.expire(30000);await flush();assert.equal(h.calls.length,before);
+  h.setUnread(0);h.document.visibilityState='visible';h.handlers.visibilitychange();await flush();assert.equal(h.controls['notification-badge'].hidden,true);assert.equal(h.controls['notification-count-text'].textContent,'Ingen uleste varsler');
+  h.setUnread(2);h.handlers.online();await flush();assert.equal(h.controls['notification-badge'].textContent,'2');assert.equal(h.controls['notification-badge'].hidden,false);
+});
+test('test receipt distinguishes queue retry failure and provider acceptance without claiming OS delivery',async()=>{
+  const h=setup({permission:'granted',serverState:'active'});await flush();await h.click('test');await flush();assert.match(h.controls['test-status'].textContent,/venter i leveringskøen/);
+  h.setReceipt('retry');h.expire(2000);await flush();assert.match(h.controls['test-status'].textContent,/forsinket/);
+  h.setReceipt('sent');h.expire(2000);await flush();assert.match(h.controls['test-status'].textContent,/tatt imot/);assert.match(h.controls['test-status'].textContent,/bekrefter ikke/);
+  h.setReceipt('failed');await h.click('recheck');assert.match(h.controls['test-status'].textContent,/feilet/);
+});
+test('receipt polling stops after bounded checks and a stalled receipt recovers with manual recheck',async()=>{
+  const h=setup({permission:'granted',serverState:'active'});await flush();await h.click('test');await flush();
+  for(let n=0;n<8;n++){h.expire(2000);await flush()}
+  assert.match(h.controls['test-status'].textContent,/Automatisk kontroll er avsluttet/);
+  h.stall('receipt');const pending=h.click('recheck');await flush();h.expire();await pending;assert.match(h.controls['test-status'].textContent,/lang tid/);assert.equal(h.controls.recheck.disabled,false);
 });
 
 function swSetup(){

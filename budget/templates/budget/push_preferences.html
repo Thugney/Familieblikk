@@ -1,0 +1,7 @@
+<section class="panel push-preferences" hidden data-push-config="{% url 'push_config' %}" data-push-device="{% url 'push_device' %}" data-push-receipt="{% url 'push_receipt' %}" data-push-summary="{% url 'push_summary' %}" data-push-page="{{ page }}" aria-labelledby="push-title">
+<h2 id="push-title">Få kalendervarsler på denne enheten</h2>
+<p>Aktiver varsler for nye avtaler og svar fra familien, også når appfanen er lukket. Låseskjermen viser bare aktivitetstype.</p>
+<form id="push-controls">{% csrf_token %}<p id="push-status" role="status" aria-live="polite">Kontrollerer støtte for varsler …</p><div class="actions"><button type="button" id="push-enable" hidden>Aktiver varsler</button><button type="button" id="push-disable" class="secondary" hidden>Deaktiver på denne enheten</button><button type="button" id="push-test" class="secondary" hidden>Send testvarsel til meg</button><button type="button" id="push-recheck" class="secondary" hidden>Kontroller teststatus</button></div><p id="push-test-status" role="status" aria-live="polite" hidden></p></form>
+<p class="muted">Du velger selv i nettleseren. Aktiver igjen etter ny innlogging. På iPhone: Del → Legg til på Hjem-skjerm, åpne appen derfra og aktiver. Nettleseren og operativsystemet styrer visning og lyd. <a href="{% url 'page' 'varsler' %}">Åpne alle varsler og enhetsvalg</a></p>
+</section>
+<noscript><p class="panel">Slå på JavaScript for å aktivere enhetsvarsler. <a href="{% url 'page' 'varsler' %}">Åpne Varsler</a> for å lese kalendervarslene dine.</p></noscript>

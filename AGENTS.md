@@ -48,3 +48,8 @@ Do not alter the accepted budget preview or its screenshot baselines. Calendar c
 
 ## Budget usability repairs
 User explicitly approved all current dashboard/category/Poster's usability and brand repairs alongside calendar design refinement. Contract: graph/nodes/producer-budget-usability.md. Existing accepted budget design remains authoritative; no fabricated monthly limits or source data changes. Calendar runtime acceptance remains pending. Independent fresh-context review must cover both the repaired app evidence and updated fictional calendar candidate.
+
+
+## Bindende databevaring ved hver commit, push og vanlig oppdatering
+
+Kontroller at den eksisterende `.env`, `POSTGRES_DB`, Compose-prosjektnavn, databasevolum, `PRIVATE_IMPORT_PATH` og alle nøkler bevares. Bruk bare kompatible migrasjoner på eksisterende database. Aldri kjør `down -v`, volumfjerning eller prune, flush/drop/truncate, ny restore/import/seed, eierklargjøring eller erstatning av nøkler som del av en vanlig oppdatering. Destruktiv datamigrering krever separat, uttrykkelig godkjenning. Releasetest skal kontrollere både Compose-kontrakten og lesende avstemming av de private kildepostene; syntetisk omstartstest alene beviser ikke bevaring av den faktiske profilen.
