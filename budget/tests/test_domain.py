@@ -82,8 +82,8 @@ class DomainTests(TestCase):
         services.prepare_month(self.house, self.month)
         bill = BillOccurrence.objects.get(template=template)
         key = uuid.uuid4()
-        payment = services.pay_bill(self.member, bill.pk, self.today, key)
-        self.assertEqual(services.pay_bill(self.user, bill.pk, self.today, uuid.uuid4()).pk, payment.pk)
+        payment = services.pay_bill(self.member, bill.pk, self.today, key, bill.version)
+        self.assertEqual(services.pay_bill(self.member, bill.pk, self.today, key, bill.version).pk, payment.pk)
         self.assertEqual(Entry.objects.filter(occurrence=bill).count(), 1)
         self.assertEqual(services.calculate(self.house, old)['bills'], 10000)
         self.assertEqual(services.calculate(self.house, self.month)['bills'], 0)
@@ -223,18 +223,17 @@ class DomainTests(TestCase):
         future = services.next_month(services.next_month(self.month))
         services.prepare_month(self.house, future)
         historical = BillOccurrence.objects.get(template=template, due_date=self.today)
-        template.amount_ore = 2000
-        services.save_row(self.user, template, template.version)
+        from budget import correction_services as corrections
+        start = self.today + timedelta(days=1)
+        manifest = [[str(row.pk), row.version] for row in corrections.affected(template, start)]
+        corrections.revise_series(self.user, template.pk, 'revise', template.version, uuid.uuid4(), start, {'amount_ore':2000}, manifest)
         self.assertEqual(BillOccurrence.objects.get(pk=historical.pk).amount_ore, 1000)
         self.assertTrue(all(row.amount_ore == 2000 for row in BillOccurrence.objects.filter(template=template, due_date__gt=self.today)))
-        template.first_due = self.today.replace(day=1)
-        services.save_row(self.user, template, template.version)
+        template.refresh_from_db()
+        corrections.revise_series(self.user, template.pk, 'archive', template.version, uuid.uuid4(), start, confirmed=[])
         services.prepare_month(self.house, future)
-        self.assertEqual(BillOccurrence.objects.filter(template=template, due_date__year=self.today.year, due_date__month=self.today.month).count(), 1)
-        template.archived = True
-        services.save_row(self.user, template, template.version)
-        services.prepare_month(self.house, future)
-        self.assertFalse(BillOccurrence.objects.filter(template=template, due_date__gt=self.today).exists())
+        self.assertTrue(BillOccurrence.objects.filter(template=template, due_date__gt=self.today).exists())
+        self.assertEqual(BillOccurrence.objects.filter(template=template, recurrence_slot=self.month).count(), 1)
 
     def test_http_roles_csrf_conflict_and_module_hiding(self):
         self.client.force_login(self.member)
@@ -243,7 +242,7 @@ class DomainTests(TestCase):
         self.assertEqual(Client(enforce_csrf_checks=True).post('/innlogging/', {'email': 'csrf@example.test'}).status_code, 403)
         row = services.save_entry(self.member, Entry(kind='income', amount_ore=10000, effective_date=self.today, description='Medlem'))
         services.save_entry(self.member, row, 1)
-        response = self.client.post(f'/endre/entry/{row.pk}/', {'version': 1, 'kind': 'income', 'amount': '100', 'description': 'Konfliktfelt bevart', 'effective_date': self.today.isoformat(), 'received': 'on', 'idempotency_key': str(row.idempotency_key), 'fee_ore': 0})
+        response = self.client.post(f'/endre/entry/{row.pk}/', {'version': 1, 'command_key': str(uuid.uuid4()), 'kind': 'income', 'amount': '100', 'description': 'Konfliktfelt bevart', 'effective_date': self.today.isoformat(), 'received': 'on', 'idempotency_key': str(row.idempotency_key), 'fee_ore': 0})
         self.assertEqual(response.status_code, 409)
         self.assertContains(response, 'Konfliktfelt bevart', status_code=409)
         goal = self.asset()
@@ -370,9 +369,13 @@ class ConcurrentPaymentTests(TransactionTestCase):
         def pay(_):
             close_old_connections()
             actor = get_user_model().objects.get(pk=user.pk)
-            result = services.pay_bill(actor, bill.pk, today, uuid.uuid4())
+            try:
+                result = services.pay_bill(actor, bill.pk, today, shared_key, 1)
+            except services.Conflict:
+                return None
             close_old_connections()
             return result.pk
+        shared_key = uuid.uuid4()
         with ThreadPoolExecutor(max_workers=2) as pool: ids = list(pool.map(pay, [1, 2]))
         self.assertEqual(ids[0], ids[1])
         self.assertEqual(Entry.objects.filter(occurrence=bill).count(), 1)

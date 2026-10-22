@@ -113,13 +113,16 @@ class RowForm(forms.ModelForm):
 
 class EntryForm(RowForm):
     idempotency_key = forms.UUIDField(widget=forms.HiddenInput, initial=uuid.uuid4)
+    command_key = forms.UUIDField(widget=forms.HiddenInput, initial=uuid.uuid4)
     class Meta:
         model = Entry
         fields = ['kind', 'description', 'effective_date', 'category', 'asset', 'received', 'income_attribution', 'original', 'original_amount', 'currency', 'exchange_rate', 'fee_ore']
         labels = {'kind': 'Type', 'description': 'Beskrivelse', 'effective_date': 'Dato', 'category': 'Kategori', 'asset': 'Mål / gjeld / fond / mottaker', 'received': 'Inntekten er mottatt', 'income_attribution': 'Inntekten tilhører (frivillig tekst)', 'original': 'Opprinnelig betaling ved refusjon', 'original_amount': 'Opprinnelig valutabeløp', 'currency': 'ISO-valuta, f.eks. EUR', 'exchange_rate': 'Bekreftet NOK per valutaenhet (tom ved faktisk NOK)', 'fee_ore': 'Separat gebyr i øre'}
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['original'].queryset = self.fields['original'].queryset.filter(kind__in=['expense', 'debt', 'fund', 'remittance'])
+        self.fields['command_key'].required = not self.instance._state.adding
+        self.initial['command_key'] = uuid.uuid4()
+        self.fields['original'].queryset = self.fields['original'].queryset.filter(active=True, kind__in=['expense', 'debt', 'fund', 'remittance'])
         self.fields['effective_date'].initial = timezone.localdate
         self.fields['currency'].required = False
     def clean(self):
@@ -190,6 +193,7 @@ class BillForm(RowForm):
 
 
 class PaymentForm(forms.Form):
+    version = forms.IntegerField(min_value=1, widget=forms.HiddenInput)
     date = forms.DateField(label='Faktisk betalingsdato', initial=timezone.localdate, widget=forms.DateInput(attrs={'type': 'date'}))
     key = forms.UUIDField(initial=uuid.uuid4, widget=forms.HiddenInput)
 

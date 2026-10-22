@@ -116,7 +116,8 @@ class CalendarTests(TestCase):
         event=self.create();self.response(event);self.response(event,'2027-03-31',actor=1)
         self.edit(event,'2027-02-28',scope='future',note='Nytt notat')
         self.assertEqual(CalendarResponse.objects.count(),2)
-        self.assertEqual(self.list()[-1]['people'][1]['status'],'yes')
+        people = self.list()[-1]['people']
+        self.assertEqual(next(person['status'] for person in people if person['id'] == self.members[1].pk), 'yes')
     def test_future_time_reset_does_not_change_past_reply(self):
         event=self.create();self.response(event);self.response(event,'2027-03-31')
         self.edit(event,'2027-02-28',scope='future',start_time='18:00',end_time='19:00')

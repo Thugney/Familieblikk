@@ -1,6 +1,9 @@
 from django.urls import path
-from . import views, calendar_views, spending_views, push_views
+from . import views, calendar_views, spending_views, push_views, correction_views
 urlpatterns = [
+    path('retting/<str:kind>/<uuid:row_id>/', correction_views.correction_view, name='correction'),
+    path('historikk/<str:kind>/<uuid:row_id>/', correction_views.history_view, name='correction_history'),
+    path('eksport/<str:kind>/', correction_views.export_view, name='correction_export'),
     path('static/budget/<str:name>', views.public_asset),
     path('', views.family_gate, name='home'),
     path('innlogging/', views.login_view, name='login'), path('kode/', views.verify_view, name='verify'),

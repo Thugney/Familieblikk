@@ -515,7 +515,7 @@ class MemberAccessTests(TestCase):
     def test_bills_only_payment_refund_and_undo_keep_accessible_return_path(self):
         bill = self.bill()
         self.revoke('budget', 'savings', 'debt', 'fund', 'remittance')
-        paid = self.client.post(f'/betal/{bill.pk}/', {'date': self.day.isoformat(), 'key': str(uuid.uuid4())})
+        paid = self.client.post(f'/betal/{bill.pk}/', {'date': self.day.isoformat(), 'key': str(uuid.uuid4()), 'version': bill.version})
         self.assertRedirects(paid, '/app/regninger/', fetch_redirect_response=False)
         payment = Entry.objects.get(occurrence=bill)
         access.require_row(self.member, payment)
@@ -523,12 +523,16 @@ class MemberAccessTests(TestCase):
         refund = services.save_entry(self.user, Entry(kind='refund', amount_ore=1, original=payment,
             effective_date=self.day, description='Tillatt regningsrefusjon'))
         access.require_row(self.member, refund)
-        deleted = self.client.post(f'/slett/{refund.pk}/', {'version': refund.version})
-        self.assertRedirects(deleted, '/app/regninger/', fetch_redirect_response=False)
-        self.assertContains(self.client.get(f'/slett/{payment.pk}/'), 'href="/app/regninger/?month=')
-        deleted = self.client.post(f'/slett/{payment.pk}/', {'version': payment.version})
-        self.assertRedirects(deleted, '/app/regninger/', fetch_redirect_response=False)
-        self.assertFalse(Entry.objects.exists())
+        for row in (refund, payment):
+            url = f'/slett/{row.pk}/'
+            data = {'version':row.version, 'key':str(uuid.uuid4()), 'operation':'reverse', 'reason':'Feilregistrering'}
+            preview = self.client.post(url, data)
+            self.assertEqual(preview.status_code, 200)
+            data['confirmation'] = preview.context['confirmation']
+            saved = self.client.post(url, data)
+            self.assertRedirects(saved, f'/historikk/entry/{row.pk}/', fetch_redirect_response=False)
+        self.assertFalse(Entry.objects.filter(active=True).exists())
+        self.assertEqual(Entry.objects.count(), 2)
 
     def test_denied_bill_composite_fund_balance_and_debt_projection_are_suppressed(self):
         bill = self.bill('fund')
@@ -659,8 +663,12 @@ class MemberAccessTests(TestCase):
         second = self.client.get('/app/sparing/', {'month': period, 'page': 2})
         self.assertEqual(second.context['page_obj'].number, 2)
         self.assertEqual(second.context['page_obj'].paginator.count, 13)
-        deleted = self.client.post(f'/slett/{own.pk}/?month={period}&return_to=sparing', {'version': own.version})
-        self.assertRedirects(deleted, f'/app/sparing/?month={period}', fetch_redirect_response=False)
+        data = {'version':own.version, 'key':str(uuid.uuid4()), 'operation':'reverse', 'reason':'Feilregistrering'}
+        url = f'/slett/{own.pk}/?month={period}&return_to=sparing'
+        preview = self.client.post(url, data)
+        data['confirmation'] = preview.context['confirmation']
+        deleted = self.client.post(url, data)
+        self.assertRedirects(deleted, f'/historikk/entry/{own.pk}/', fetch_redirect_response=False)
 
     def test_existing_full_budget_module_layout_has_no_added_history_section(self):
         for page in ('sparing', 'gjeld', 'arsutgifter', 'regninger'):
