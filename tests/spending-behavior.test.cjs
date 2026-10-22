@@ -146,3 +146,27 @@ test('annual graph supplies a visible monetary scale and exact titles for every 
   assert.ok(titles.some(title=>title.textContent.includes('september')&&title.textContent.includes(money(12345))));
   assert.ok(titles.some(title=>title.textContent.includes('Mangler grunnlag')));
 });
+
+test('tab keyboard navigation visits only visible permitted tabs with real focus',async()=>{
+  for(const flags of [{can_plan:false,can_annual:true},{can_plan:true,can_annual:false},{can_plan:false,can_annual:false}]){
+    const app=await harness({initial_tab:'spending',...flags});
+    const spending=app.$('#sp-tab-spending'),annual=app.$('#sp-tab-annual'),planning=app.$('#sp-tab-planning');
+    const visible=[spending,...(flags.can_annual?[annual]:[]),...(flags.can_plan?[planning]:[])];
+    assert.equal(annual.hidden,!flags.can_annual);assert.equal(planning.hidden,!flags.can_plan);
+    spending.focus();assert.equal(app.document.activeElement,spending);
+    for(const [key,index] of [['End',visible.length-1],['Home',0],['ArrowLeft',visible.length-1],['ArrowRight',0],['ArrowRight',1%visible.length]]){
+      const event=await app.keydown(key);
+      assert.equal(event.defaultPrevented,true);
+      assert.equal(app.document.activeElement,visible[index],key);
+      assert.equal(visible[index].getAttribute('aria-selected'),'true');
+      assert.equal(visible[index].tabIndex,0);
+      assert.equal(visible[index].hidden,false);
+    }
+    assert.equal(app.requests.some(r=>r.path==='/planning'),flags.can_plan);
+    const selected=app.document.activeElement;
+    const ignored=await app.keydown('Escape');assert.equal(ignored.defaultPrevented,undefined);
+    assert.equal(app.document.activeElement,selected);
+    if(!flags.can_annual)assert.equal(annual.getAttribute('aria-selected'),'false');
+    if(!flags.can_plan)assert.equal(planning.getAttribute('aria-selected'),'false');
+  }
+});

@@ -17,4 +17,5 @@ class CalendarForm(forms.Form):
     note=forms.CharField(label='Notat (valgfritt)',max_length=4000,required=False,widget=forms.Textarea(attrs={'rows':3}))
     def __init__(self,household,*args,**kwargs):
         super().__init__(*args,**kwargs)
-        self.fields['participants'].choices=[(str(m.pk),m.user.get_full_name() or m.user.email) for m in Membership.objects.filter(household=household).select_related('user')]
+        from .access import calendar_members
+        self.fields['participants'].choices=[(str(m.pk),m.user.get_full_name() or m.user.email) for m in calendar_members(household)]

@@ -1,0 +1,10 @@
+{% extends 'budget/base.html' %}{% block content %}
+<section class="work-surface form-surface"><a href="{{ back }}">Tilbake til familien</a><h1>Modultilgang</h1>
+<p>{{ target.user.get_full_name|default:target.user.email }}</p>
+<p>Velg hvilke moduler medlemmet kan bruke. Skjulte moduler skjuler også opplysninger og summer. Konto, passord, utlogging og startside er alltid tilgjengelige.</p>
+<p>Årsoversikt krever også Budsjett og poster. Gjeldsregninger krever både Regninger og Gjeld og strategi; fondsregninger krever både Regninger og Årsfond. Registrering, refusjon, endring og sletting av fondsbetalinger krever også begge modulene fordi saldoen inkluderer regninger.</p>
+<form method="post" data-dirty-warning>{% csrf_token %}{{ form.version }}{{ form.non_field_errors }}{{ form.version.errors }}
+<fieldset class="access-options"><legend>Tillatte moduler</legend>{{ form.modules.errors }}{% for checkbox in form.modules %}<div>{{ checkbox }}</div>{% endfor %}</fieldset>
+<p>Valgene gjelder med en gang, også i åpne økter. Eksisterende poster og avtaler bevares.</p>
+<div class="actions"><button class="primary">Lagre modultilgang</button><a class="button secondary" href="{{ back }}">Avbryt</a></div></form></section>
+{% endblock %}

@@ -2,8 +2,25 @@ from decimal import Decimal
 from django import template
 from django.utils.safestring import mark_safe
 register = template.Library()
+@register.filter
+def allows_module(member, module):
+    from budget.access import allows
+    return allows(member, module)
+@register.filter
+def visible_navigation(nav, member):
+    from budget.access import can_page
+    return [(key, label) for key, label in nav if can_page(member, key)]
+@register.filter
+def allows_page(member, page):
+    from budget.access import can_page
+    return can_page(member, page)
+@register.filter
+def can_matrix(member):
+    from budget.access import complete_finance, can_page
+    return can_page(member, 'arsoversikt') and complete_finance(member)
 @register.simple_tag
 def unread_notifications(member):
+    if not allows_module(member, 'calendar'): return 0
     from budget.models import CalendarNotification
     return CalendarNotification.objects.filter(recipient_id=member.user_id, household_id=member.household_id, read_at__isnull=True).count()
 @register.simple_tag
@@ -13,7 +30,8 @@ def overdue_bills(member, month):
     from datetime import date
     try: period = date.fromisoformat(str(month) + '-01')
     except ValueError: period = timezone.localdate().replace(day=1)
-    return services.pending_bills(member.household, services.month_end(period)).filter(due_date__lt=timezone.localdate()).count()
+    from budget.access import safe_rows
+    return safe_rows(member, services.pending_bills(member.household, services.month_end(period))).filter(due_date__lt=timezone.localdate()).count()
 @register.simple_tag(takes_context=True)
 def can_access_private_import(context):
     from budget import importing
@@ -57,13 +75,19 @@ def module_navigation(context, member):
     modules = member.household.modules
     links = [('regninger', 'Regninger', None), ('gjeld', 'Gjeld & strategi', 'debt'), ('arsutgifter', 'Årsutgifter (Fond)', 'fund'), ('utland', 'Sendt utenlands', 'remittance'), ('arsoversikt', 'Årsoversikt (Matrise)', 'annual_navigation'), ('familie', 'Familie & innstillinger', None), ('tilpass', 'Tilpass appen', None), ('varsler', 'Varsler & Push', None), ('import', 'Mer / Kildeimport', None)]
     links = [link for link in links if link[0] != 'import' or can_access_private_import(context)]
-    return [(key, label) for key, label, module in links if module is None or (modules.get(module, True) if module == 'annual_navigation' else modules.get(module, False))]
+    from budget.access import visible_page, complete_finance
+    return [(key, 'Årsoversikt' if key == 'arsoversikt' and not complete_finance(member) else label)
+            for key, label, module in links if visible_page(member, key)]
 @register.filter
 def nok(value):
     if value is None: return '—'
     return f'{Decimal(value) / 100:,.2f}'.replace(',', '\u00a0').replace('.', ',') + ' kr'
 @register.filter
 def can_edit(row, member):
+    from budget.access import require_write_row
+    from django.core.exceptions import PermissionDenied
+    try: require_write_row(member, row)
+    except PermissionDenied: return False
     return member.role == 'admin' or row.created_by_id == member.user_id
 @register.filter
 def initials(value):

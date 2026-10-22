@@ -1,0 +1,7 @@
+{% extends 'budget/base.html' %}{% block content %}
+<section class="work-surface"><p class="eyebrow">{{ member.household.name }}</p><h1>Din startside</h1>
+<p>Her finner du funksjonene du har tilgang til. Administrator velger modultilgang for hvert familiemedlem.</p>
+<p>Full disponering og komplett planlegging krever tilgang til alle økonomimoduler. Skjulte opplysninger og summer er utelatt.</p>
+<div class="menu-grid">{% for key,label in available_pages %}<a href="{% url 'page' key %}?month={{ month|date:'Y-m' }}"><strong>{{ label }}</strong><span aria-hidden="true">›</span></a>{% empty %}<p>Ingen moduler er valgt ennå.</p>{% endfor %}
+<a href="{% url 'page' 'familie' %}"><strong>Konto og familie</strong><span aria-hidden="true">›</span></a></div></section>
+{% endblock %}
