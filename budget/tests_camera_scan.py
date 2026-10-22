@@ -1,4 +1,5 @@
 """Camera contract regression tests. Native OCR/runtime tests run separately."""
+from .financial_areas import area_scope
 from datetime import timedelta
 import os
 from pathlib import Path
@@ -296,8 +297,9 @@ class ConcurrentScanCancellationTests(document_tests.TransactionTestCase):
                     pid = cursor.fetchone()[0]
                 barrier.wait(timeout=10)
                 try:
-                    if operation == 'cancel': service.cancel(self.user, row.pk, row.version, uuid.uuid4())
-                    else: service.confirm(self.user, row.pk, row.version, uuid.uuid4(), 'expense')
+                    with area_scope(self.member, self.area.pk):
+                        if operation == 'cancel': service.cancel(self.user, row.pk, row.version, uuid.uuid4())
+                        else: service.confirm(self.user, row.pk, row.version, uuid.uuid4(), 'expense')
                     return pid, operation
                 except ValidationError:
                     return pid, 'conflict'

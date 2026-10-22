@@ -72,7 +72,7 @@ def shell_context(request, initial_tab='spending'):
         selected = timezone.localdate().replace(day=1)
     return {'member': member, 'nav': NAV, 'page': 'arsoversikt' if initial_tab == 'annual' else 'budsjett',
             'title': 'Året i bilder' if initial_tab == 'annual' else 'Forbruk og plan', 'month': selected,
-            'spending_boot': {'initial_tab': initial_tab, 'urls': service.URLS, 'month': service.month_key(selected), 'can_save': member.role == 'admin',
+            'spending_boot': {'initial_tab': initial_tab, 'urls': service.URLS, 'month': service.month_key(selected), 'can_save': getattr(request, 'financial_can_write', False),
                               'can_plan': access.complete_finance(member), 'can_annual': access.allows(member, 'annual'),
                               'restricted_selection': not access.complete_finance(member)}}
 

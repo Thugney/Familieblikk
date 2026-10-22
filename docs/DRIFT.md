@@ -103,3 +103,18 @@ Kontroller at den eksisterende `.env`, `POSTGRES_DB`, Compose-prosjektnavn, data
 
 
 Teststatus følger bare den aktuelle innloggede enhetens testjobb. «Venter» betyr kø, «sender» betyr at arbeideren sender, og «forsinket» betyr at et nytt forsøk er planlagt. «Pushtjenesten har tatt imot» betyr leverandøraksept, aldri kvittering for OS-visning. Automatisk kontroll er tidsavgrenset; **Kontroller teststatus** gjenopptar den uten å sende et nytt testvarsel. Ved ventende kø kontrolleres `push-worker` separat; å åpne appen er ikke en leveringsmekanisme. Etter utlogging/ny innlogging må enheten aktiveres igjen, også når nettleserens tillatelse fortsatt er gitt.
+
+
+## Separate budsjetter og eksisterende data
+
+Etter oppdateringen velges budsjett under **Dine budsjetter**. Valget følger lenker og skjemaer i den aktuelle fanen; to faner kan bruke forskjellige budsjetter. Administratorrollen gir ikke automatisk innsyn i økonomien. Personlige budsjetter administreres av eieren; navngitte lesere har bare innsyn. Et felles foreldrebudsjett kan ha en ekstra forelder med redigeringsrett.
+
+Eksisterende økonomiposter får ikke gjettet eier ved migrering. De bevares og venter på eksplisitt oppsett i appen: familieadministratoren foreslår eier og deling, deretter bekrefter eieren og en annen familieadministrator samme forslag. Har familien bare én konto, kan administrator først registrere en annen administrator med et eget, tomt budsjett. Dette gir ikke innsyn i de eksisterende postene. Senere endringer i delingen krever også to forskjellige personer. Kalender og handlelister er fortsatt felles, mens bokførte handleturer og kvitteringsfelt følger valgt budsjettilgang.
+
+Oppdateringen skal kjøres i den eksisterende NAS-mappen med samme private miljøfil og Compose-prosjekt. Ikke gjenta import eller kopier en eldre PC-database over NAS-databasen.
+
+## Synology uten CPU CFS-kvoter
+
+Standard Compose bruker ikke `cpus` på skannearbeideren: enkelte Synology-kjerner avviser dette med `NanoCPUs can not be set`. Arbeideren beholder minne-/prosessgrenser, og OCR har egne tids- og CPU-grenser. Dette fjerner en inkompatibel containerinnstilling, ikke en appfunksjon.
+
+En avbrutt oppdatering kan la den eldre appen fortsette å kjøre. Kontroller `docker compose ps -a`: migrering skal være avsluttet med kode 0, og app, pusharbeider og dokumentarbeider skal kjøre. Skanning og handlelister finnes under **Mer**. Kontroller containerstatus før du feilsøker manglende menyer som et nettleserproblem.

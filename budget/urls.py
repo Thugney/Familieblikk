@@ -1,6 +1,9 @@
 from django.urls import path
-from . import views, calendar_views, spending_views, push_views, correction_views, document_views, shopping_views
+from . import views, calendar_views, spending_views, push_views, correction_views, document_views, shopping_views, area_views
 urlpatterns = [
+    path('budsjetter/', area_views.index, name='financial_areas'),
+    path('budsjetter/forslag/<uuid:proposal_id>/', area_views.proposal, name='financial_proposal'),
+    path('budsjetter/deling/<uuid:area_id>/', area_views.sharing, name='financial_sharing'),
     path('app/dokumenter/', document_views.documents, name='documents'),
     path('dokument/<uuid:document_id>/', document_views.detail, name='document_detail'),
     path('dokument/<uuid:document_id>/original/', document_views.original, name='document_original'),
@@ -43,3 +46,7 @@ urlpatterns = [
     path('import/bekreft/', views.import_view, name='apply_import'), path('import/avklar/<uuid:row_id>/', views.resolve_import, name='resolve_import'),
     path('manifest.webmanifest', views.manifest_view), path('sw.js', views.worker_view), path('offline/', views.offline_view), path('info/<str:topic>/', views.help_view, name='info'),
 ]
+
+from .area_requests import area_boundary
+for pattern in urlpatterns:
+    pattern.callback = area_boundary(pattern.callback, pattern.name)

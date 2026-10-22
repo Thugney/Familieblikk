@@ -1,10 +1,12 @@
 """Private originals, review drafts and durable local OCR work."""
 import uuid
 from django.db import models
+from django.db.models import Q
 from .models import FamilyRow
+from .financial_models import FinancialRecord
 
 
-class Document(FamilyRow):
+class Document(FinancialRecord, FamilyRow):
     # Legacy originals are never swept. New scans use a separate transient root.
     transient = models.BooleanField(default=False)
     expires_at = models.DateTimeField(null=True, blank=True)
@@ -30,7 +32,9 @@ class Document(FamilyRow):
     ocr_text = models.TextField(blank=True)
     suggestions = models.JSONField(default=dict, blank=True)
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['household', 'upload_key'], name='document_upload_key')]
+        base_manager_name = 'objects'
+        default_manager_name = 'objects'
+        constraints = [models.UniqueConstraint(fields=['financial_area', 'created_by', 'upload_key'], name='document_upload_key'), models.UniqueConstraint(fields=['household', 'upload_key'], condition=Q(financial_area__isnull=True), name='document_upload_key_legacy')]
 
 
 class DocumentJob(models.Model):
@@ -42,10 +46,12 @@ class DocumentJob(models.Model):
     error = models.CharField(max_length=240, blank=True)
 
 
-class WorkflowCommand(FamilyRow):
+class WorkflowCommand(FinancialRecord, FamilyRow):
     key = models.UUIDField()
     operation = models.CharField(max_length=30)
     payload = models.JSONField()
     result_id = models.UUIDField()
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['household', 'key'], name='workflow_command_key')]
+        base_manager_name = 'objects'
+        default_manager_name = 'objects'
+        constraints = [models.UniqueConstraint(fields=['financial_area', 'created_by', 'key'], name='workflow_command_key'), models.UniqueConstraint(fields=['household', 'key'], condition=Q(financial_area__isnull=True), name='workflow_command_key_legacy')]

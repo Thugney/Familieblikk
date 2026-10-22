@@ -1,3 +1,5 @@
+from budget.area_requests import financial_url
+from budget.tests.financial_support import enter_fixture_area
 import uuid
 from unittest.mock import patch
 from datetime import date, timedelta
@@ -10,14 +12,18 @@ from django.db import IntegrityError, close_old_connections, connection, transac
 from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 from budget import identity, importing, services
+from budget.financial_areas import create_area, area_scope
+from budget.financial_models import FinancialAreaGrant
 from budget.models import Asset, BillOccurrence, BillTemplate, Category, Entry, Household, ImportBatch, ImportRecord, LoginCode, Membership, MonthPlan
 
 
 def setup_family(email='owner@example.test'):
     user = get_user_model().objects.create_user(username=email, email=email)
     house = Household.objects.create(name='Testfamilie')
-    Membership.objects.create(user=user, household=house, role='admin', verified_at=timezone.now())
-    category = Category.objects.create(household=house, created_by=user, name='Mat')
+    membership = Membership.objects.create(user=user, household=house, role='admin', verified_at=timezone.now())
+    user.test_area = create_area(membership, 'Testbudsjett', kind='shared')
+    with area_scope(membership, user.test_area.pk):
+        category = Category.objects.create(household=house, created_by=user, name='Mat')
     return user, house, category
 
 
@@ -26,10 +32,12 @@ class DomainTests(TestCase):
     def setUp(self):
         self.user, self.house, self.category = setup_family()
         self.other, self.foreign, self.foreign_category = setup_family('foreign@example.test')
+        enter_fixture_area(self, self.user)
         self.today = timezone.localdate()
         self.month = services.month_start(self.today)
         self.member = get_user_model().objects.create_user(username='member@example.test', email='member@example.test')
-        Membership.objects.create(user=self.member, household=self.house, role='member', verified_at=timezone.now())
+        member = Membership.objects.create(user=self.member, household=self.house, role='member', verified_at=timezone.now())
+        FinancialAreaGrant.objects.create(area=self.area, member=member, role='reader')
 
     def entry(self, kind, amount, **kwargs):
         return services.save_entry(self.user, Entry(kind=kind, amount_ore=amount, description='Kontrollpost', effective_date=self.today, category=self.category, **kwargs))
@@ -53,9 +61,10 @@ class DomainTests(TestCase):
         row.description = 'Endret'
         services.save_entry(self.user, row, 1)
         with self.assertRaises(services.Conflict): services.save_entry(self.user, row, 1)
-        foreign_asset = Asset.objects.create(household=self.foreign, created_by=self.other, kind='savings', name='Fremmed mål', opening_date=self.month)
+        with area_scope(Membership.objects.get(user=self.other), self.other.test_area.pk):
+            foreign_asset = Asset.objects.create(household=self.foreign, created_by=self.other, kind='savings', name='Fremmed mål', opening_date=self.month)
         with self.assertRaises(ValidationError): self.entry('expense', 10, asset=foreign_asset)
-        with self.assertRaises(IntegrityError), transaction.atomic():
+        with self.assertRaises((IntegrityError, ValidationError)), transaction.atomic():
             Entry.objects.create(household=self.house, created_by=self.user, kind='expense', amount_ore=10, effective_date=self.today, description='Ulovlig', category=self.foreign_category)
 
     def test_received_income_and_net_savings_per_goal(self):
@@ -82,13 +91,18 @@ class DomainTests(TestCase):
         services.prepare_month(self.house, self.month)
         bill = BillOccurrence.objects.get(template=template)
         key = uuid.uuid4()
-        payment = services.pay_bill(self.member, bill.pk, self.today, key, bill.version)
-        self.assertEqual(services.pay_bill(self.member, bill.pk, self.today, key, bill.version).pk, payment.pk)
+        FinancialAreaGrant.objects.filter(area=self.area, member__user=self.member).update(role='editor')
+        with area_scope(Membership.objects.get(user=self.member), self.area.pk):
+            payment = services.pay_bill(self.member, bill.pk, self.today, key, bill.version)
+        FinancialAreaGrant.objects.filter(area=self.area, member__user=self.member).update(role='editor')
+        with area_scope(Membership.objects.get(user=self.member), self.area.pk):
+            self.assertEqual(services.pay_bill(self.member, bill.pk, self.today, key, bill.version).pk, payment.pk)
         self.assertEqual(Entry.objects.filter(occurrence=bill).count(), 1)
         self.assertEqual(services.calculate(self.house, old)['bills'], 10000)
         self.assertEqual(services.calculate(self.house, self.month)['bills'], 0)
         self.assertEqual(services.calculate(self.house, self.month)['ordinary'], 10000)
-        services.delete_entry(self.member, payment.pk, payment.version)
+        with area_scope(Membership.objects.get(user=self.member), self.area.pk):
+            services.delete_entry(self.member, payment.pk, payment.version)
         self.assertEqual(services.calculate(self.house, self.month)['bills'], 10000)
 
     def test_month_reset_goal_carry_and_historical_limits(self):
@@ -153,7 +167,7 @@ class DomainTests(TestCase):
         self.assertContains(self.client.post('/kode/', {'email': 'new@example.test', 'code': code}), 'Koden er feil')
 
     def test_invitation_verified_email_and_single_household(self):
-        identity.invite(self.user, 'invitee@example.test', 'https://example.test')
+        identity.invite(self.user, 'invitee@example.test', 'https://example.test', financial_sharing='private')
         token = mail.outbox[-1].body.split('/invitasjon/')[1].split('/')[0]
         user = get_user_model().objects.create_user(username='invitee@example.test', email='invitee@example.test')
         with self.assertRaises(ValidationError): identity.accept_invite(user, token, 'wrong@example.test')
@@ -240,8 +254,12 @@ class DomainTests(TestCase):
         self.assertEqual(self.client.get('/ny/category/').status_code, 403)
         self.assertEqual(self.client.post('/preferanser/', {'version': 1, 'confirm': 'on'}).status_code, 403)
         self.assertEqual(Client(enforce_csrf_checks=True).post('/innlogging/', {'email': 'csrf@example.test'}).status_code, 403)
-        row = services.save_entry(self.member, Entry(kind='income', amount_ore=10000, effective_date=self.today, description='Medlem'))
-        services.save_entry(self.member, row, 1)
+        FinancialAreaGrant.objects.filter(area=self.area, member__user=self.member).update(role='editor')
+        with area_scope(Membership.objects.get(user=self.member), self.area.pk):
+            row = services.save_entry(self.member, Entry(kind='income', amount_ore=10000, effective_date=self.today, description='Medlem'))
+        FinancialAreaGrant.objects.filter(area=self.area, member__user=self.member).update(role='editor')
+        with area_scope(Membership.objects.get(user=self.member), self.area.pk):
+            services.save_entry(self.member, row, 1)
         response = self.client.post(f'/endre/entry/{row.pk}/', {'version': 1, 'command_key': str(uuid.uuid4()), 'kind': 'income', 'amount': '100', 'description': 'Konfliktfelt bevart', 'effective_date': self.today.isoformat(), 'received': 'on', 'idempotency_key': str(row.idempotency_key), 'fee_ore': 0})
         self.assertEqual(response.status_code, 409)
         self.assertContains(response, 'Konfliktfelt bevart', status_code=409)
@@ -261,7 +279,9 @@ class DomainTests(TestCase):
         services.prepare_month(self.house, self.month)
         occurrence = BillOccurrence.objects.get(template=bill)
         before = services.calculate(self.house, self.month)
-        services.pay_bill(self.member, occurrence.pk, self.today, uuid.uuid4())
+        FinancialAreaGrant.objects.filter(area=self.area, member__user=self.member).update(role='editor')
+        with area_scope(Membership.objects.get(user=self.member), self.area.pk):
+            services.pay_bill(self.member, occurrence.pk, self.today, uuid.uuid4())
         after = services.calculate(self.house, self.month)
         self.assertEqual(after['debt'], before['debt'])
         self.assertEqual(after['ordinary'], 0)
@@ -274,7 +294,7 @@ class DomainTests(TestCase):
         from budget.forms import AssetForm, PlanForm
         form = PlanForm({'month': self.month.isoformat(), 'category': self.category.pk, 'amount': '0'}, household=self.house)
         self.assertTrue(form.is_valid(), form.errors)
-        form = AssetForm({'kind': 'savings', 'name': 'Åpning', 'opening': '0', 'opening_date': self.month.isoformat(), 'plan': '100'})
+        form = AssetForm({'kind': 'savings', 'name': 'Åpning', 'opening': '0', 'opening_date': self.month.isoformat(), 'plan': '100'}, instance=Asset(household=self.house, created_by=self.user))
         self.assertFalse(form.is_valid())
 
     def test_annual_ore_distribution_and_future_projection(self):
@@ -362,6 +382,7 @@ class ConcurrentPaymentTests(TransactionTestCase):
     def test_two_clients_create_one_payment(self):
         self.assertEqual(connection.vendor, 'postgresql')
         user, house, category = setup_family()
+        enter_fixture_area(self, user)
         today = timezone.localdate()
         template = BillTemplate.objects.create(household=house, created_by=user, name='Samtidig', amount_ore=10000, first_due=today, monthly=False, category=category)
         services.prepare_month(house, today)
@@ -370,7 +391,8 @@ class ConcurrentPaymentTests(TransactionTestCase):
             close_old_connections()
             actor = get_user_model().objects.get(pk=user.pk)
             try:
-                result = services.pay_bill(actor, bill.pk, today, shared_key, 1)
+                with area_scope(Membership.objects.get(user=actor), user.test_area.pk):
+                    result = services.pay_bill(actor, bill.pk, today, shared_key, 1)
             except services.Conflict:
                 return None
             close_old_connections()

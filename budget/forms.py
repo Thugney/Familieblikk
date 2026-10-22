@@ -59,7 +59,23 @@ class PasswordLoginForm(EmailForm):
     password = forms.CharField(label='Passord', strip=False, widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'}))
 
 
-class RegisterAccountForm(EmailForm):
+class FinancialPrivacyForm(EmailForm):
+    financial_sharing = forms.ChoiceField(label='Tilgang til det nye budsjettet', choices=[('', 'Velg tilgang'), ('private', 'Privat – bare medlemmet'), ('named', 'Navngitte foreldre får lesetilgang')])
+    financial_reader_ids = forms.MultipleChoiceField(label='Foreldre med lesetilgang', required=False, widget=forms.CheckboxSelectMultiple)
+    def __init__(self, *args, member=None, new_household=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['financial_reader_ids'].choices = [(str(m.pk), m.user.get_full_name() or m.user.email) for m in member.household.membership_set.select_related('user').filter(user__is_active=True)] if member and not new_household else []
+        if new_household:
+            self.fields['financial_sharing'].choices = [('private', 'Privat – bare den nye familieadministratoren')]
+    def clean(self):
+        data = super().clean()
+        sharing, readers = data.get('financial_sharing'), data.get('financial_reader_ids', [])
+        if sharing == 'private' and readers or sharing == 'named' and not readers:
+            raise ValidationError('Velg ingen lesere for privat budsjett, eller minst én for navngitt innsyn.')
+        return data
+
+
+class RegisterAccountForm(FinancialPrivacyForm):
     role = forms.ChoiceField(label='Rolle i familien', choices=[('member', 'Medlem'), ('admin', 'Administrator')])
     password1 = forms.CharField(label='Startpassord (minst 12 tegn)', strip=False, widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}))
     password2 = forms.CharField(label='Bekreft startpassord', strip=False, widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}))
@@ -103,7 +119,7 @@ class RowForm(forms.ModelForm):
             self.initial['version'] = self.instance.version
             if hasattr(self.instance, 'amount_ore'): self.initial['amount'] = Decimal(self.instance.amount_ore) / 100
         for name, field in self.fields.items():
-            if isinstance(field, forms.ModelChoiceField): field.queryset = field.queryset.filter(household=household)
+            if isinstance(field, forms.ModelChoiceField): field.queryset = field.queryset.model.objects.filter(household=household)
             if isinstance(field, forms.DateField): field.widget = forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d')
     def clean(self):
         result = super().clean()

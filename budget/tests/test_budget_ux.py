@@ -1,3 +1,4 @@
+from budget.tests.financial_support import enter_fixture_area
 from datetime import date
 from django.test import TestCase
 from budget.models import Category, Entry, MonthPlan
@@ -8,6 +9,7 @@ class BudgetUsabilityTests(TestCase):
     def setUp(self):
         self.user, self.house, self.category = setup_family('ux-owner@example.test')
         self.other, self.foreign, self.foreign_category = setup_family('ux-foreign@example.test')
+        enter_fixture_area(self, self.user)
         self.month = date(2026, 9, 1)
         self.client.force_login(self.user)
 
@@ -93,7 +95,10 @@ class BudgetUsabilityTests(TestCase):
 
     def test_foreign_filters_invalid_ranges_and_other_month_never_leak(self):
         self.entry()
-        Entry.objects.create(household=self.foreign, created_by=self.other, kind='expense', category=self.foreign_category, amount_ore=500, description='Privat fremmed post', effective_date=self.month)
+        from budget.financial_areas import area_scope
+        from budget.models import Membership
+        with area_scope(Membership.objects.get(user=self.other), self.other.test_area.pk):
+            Entry.objects.create(household=self.foreign, created_by=self.other, kind='expense', category=self.foreign_category, amount_ore=500, description='Privat fremmed post', effective_date=self.month)
         october = self.entry(description='Oktober')
         Entry.objects.filter(pk=october.pk).update(effective_date=date(2026, 10, 1))
         for query in [dict(category=str(self.foreign_category.pk)), dict(creator=str(self.other.pk)), dict(date_from='2026-09-20', date_to='2026-09-01'), dict(kind='unknown')]:
@@ -176,11 +181,11 @@ class BudgetUsabilityTests(TestCase):
     def test_empty_month_and_filtered_empty_have_different_actions(self):
         response = self.get('poster')
         self.assertContains(response, 'Ingen poster denne måneden.')
-        self.assertContains(response, 'href="/ny/entry/?month=2026-09"')
+        self.assertContains(response, f'href="/ny/entry/?month=2026-09&amp;area={self.area.pk}"')
         self.entry()
         response = self.get('poster', q='finnes ikke')
         self.assertContains(response, 'Ingen poster matcher valget denne måneden.')
-        self.assertContains(response, 'href="/app/poster/?month=2026-09">Nullstill filtrene')
+        self.assertContains(response, f'href="/app/poster/?month=2026-09&amp;area={self.area.pk}">Nullstill filtrene')
         self.assertNotContains(response, 'Ingen poster denne måneden.')
 
     def test_utland_form_only_offers_relevant_types_without_income_status(self):

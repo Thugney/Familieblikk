@@ -8,10 +8,12 @@ import re
 import subprocess
 import uuid
 from django.db import connection, transaction
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, PermissionDenied
 from django.db.models import Q
 from django.utils import timezone
-from .models import DocumentJob, Document
+from .models import DocumentJob, Document, Membership
+from .financial_areas import area_scope, current_area
+from . import access
 from .document_storage import path_for
 from . import document_spool
 
@@ -188,14 +190,14 @@ def suggestions(text):
 def clean_photo(document_id):
     """Delete only after durable cleanup intent; retry after any interruption."""
     with transaction.atomic():
-        row = Document.objects.select_for_update().get(pk=document_id)
+        row = Document.all_objects.select_for_update().get(pk=document_id)
         if not row.transient or not row.cleanup_pending: return
         try:
             document_spool.discard(row.storage_key)
         except (OSError, ValueError, ValidationError):
             return
         row.cleanup_pending, row.photo_deleted_at = False, timezone.now()
-        row.save(update_fields=['cleanup_pending', 'photo_deleted_at'])
+        Document.all_objects.filter(pk=row.pk).update(cleanup_pending=row.cleanup_pending, photo_deleted_at=row.photo_deleted_at)
 
 
 def sweep():
@@ -203,7 +205,7 @@ def sweep():
     terminal = DocumentJob.objects.filter(status='running', lease_until__lt=now, attempts__gte=3).values_list('document_id', flat=True)
     for pk in list(terminal):
         with transaction.atomic():
-            row = Document.objects.select_for_update().get(pk=pk)
+            row = Document.all_objects.select_for_update().get(pk=pk)
             job = DocumentJob.objects.select_for_update().get(document=row)
             if job.status != 'running' or job.lease_until is None or job.lease_until >= now: continue
             job.status, job.lease_until, job.generation = 'failed', None, uuid.uuid4()
@@ -211,12 +213,12 @@ def sweep():
             job.save()
             if row.transient:
                 row.cleanup_pending = True
-                row.save(update_fields=['cleanup_pending'])
-    expired = Document.objects.filter(transient=True, photo_deleted_at__isnull=True,
+                Document.all_objects.filter(pk=row.pk).update(cleanup_pending=True)
+    expired = Document.all_objects.filter(transient=True, photo_deleted_at__isnull=True,
         expires_at__lte=now, cleanup_pending=False).values_list('pk', flat=True)
     for pk in list(expired):
         with transaction.atomic():
-            row = Document.objects.select_for_update().get(pk=pk)
+            row = Document.all_objects.select_for_update().get(pk=pk)
             if row.photo_deleted_at or row.cleanup_pending: continue
             job = DocumentJob.objects.select_for_update().get(document=row)
             job.generation, job.lease_until = uuid.uuid4(), None
@@ -224,10 +226,10 @@ def sweep():
                 job.status, job.error = 'failed', 'Skannetiden er utløpt. Ta et nytt bilde eller fyll inn manuelt.'
             job.save()
             row.cleanup_pending = True
-            row.save(update_fields=['cleanup_pending'])
-    for pk in list(Document.objects.filter(transient=True, cleanup_pending=True).values_list('pk', flat=True)):
+            Document.all_objects.filter(pk=row.pk).update(cleanup_pending=True)
+    for pk in list(Document.all_objects.filter(transient=True, cleanup_pending=True).values_list('pk', flat=True)):
         clean_photo(pk)
-    referenced = set(Document.objects.filter(transient=True, photo_deleted_at__isnull=True).values_list('storage_key', flat=True))
+    referenced = set(Document.all_objects.filter(transient=True, photo_deleted_at__isnull=True).values_list('storage_key', flat=True))
     document_spool.sweep_orphans(referenced)
 
 
@@ -241,36 +243,61 @@ def process_one():
         candidate = DocumentJob.objects.filter(attempts__lt=3).filter(
             Q(status='pending') | Q(status='running', lease_until__lt=timezone.now())).order_by('pk').first()
         if not candidate: return False
-        with transaction.atomic():
-            document = Document.objects.select_for_update().get(pk=candidate.document_id)
-            job = DocumentJob.objects.select_for_update().get(pk=candidate.pk)
-            if document.cancelled or job.status not in ('pending', 'running'): return False
-            if document.transient and (document.photo_deleted_at or document.cleanup_pending): return False
-            job.status, job.error, job.generation = 'running', '', uuid.uuid4()
-            job.attempts += 1
-            job.lease_until = timezone.now() + timedelta(minutes=8)
-            job.save()
-            generation = job.generation
+        raw = Document.all_objects.get(pk=candidate.document_id)
+        entered = False
         try:
-            text = recognize(document)
-            if not text.strip(): raise ValueError('Ingen lesbar tekst')
-            candidates, error = suggestions(text), ''
-        except (OSError, subprocess.SubprocessError, ValueError):
-            candidates, text = {}, ''
-            error = 'Teksten kunne ikke leses. Ta et nytt bilde i jevnt lys eller fyll inn manuelt.'
-        with transaction.atomic():
-            row = Document.objects.select_for_update().get(pk=document.pk)
-            current = DocumentJob.objects.select_for_update().get(pk=job.pk)
-            if current.generation != generation or current.status != 'running' or row.cancelled:
-                return True
-            if row.transient and row.expires_at <= timezone.now():
-                candidates, text, error = {}, '', 'Skannetiden er utløpt. Ta et nytt bilde eller fyll inn manuelt.'
-            row.suggestions, row.ocr_text = candidates, '' if row.transient else text
-            row.cleanup_pending = row.transient
-            row.save(update_fields=['suggestions', 'ocr_text', 'cleanup_pending'])
-            current.status, current.error, current.lease_until = ('failed' if error else 'ready'), error, None
-            current.save()
-        if document.transient: clean_photo(document.pk)
-        return True
+            member = Membership.objects.get(user_id=raw.created_by_id)
+            document_actor = member.user
+            scope = area_scope(member, raw.financial_area_id, write=True)
+            scope.__enter__()
+            entered = True
+            access.require(member, {'documents'})
+        except (PermissionDenied, Membership.DoesNotExist):
+            if entered: scope.__exit__(None, None, None)
+            DocumentJob.objects.filter(pk=candidate.pk).update(status='suspended', error='Tilgangen til budsjettet er endret.')
+            return False
+        try:
+            with transaction.atomic():
+                member = access.lock_member(document_actor)
+                current_area(member, write=True)
+                access.require(member, {'documents'})
+                document = Document.objects.select_for_update().get(pk=candidate.document_id)
+                job = DocumentJob.objects.select_for_update().get(pk=candidate.pk)
+                if document.cancelled or job.status not in ('pending', 'running'): return False
+                if document.transient and (document.photo_deleted_at or document.cleanup_pending): return False
+                job.status, job.error, job.generation = 'running', '', uuid.uuid4()
+                job.attempts += 1
+                job.lease_until = timezone.now() + timedelta(minutes=8)
+                job.save()
+                generation = job.generation
+            try:
+                text = recognize(document)
+                if not text.strip(): raise ValueError('Ingen lesbar tekst')
+                candidates, error = suggestions(text), ''
+            except (OSError, subprocess.SubprocessError, ValueError):
+                candidates, text = {}, ''
+                error = 'Teksten kunne ikke leses. Ta et nytt bilde i jevnt lys eller fyll inn manuelt.'
+            with transaction.atomic():
+                member = access.lock_member(document_actor)
+                current_area(member, write=True)
+                access.require(member, {'documents'})
+                row = Document.objects.select_for_update().get(pk=document.pk)
+                current = DocumentJob.objects.select_for_update().get(pk=job.pk)
+                if current.generation != generation or current.status != 'running' or row.cancelled:
+                    return True
+                if row.transient and row.expires_at <= timezone.now():
+                    candidates, text, error = {}, '', 'Skannetiden er utløpt. Ta et nytt bilde eller fyll inn manuelt.'
+                row.suggestions, row.ocr_text = candidates, '' if row.transient else text
+                row.cleanup_pending = row.transient
+                row.save(update_fields=['suggestions', 'ocr_text', 'cleanup_pending'])
+                current.status, current.error, current.lease_until = ('failed' if error else 'ready'), error, None
+                current.save()
+            if document.transient: clean_photo(document.pk)
+            return True
+        except PermissionDenied:
+            DocumentJob.objects.filter(pk=candidate.pk).update(status='suspended', error='Tilgangen til budsjettet er endret.')
+            return False
+        finally:
+            scope.__exit__(None, None, None)
     finally:
         with connection.cursor() as cursor: cursor.execute('SELECT pg_advisory_unlock(64712022)')

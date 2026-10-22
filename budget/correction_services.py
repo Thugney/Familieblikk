@@ -34,6 +34,9 @@ def authorize_snapshot(member, model, data):
     for field in model._meta.fields:
         if field.attname in data:
             values[field.attname] = (field.target_field if field.is_relation else field).to_python(data[field.attname])
+    from .financial_areas import current_area
+    if 'financial_area_id' not in values:
+        values['financial_area_id'] = current_area(member).pk
     probe = model(**values)
     access.lock_relations(member, probe)
     access.require_row(member, probe)
@@ -165,7 +168,7 @@ def entry_state(actor, row_id, operation, version, key, reason='', event_id=None
             if row.kind in ('deposit', 'withdrawal') and (str(row.asset_id) != str(event.before.get('asset_id')) or event.before.get('kind') not in ('deposit', 'withdrawal')):
                 services.validate_savings(row.asset, exclude_id=row.pk)
             for field in row._meta.fields:
-                if field.name in ('id', 'household', 'created_by', 'version', 'sequence', 'idempotency_key', 'created_at', 'updated_at'): continue
+                if field.name in ('id', 'household', 'financial_area', 'created_by', 'version', 'sequence', 'idempotency_key', 'created_at', 'updated_at'): continue
                 if field.attname in event.before:
                     value = (field.target_field if field.is_relation else field).to_python(event.before[field.attname])
                     setattr(row, field.attname, value)

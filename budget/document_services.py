@@ -10,6 +10,8 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from . import access, document_storage
 from .models import Document, DocumentJob, WorkflowCommand, Entry, BillTemplate, BillOccurrence, Category, Audit, Membership
+from .financial_areas import current_area
+from .models import ShoppingCommand
 from .services import Conflict, save_entry, save_row, materialize_template, month_start, membership
 
 
@@ -18,14 +20,18 @@ def canonical(value):
 
 
 def replay(member, key, operation, payload):
-    old = WorkflowCommand.objects.filter(household=member.household, key=key).first()
+    shared = operation in ('shopping_list', 'shopping_item')
+    if not shared: current_area(member, write=True)
+    model = ShoppingCommand if shared else WorkflowCommand
+    old = model.objects.filter(household=member.household, created_by=member.user, key=key).first()
     if old and (old.operation != operation or old.payload != canonical(payload)):
         raise Conflict('Bekreftelsesnøkkelen er allerede brukt med annet innhold.')
     return old
 
 
 def remember(member, actor, key, operation, payload, result):
-    WorkflowCommand.objects.create(household=member.household, created_by=actor, key=key,
+    model = ShoppingCommand if operation in ('shopping_list', 'shopping_item') else WorkflowCommand
+    model.objects.create(household=member.household, created_by=actor, key=key,
                                   operation=operation, payload=canonical(payload), result_id=result.pk)
 
 
@@ -46,21 +52,23 @@ def upload(actor, uploaded, key):
     except Membership.DoesNotExist:
         raise PermissionDenied('Bli med i en familie først.') from None
     access.require(initial, {'documents'})
+    current_area(initial, write=True)
     data = uploaded.read(document_storage.MAX_BYTES + 1)
     digest = hashlib.sha256(data).hexdigest()
     # Replay is authorized under a short fresh lock before any decoder or disk write.
     with transaction.atomic():
         member = access.lock_member(actor)
         access.require(member, {'documents'})
+        current_area(member, write=True)
         if member.household_id != initial.household_id:
             raise PermissionDenied('Medlemskapet er endret. Last inn på nytt.')
-        old = Document.objects.filter(household=member.household, upload_key=key).first()
+        old = Document.objects.filter(household=member.household, created_by=actor, upload_key=key).first()
         if old:
             access.require_row(member, old)
             if old.sha256 != digest:
                 raise Conflict('Opplastingsnøkkelen er brukt med en annen fil.')
             return old
-        if DocumentJob.objects.filter(document__household=member.household, status__in=['pending', 'running']).count() >= 100:
+        if DocumentJob.objects.filter(document__household=member.household, document__financial_area=current_area(member), status__in=['pending', 'running']).count() >= 100:
             raise ValidationError('Familien har 100 dokumenter i kø. Vent til lokal OCR har behandlet noen før du laster opp flere.')
     # Parse/decode and immutable disk writes run without the household lock.
     mime = document_storage.inspect_content(data, image_only=True)
@@ -70,15 +78,16 @@ def upload(actor, uploaded, key):
         with transaction.atomic():
             member = access.lock_member(actor)
             access.require(member, {'documents'})
+            current_area(member, write=True)
             if member.household_id != initial.household_id:
                 raise PermissionDenied('Medlemskapet er endret. Last inn på nytt.')
-            old = Document.objects.filter(household=member.household, upload_key=key).first()
+            old = Document.objects.filter(household=member.household, created_by=actor, upload_key=key).first()
             if old:
                 access.require_row(member, old)
                 if old.sha256 != digest:
                     raise Conflict('Opplastingsnøkkelen er brukt med en annen fil.')
                 return old
-            if DocumentJob.objects.filter(document__household=member.household, status__in=['pending', 'running']).count() >= 100:
+            if DocumentJob.objects.filter(document__household=member.household, document__financial_area=current_area(member), status__in=['pending', 'running']).count() >= 100:
                 raise ValidationError('Familien har 100 dokumenter i kø. Vent til lokal OCR har behandlet noen før du laster opp flere.')
             # From this point a commit/connection error can leave reference state
             # uncertain. Preserve the original even if the request then fails.
@@ -230,7 +239,8 @@ def cancel(actor, document_id, expected_version, key):
 def manual(actor, key):
     member = access.lock_member(actor)
     access.require(member, {'documents'})
-    old = Document.objects.filter(household=member.household, upload_key=key).first()
+    current_area(member, write=True)
+    old = Document.objects.filter(household=member.household, created_by=actor, upload_key=key).first()
     if old:
         access.require_row(member, old)
         return old

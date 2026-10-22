@@ -63,14 +63,6 @@ def password_view(request):
     if request.method == 'POST' and form.is_valid():
         try:
             identity.password_login(request, form.cleaned_data['email'], form.cleaned_data['password'], request.META.get('REMOTE_ADDR', ''))
-            member = services.membership(request.user)
-            batch = ImportBatch.objects.filter(household=member.household).order_by('-created_at').first()
-            period = batch.reconciliation.get('source_selected_month') if batch else None
-            if period:
-                try:
-                    date.fromisoformat(period + '-01')
-                    return redirect(reverse('page', args=['oversikt']) + '?month=' + period)
-                except (ValueError, TypeError): pass
             return redirect('family_gate')
         except ValidationError as exc: form.add_error(None, exc)
     return render(request, 'budget/auth.html', {'form': form, 'title': 'Logg inn med passord', 'button': 'Logg inn', 'password_login': True, 'email_code_available': settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend' and bool(settings.EMAIL_HOST)})
@@ -91,13 +83,13 @@ def password_change_view(request):
 
 @login_required
 def register_account_view(request, new_household=False):
-    member = services.authorize(request.user, admin=True)
+    member = household_admin(request)
     if new_household and not member.can_register_households: raise PermissionDenied
-    form = (forms.RegisterHouseholdForm if new_household else forms.RegisterAccountForm)(request.POST or None)
+    form = (forms.RegisterHouseholdForm if new_household else forms.RegisterAccountForm)(request.POST or None, member=member, new_household=new_household)
     if new_household: form.fields.pop('role')
     if request.method == 'POST' and form.is_valid():
         try:
-            identity.register_family_account(request.user, form.cleaned_data['email'], form.cleaned_data['password1'], family_name=form.cleaned_data['family_name'] if new_household else None, role=form.cleaned_data.get('role', 'admin'))
+            identity.register_family_account(request.user, form.cleaned_data['email'], form.cleaned_data['password1'], family_name=form.cleaned_data['family_name'] if new_household else None, role=form.cleaned_data.get('role', 'admin'), financial_sharing=form.cleaned_data['financial_sharing'], financial_reader_ids=form.cleaned_data['financial_reader_ids'])
             messages.success(request, 'Ny privat familie med egen administrator er opprettet. Du har ikke tilgang til familiens budsjett.' if new_household else 'Familiemedlemmet er registrert. Del startpassordet privat; ingen e-post er sendt.')
             return redirect('page', page='familie')
         except ValidationError as exc: form.add_error(None, exc)
@@ -106,7 +98,7 @@ def register_account_view(request, new_household=False):
 
 @login_required
 def family_gate(request):
-    if Membership.objects.filter(user=request.user).exists(): return redirect('page', page='oversikt')
+    if Membership.objects.filter(user=request.user).exists(): return redirect('financial_areas')
     form = forms.FamilyForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         try:
@@ -164,6 +156,17 @@ def page_view(request, page='oversikt'):
     member = get_member(request)
     if not member: return redirect('family_gate')
     access.require_page(member, page, matrix=page == 'arsoversikt' and request.GET.get('view') == 'matrix')
+    if page in ('familie', 'tilpass', 'varsler', 'mer'):
+        ctx = {'member': member, 'household': member.household, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': selected_month(request)}
+        if page == 'familie':
+            ctx.update(members=Membership.objects.filter(household=member.household).select_related('user'), invitations=Invitation.objects.filter(household=member.household, accepted=False, revoked=False), invite_form=forms.FinancialPrivacyForm(member=member), email_invitations_enabled=settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend' and bool(settings.EMAIL_HOST))
+        if page == 'varsler':
+            from .models import CalendarNotification
+            ctx['calendar_notifications'] = CalendarNotification.objects.filter(household=member.household, recipient=request.user).order_by('-created_at')[:100]
+        if page == 'tilpass':
+            ctx['preference_form'] = forms.PreferenceForm(initial={**request.financial_area.modules, 'version': request.financial_area.access_version})
+        return render(request, 'budget/page.html', ctx)
+
     if page == 'oversikt' and not access.complete_finance(member):
         return render(request, 'budget/restricted_home.html', {
             'member': member, 'household': member.household, 'nav': NAV, 'page': page,
@@ -178,7 +181,7 @@ def page_view(request, page='oversikt'):
     if not member: return redirect('family_gate')
     month = selected_month(request)
     # The explicit annual matrix is a read-only report, including future months.
-    if page != 'arsoversikt': services.prepare_month(member.household, month)
+    if page != 'arsoversikt' and getattr(request, 'financial_can_write', False): services.prepare_month(member.household, month)
     house = member.household
     full_finance = access.complete_finance(member)
     totals = services.calculate(house, month) if full_finance else {}
@@ -285,7 +288,7 @@ def page_view(request, page='oversikt'):
     ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
     if page == 'oversikt':
         ctx['spending_embedded'] = True
-        ctx['spending_boot'] = {'initial_tab': 'spending', 'month': month.strftime('%Y-%m'), 'can_save': member.role == 'admin', 'urls': {'spending': reverse('spending_data'), 'planning': reverse('planning_data'), 'preview': reverse('planning_preview'), 'save': reverse('planning_save')}}
+        ctx['spending_boot'] = {'initial_tab': 'spending', 'month': month.strftime('%Y-%m'), 'can_save': getattr(request, 'financial_can_write', False), 'urls': {'spending': reverse('spending_data'), 'planning': reverse('planning_data'), 'preview': reverse('planning_preview'), 'save': reverse('planning_save')}}
     if page == 'familie':
         ctx.update(members=Membership.objects.filter(household=house).select_related('user'), invitations=Invitation.objects.filter(household=house, accepted=False, revoked=False), invite_form=forms.EmailForm(), email_invitations_enabled=settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend' and bool(settings.EMAIL_HOST))
     if page == 'varsler':
@@ -578,7 +581,7 @@ def pay_view(request, row_id):
 
 @login_required
 def member_access_view(request, member_id):
-    actor = services.authorize(request.user, admin=True)
+    actor = household_admin(request)
     target = get_object_or_404(Membership.objects.select_related('user'), pk=member_id, household=actor.household)
     if target.role == 'admin': raise PermissionDenied('Administratorer har alltid full tilgang.')
     form = forms.MemberAccessForm(request.POST if request.method == 'POST' else None, member=target)
@@ -608,18 +611,22 @@ def member_access_view(request, member_id):
 @login_required
 @require_POST
 def preferences_view(request):
-    member = services.authorize(request.user, admin=True)
+    from .financial_areas import current_area
+    from .financial_models import FinancialArea
+    member = get_member(request)
+    area = current_area(member, write=True)
     form = forms.PreferenceForm(request.POST)
     if form.is_valid():
         with transaction.atomic():
-            house = type(member.household).objects.select_for_update().get(pk=member.household_id)
-            if house.version != form.cleaned_data['version']: return HttpResponse('Samtidig endring. Last inn på nytt.', status=409)
-            house.modules = {k: v for k, v in form.cleaned_data.items() if k not in ('version', 'confirm')}
-            house.version += 1
-            house.save()
-        messages.success(request, 'Familiens visningsvalg er lagret. Forpliktelser og historikk er bevart.')
-        return redirect(module_url('tilpass', selected_month(request))) if 'month' in request.GET else redirect('page', page='tilpass')
-    return render(request, 'budget/form.html', {'form': form, 'title': 'Tilpass appen', 'member': member, 'nav': NAV}, status=400)
+            area = FinancialArea.objects.select_for_update().get(pk=area.pk)
+            if area.access_version != form.cleaned_data['version']:
+                return HttpResponse('Samtidig endring. Last inn på nytt.', status=409)
+            area.modules = {**area.modules, **{k: v for k, v in form.cleaned_data.items() if k not in ('version', 'confirm')}}
+            area.access_version += 1
+            area.save(update_fields=['modules', 'access_version'])
+        messages.success(request, 'Budsjettets visningsvalg er lagret. Forpliktelser og historikk er bevart.')
+        return redirect(module_url('tilpass', selected_month(request)))
+    return render(request, 'budget/form.html', {'form': form, 'title': 'Tilpass budsjettet', 'member': member, 'nav': NAV}, status=400)
 
 
 @login_required
@@ -639,11 +646,11 @@ def debt_plan_view(request):
 @login_required
 @require_POST
 def invite_view(request):
-    member = services.authorize(request.user, admin=True)
-    form = forms.EmailForm(request.POST)
+    member = household_admin(request)
+    form = forms.FinancialPrivacyForm(request.POST, member=member)
     if form.is_valid():
         try:
-            identity.invite(request.user, form.cleaned_data['email'], request.build_absolute_uri('/').rstrip('/'))
+            identity.invite(request.user, form.cleaned_data['email'], request.build_absolute_uri('/').rstrip('/'), financial_sharing=form.cleaned_data['financial_sharing'], financial_reader_ids=form.cleaned_data['financial_reader_ids'])
             messages.success(request, 'Invitasjonen er sendt og gjelder i 7 dager.')
         except Exception: messages.error(request, 'Invitasjonen kunne ikke sendes.')
     return redirect('page', page='familie')
@@ -652,7 +659,7 @@ def invite_view(request):
 @login_required
 @require_POST
 def revoke_view(request, row_id):
-    member = services.authorize(request.user, admin=True)
+    member = household_admin(request)
     row = get_object_or_404(Invitation, pk=row_id, household=member.household)
     row.revoked = True
     row.save(update_fields=['revoked'])
@@ -678,7 +685,7 @@ def import_view(request):
 
 @login_required
 def resolve_import(request, row_id):
-    member = services.authorize(request.user, admin=True)
+    member = household_admin(request)
     record = get_object_or_404(ImportRecord, pk=row_id, household=member.household)
     package, binding = importing.load_private_source()
     importing.owner_membership(request.user, request.session.get('verified_email'), binding, auth_context=request.session)
@@ -750,7 +757,7 @@ def worker_view(request):
 def public_asset(request, name):
     from pathlib import Path
     from django.http import FileResponse
-    allowed = {'camera-scan.js': 'application/javascript', 'document-draft.js': 'application/javascript', 'shopping.js': 'application/javascript', 'ui-refresh.css': 'text/css', 'ui-refresh.js': 'application/javascript', 'figtree-latin.woff2': 'font/woff2', 'app.css': 'text/css', 'app.js': 'application/javascript', 'push.js': 'application/javascript', 'loader.css': 'text/css', 'loader.js': 'application/javascript', 'loader-logo.png': 'image/png', 'loader-icon.png': 'image/png', 'icon.svg': 'image/svg+xml', 'calendar.css': 'text/css', 'calendar.js': 'application/javascript', 'spending.css': 'text/css', 'spending.js': 'application/javascript'}
+    allowed = {'financial-area.js': 'application/javascript', 'camera-scan.js': 'application/javascript', 'document-draft.js': 'application/javascript', 'shopping.js': 'application/javascript', 'ui-refresh.css': 'text/css', 'ui-refresh.js': 'application/javascript', 'figtree-latin.woff2': 'font/woff2', 'app.css': 'text/css', 'app.js': 'application/javascript', 'push.js': 'application/javascript', 'loader.css': 'text/css', 'loader.js': 'application/javascript', 'loader-logo.png': 'image/png', 'loader-icon.png': 'image/png', 'icon.svg': 'image/svg+xml', 'calendar.css': 'text/css', 'calendar.js': 'application/javascript', 'spending.css': 'text/css', 'spending.js': 'application/javascript'}
     if name not in allowed: raise Http404
     response = FileResponse((Path(__file__).parent / 'static/budget' / name).open('rb'), content_type=allowed[name])
     response['Cache-Control'] = 'public, max-age=0, must-revalidate'
@@ -767,7 +774,7 @@ def help_view(request, topic):
 
 
 def forbidden_view(request, exception=None):
-    return render(request, 'budget/error.html', {'title': 'Begrenset tilgang', 'text': 'Du har ikke rettighet til denne handlingen. Bare oppretteren eller en administrator kan endre posten.'}, status=403)
+    return render(request, 'budget/error.html', {'title': 'Begrenset tilgang', 'text': 'Du har ikke tilgang til denne handlingen eller dette budsjettet. Budsjetteieren må gi deg riktig tilgang; administratorrollen gir ikke automatisk innsyn.'}, status=403)
 
 
 def not_found_view(request, exception=None):
@@ -776,3 +783,10 @@ def not_found_view(request, exception=None):
 
 def server_error_view(request):
     return render(request, 'budget/error.html', {'title': 'Kunne ikke hente opplysningene', 'text': 'Prøv igjen om litt. Ingen lagring er bekreftet.'}, status=500)
+
+
+def household_admin(request):
+    member = services.membership(request.user)
+    if member.role != 'admin' or not request.user.is_active:
+        raise PermissionDenied('Bare familieadministrator kan endre familieinnstillinger.')
+    return member

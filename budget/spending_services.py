@@ -17,6 +17,8 @@ from .services import Conflict, fund_balance, month_start, month_end, next_month
 from .spending_forms import exact_fields, history_values, month_value, ore_value, uuid_value
 from . import access
 
+from .financial_areas import current_area, can_write
+
 URLS = {'spending': '/app/forbruk/data/', 'planning': '/app/plan/data/',
         'preview': '/app/plan/preview/', 'save': '/app/plan/save/'}
 UNCATEGORIZED = {'id': 'uncategorized', 'name': 'Uten kategori', 'color': '#718096'}
@@ -38,6 +40,9 @@ def digest(value):
 
 
 def ordinary_rows(household, start, end):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     return Entry.objects.filter(active=True, household=household, effective_date__range=(start, end)).filter(
         Q(kind__in=['expense', 'remittance']) |
         Q(kind='refund', original__kind__in=['expense', 'remittance'], original__household=household)
@@ -57,6 +62,9 @@ def category_info(category):
 
 
 def coverage(household):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     count = ImportRecord.objects.filter(household=household, status='needs_review').count()
     return {'unresolved_import_count': count, 'completeness_confirmed': False,
             'warning': (f'{count} importutkast venter på avklaring og er ikke med i tallene. ' if count else '') +
@@ -187,18 +195,30 @@ def spending(actor, params, today=None):
 
 def source_revision(household):
     """Broad household snapshot includes missing identities/new rows and all source revisions."""
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     models = [Category, Asset, Entry, MonthPlan, BillTemplate, BillOccurrence, FundTopUp, MonthlyBudgetHeader]
     sources = {model.__name__: list(model.objects.filter(household=household).order_by('pk').values()) for model in models}
     sources['imports'] = list(ImportRecord.objects.filter(household=household).order_by('pk').values('id', 'version', 'status', 'updated_at'))
-    sources['household'] = list(Household.objects.filter(pk=household.pk).values('id', 'version', 'entry_sequence'))
+
+    area = current_area()
+
+    sources['area'] = {'id': str(area.pk), 'access_version': area.access_version, 'modules': area.modules}
     return digest(sources)
 
 
 def source_snapshot(household, target, histories, revision=None):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     return digest({'target': target, 'history': histories, 'sources': revision or source_revision(household)})
 
 
 def effective_plan(household, target, category=None, asset=None):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     rows = MonthPlan.objects.filter(household=household, category=category, asset=asset, month__lte=target)
     exact = rows.filter(month=target).first()
     if exact and not exact.derived:
@@ -212,6 +232,9 @@ def effective_plan(household, target, category=None, asset=None):
 
 
 def commitments(household, target):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     end = month_end(target)
     actual = list(BillOccurrence.objects.filter(household=household, due_date__lte=end).select_related('template'))
     payments = {x.occurrence_id for x in Entry.objects.filter(active=True, household=household, occurrence__isnull=False, effective_date__lte=end)}
@@ -247,6 +270,9 @@ def commitments(household, target):
 
 
 def fund_available_before(household, asset, target, bills):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     before = target - timedelta(days=1)
     balance = fund_balance(asset, before)
     # Match prepare_month's known allocation anchors from their effective dates. Missing
@@ -370,7 +396,8 @@ def planning(actor, target_month=None, history=None, today=None):
     header = MonthlyBudgetHeader.objects.filter(household=household, month=target).first()
     revision = source_revision(household)
     snapshot = source_snapshot(household, target, histories, revision)
-    result = {'target_month': month_key(target), 'can_save': member.role == 'admin', 'snapshot': snapshot,
+
+    result = {'target_month': month_key(target), 'can_save': can_write(member, current_area(member)), 'snapshot': snapshot,
               'source_revision': revision,
               'history_months': [month_key(x) for x in histories], 'history_options': options, 'coverage': warn,
               'expected_income_ore': header.expected_income_ore if header else None,

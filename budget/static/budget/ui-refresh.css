@@ -285,3 +285,6 @@ body.ui-refresh{font-family:Figtree,system-ui,sans-serif;background:var(--canvas
 .ui-refresh .access-options label { display: flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; overflow-wrap: anywhere; }
 .ui-refresh .access-options input[type="checkbox"] { width: 20px; height: 20px; margin: 0; flex: 0 0 20px; }
 .ui-refresh .family-member { flex-wrap: wrap; }
+
+/* The active private budget remains visible on desktop and phone. */
+.ui-refresh .topbar .financial-area-selector{display:inline-flex;flex-direction:column;gap:2px;color:#fff;background:#17644b;border:1px solid #b8ddca;border-radius:10px;padding:9px 12px;min-height:44px;text-decoration:none;font-weight:700;max-width:240px;overflow-wrap:anywhere}.ui-refresh .topbar .financial-area-selector small{font-size:12px;color:#fff}.ui-refresh .topbar .financial-area-selector:focus-visible{outline:3px solid #fff;outline-offset:3px}@media(max-width:700px){.ui-refresh .topbar .financial-area-selector{max-width:150px;font-size:13px;padding:7px 9px}.ui-refresh .topbar .top-actions{flex-wrap:wrap;justify-content:flex-end}}

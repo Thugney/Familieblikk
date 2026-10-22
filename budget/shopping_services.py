@@ -49,6 +49,8 @@ def save_item(actor, list_id, expected_version, key, item_id=None, **fields):
         raise ValidationError('Ukjente varefelt.')
     row = ShoppingItem.objects.select_for_update().get(pk=item_id, shopping_list=listing) if item_id else ShoppingItem(household=member.household, created_by=actor, shopping_list=listing)
     if row.trip_id: raise ValidationError('Varen tilhører en fullført tur. Legg til en ny vare.')
+    if fields.get('price_ore') is not None or fields.get('category_id'):
+        raise ValidationError('Pris og kategori registreres privat ved fullføring av turen.')
     if fields.get('category_id'):
         access.require(member, {'budget'})
         Category.objects.get(pk=fields['category_id'], household=member.household, archived=False)

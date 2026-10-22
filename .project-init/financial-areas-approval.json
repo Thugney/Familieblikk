@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-22",
+  "status": "Product scope and implementation requested; detailed design and legacy transition remain subject to project gates",
+  "source": "work/financial-privacy-request.json and direct user answer in this build chat",
+  "later_sharing_user_answer": "Budget owner and family administrator confirm together",
+  "requirements": {
+    "creation": "Family explicitly chooses private or named-parent read access when creating a member",
+    "later_changes": "Budget owner and family administrator must confirm the same proposed access change together before it takes effect",
+    "administrator": "Family administrator status alone grants no financial-area access",
+    "owner": "Member manages their own budget, categories, savings and plans without household administrator status",
+    "parents": "Explicitly selected parents have read-only access",
+    "calendar": "Remains shared at household level independently of financial areas",
+    "coverage": "All families and all financial surfaces, including documents, shopping, history, export, background jobs and aggregates",
+    "legacy": "Do not guess ownership, automatically reassign existing records or restore older PC data over NAS data"
+  },
+  "boundaries": {
+    "new_dependencies": false,
+    "commit_push_or_deployment": "Commit/push after verification authorized; no deployment",
+    "automatic_age_policy": false,
+    "existing_data_reassignment": false
+  },
+  "remaining_rules_answer": "Use these rules",
+  "settled_remaining_rules": {
+    "shopping": "Household-shared lists; private payment details",
+    "joint_parent_budget": "Both parents can manage shared parent budget",
+    "later_sharing": "Two different people: budget owner and family administrator"
+  },
+  "continuation_authorized": true,
+  "publication_authorization": "once finished commit and ship so i can pull build and test"
+}

@@ -1,3 +1,5 @@
+from .financial_test_helpers import install_area
+from .financial_areas import area_scope
 import struct
 import tempfile
 import uuid
@@ -50,6 +52,7 @@ class DocumentTests(TestCase):
         self.user = get_user_model().objects.create_user(username='doc-test', email='doc@example.test')
         self.house = Household.objects.create(name='Synthetic')
         self.member = Membership.objects.create(user=self.user, household=self.house, role='admin')
+        install_area(self, self.member)
         self.category = Category.objects.create(household=self.house, created_by=self.user, name='Testmat')
         self.today = timezone.localdate()
         self.client.force_login(self.user)
@@ -114,10 +117,11 @@ class DocumentTests(TestCase):
         self.member.save()
         self.assertTrue(access.complete_finance(self.member))
         self.assertFalse(access.safe_rows(self.member, Document.objects.all()).exists())
-        self.member.household = Household.objects.create(name='Other synthetic')
-        self.member.module_access = {}
-        self.member.save()
-        self.assertEqual(self.client.get(reverse('document_original', args=[row.pk])).status_code, 404)
+        foreign = Household.objects.create(name='Other synthetic')
+        other = get_user_model().objects.create_user(username='document-foreign-member')
+        Membership.objects.create(user=other, household=foreign)
+        self.client.force_login(other)
+        self.assertEqual(self.client.get(reverse('document_original', args=[row.pk])).status_code, 403)
 
     def test_upload_and_draft_idempotency_and_conflicts(self):
         key = uuid.uuid4()
@@ -317,7 +321,8 @@ class ConcurrentDocumentUploadTests(TransactionTestCase):
     def test_raced_same_key_preserves_one_original_and_removes_only_losing_staging(self):
         user = get_user_model().objects.create_user(username='synthetic-upload-race')
         house = Household.objects.create(name='Synthetic upload race')
-        Membership.objects.create(user=user, household=house, role='admin')
+        member = Membership.objects.create(user=user, household=house, role='admin')
+        install_area(self, member)
         barrier = Barrier(2)
         key = uuid.uuid4()
         original_inspect = docs.document_storage.inspect_content
@@ -329,7 +334,8 @@ class ConcurrentDocumentUploadTests(TransactionTestCase):
         def perform(_):
             close_old_connections()
             try:
-                return docs.upload(user, SimpleUploadedFile('race.png', png()), key).pk
+                with area_scope(member, self.area.pk):
+                    return docs.upload(user, SimpleUploadedFile('race.png', png()), key).pk
             finally:
                 close_old_connections()
         with tempfile.TemporaryDirectory() as directory, override_settings(PRIVATE_DOCUMENT_ROOT=directory + "/legacy", PRIVATE_SCAN_ROOT=directory + "/scans"):
@@ -352,8 +358,8 @@ class ConcurrentDocumentConfirmationTests(TransactionTestCase):
         self.addCleanup(setting.disable)
         self.house = Household.objects.create(name='Synthetic two-member confirmation')
         self.users = [get_user_model().objects.create_user(username=f'confirm-member-{i}') for i in range(2)]
-        for user in self.users:
-            Membership.objects.create(user=user, household=self.house, role='member')
+        members = [Membership.objects.create(user=user, household=self.house, role='member') for user in self.users]
+        install_area(self, members[0], members[1:])
         category = Category.objects.create(household=self.house, created_by=self.users[0], name='Test')
         row = docs.upload(self.users[0], SimpleUploadedFile('test.png', png()), uuid.uuid4())
         self.row = docs.save_draft(self.users[0], row.pk, row.version, uuid.uuid4(), supplier='Synthetic store',
@@ -373,7 +379,8 @@ class ConcurrentDocumentConfirmationTests(TransactionTestCase):
                     pid = cursor.fetchone()[0]
                 barrier.wait(timeout=10)
                 try:
-                    result = docs.confirm(self.users[index], self.row.pk, self.row.version, keys[index], action).pk
+                    with area_scope(Membership.objects.get(user=self.users[index]), self.area.pk):
+                        result = docs.confirm(self.users[index], self.row.pk, self.row.version, keys[index], action).pk
                 except services.Conflict:
                     result = 'conflict'
                 return pid, result
@@ -383,7 +390,8 @@ class ConcurrentDocumentConfirmationTests(TransactionTestCase):
             outcomes = list(pool.map(attempt, range(2)))
         self.assertEqual(len({pid for pid, _ in outcomes}), 2)
         results = [result for _, result in outcomes]
-        self.assertEqual(results.count('conflict'), 0 if same_key else 1)
+        # Workflow keys are bound to the actor as well as the area.
+        self.assertEqual(results.count('conflict'), 1)
         self.assertEqual(set(results) - {'conflict'}, {self.row.pk})
         old_version = self.row.version
         self.row.refresh_from_db()

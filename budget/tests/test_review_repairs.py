@@ -1,3 +1,5 @@
+from budget.area_requests import financial_url
+from budget.tests.financial_support import enter_fixture_area
 import uuid
 from datetime import date, timedelta
 from decimal import Decimal
@@ -16,6 +18,7 @@ from budget.views import add_calendar_months
 class ReviewRepairTests(TestCase):
     def setUp(self):
         self.user, self.house, self.category = setup_family()
+        enter_fixture_area(self, self.user)
         self.today = timezone.localdate()
         self.month = services.month_start(self.today)
         self.prior = (self.month - timedelta(days=1)).replace(day=1)
@@ -117,10 +120,10 @@ class ReviewRepairTests(TestCase):
         self.client.force_login(self.user)
         response = self.client.get('/app/mer/')
         for route in ['gjeld', 'arsutgifter', 'utland']: self.assertNotContains(response, f'href="/app/{route}/"')
-        self.house.modules = {'debt': True, 'fund': True, 'remittance': True}
-        self.house.save()
+        self.area.modules = {'debt': True, 'fund': True, 'remittance': True}
+        self.area.save()
         response = self.client.get('/app/mer/')
-        for route in ['gjeld', 'arsutgifter', 'utland']: self.assertContains(response, f'href="/app/{route}/?month={timezone.localdate():%Y-%m}"')
+        for route in ['gjeld', 'arsutgifter', 'utland']: self.assertContains(response, f'href="/app/{route}/?month={timezone.localdate():%Y-%m}&amp;area={self.area.pk}"')
 
     def test_old_savings_plan_cannot_move_and_asset_plan_conflicts(self):
         goal = self.asset('savings')
@@ -166,7 +169,7 @@ class ReviewRepairTests(TestCase):
         from budget.views import source_money
         self.assertEqual(source_money(0), Decimal('0'))
         self.assertIsNone(source_money(None))
-        goal = AssetForm({'kind': 'savings', 'name': 'Nullplan', 'opening': '0', 'target': '0', 'plan': '0', 'opening_date': self.prior.isoformat(), 'plan_month': self.month.isoformat()})
+        goal = AssetForm({'kind': 'savings', 'name': 'Nullplan', 'opening': '0', 'target': '0', 'plan': '0', 'opening_date': self.prior.isoformat(), 'plan_month': self.month.isoformat()}, instance=Asset(household=self.house, created_by=self.user))
         self.assertTrue(goal.is_valid(), goal.errors)
         budget = PlanForm({'month': self.month.isoformat(), 'category': self.category.pk, 'amount': '0'}, household=self.house)
         self.assertTrue(budget.is_valid(), budget.errors)

@@ -1,3 +1,5 @@
+from .financial_test_helpers import install_area
+from .financial_areas import area_scope, create_area
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from django.contrib.auth import get_user_model
@@ -166,8 +168,12 @@ class ShoppingTests(DocumentTests):
         known=services.save_entry(self.user,Entry(kind='expense',amount_ore=125000,effective_date=self.today,
             description='Butikk',category=self.category,idempotency_key=uuid.uuid4()))
         other=Household.objects.create(name='Other isolated')
-        hidden=Entry.objects.create(household=other,created_by=self.user,kind='expense',amount_ore=125000,
-            effective_date=self.today,description='Butikk',sequence=1)
+        other_user=get_user_model().objects.create_user(username='duplicate-foreign')
+        other_member=Membership.objects.create(user=other_user,household=other)
+        other_area=create_area(other_member)
+        with area_scope(other_member,other_area.pk):
+            hidden=Entry.objects.create(household=other,created_by=other_user,kind='expense',amount_ore=125000,
+                effective_date=self.today,description='Butikk',sequence=1)
         response=self.client.post(reverse('shopping_complete',args=[listing.pk]),self.completion_payload(listing))
         self.assertContains(response,'Mulige duplikater')
         self.assertContains(response,reverse('correction_history',args=['entry',known.pk]))
@@ -183,7 +189,10 @@ class ShoppingTests(DocumentTests):
             name='Brød', quantity='3', purchased='on', price='25,50', category=self.category.pk))
         self.assertEqual(result.status_code, 302)
         item.refresh_from_db()
-        self.assertEqual(item.price_ore, 2550)
+        # Shared list edits cannot publish private price/category metadata.
+        self.assertIsNone(item.price_ore)
+        self.assertIsNone(item.category_id)
+        self.assertEqual(item.name, 'Brød')
         self.assertFalse(Entry.objects.exists())
 
 
@@ -191,7 +200,8 @@ class ConcurrentShoppingTests(TransactionTestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username='concurrent-shop')
         house = Household.objects.create(name='Synthetic concurrent')
-        Membership.objects.create(user=self.user, household=house, role='admin')
+        self.member = Membership.objects.create(user=self.user, household=house, role='admin')
+        install_area(self, self.member)
         self.category = Category.objects.create(household=house, created_by=self.user, name='Test')
         self.listing = shop.save_list(self.user, 'Concurrent', uuid.uuid4())
         shop.save_item(self.user, self.listing.pk, 1, uuid.uuid4(), name='Item', quantity='1', purchased=True)
@@ -200,7 +210,8 @@ class ConcurrentShoppingTests(TransactionTestCase):
     def complete(self, key):
         close_old_connections()
         try:
-            return shop.complete_trip(self.user, self.listing.pk, self.listing.version, key, 'Test', timezone.localdate(), 10000, self.category.pk).pk
+            with area_scope(self.member, self.area.pk):
+                return shop.complete_trip(self.user, self.listing.pk, self.listing.version, key, 'Test', timezone.localdate(), 10000, self.category.pk).pk
         finally: close_old_connections()
 
     def test_simultaneous_retry_returns_same_trip(self):
@@ -224,8 +235,8 @@ class TwoMemberConcurrentShoppingTests(TransactionTestCase):
     def setUp(self):
         self.house = Household.objects.create(name='Synthetic two-member shopping')
         self.users = [get_user_model().objects.create_user(username=f'shop-member-{i}') for i in range(2)]
-        for user in self.users:
-            Membership.objects.create(user=user, household=self.house, role='member')
+        members = [Membership.objects.create(user=user, household=self.house, role='member') for user in self.users]
+        install_area(self, members[0], members[1:])
         self.category = Category.objects.create(household=self.house, created_by=self.users[0], name='Test')
         self.listing = shop.save_list(self.users[0], 'Shared list', uuid.uuid4())
         self.item = shop.save_item(self.users[0], self.listing.pk, 1, uuid.uuid4(), name='Item', quantity='1', purchased=True)
@@ -247,8 +258,9 @@ class TwoMemberConcurrentShoppingTests(TransactionTestCase):
                     pid = cursor.fetchone()[0]
                 barrier.wait(timeout=10)
                 try:
-                    result = shop.complete_trip(self.users[index], self.listing.pk, self.listing.version,
-                        keys[index], 'Test', timezone.localdate(), 10000, self.category.pk).pk
+                    with area_scope(Membership.objects.get(user=self.users[index]), self.area.pk):
+                        result = shop.complete_trip(self.users[index], self.listing.pk, self.listing.version,
+                            keys[index], 'Test', timezone.localdate(), 10000, self.category.pk).pk
                 except services.Conflict:
                     result = 'conflict'
                 return pid, result
@@ -258,7 +270,8 @@ class TwoMemberConcurrentShoppingTests(TransactionTestCase):
             outcomes = list(pool.map(attempt, range(2)))
         self.assertEqual(len({pid for pid, _ in outcomes}), 2)
         results = [result for _, result in outcomes]
-        self.assertEqual(results.count('conflict'), 0 if same_key else 1)
+        # Workflow keys are bound to the actor as well as the area.
+        self.assertEqual(results.count('conflict'), 1)
         trip = ShoppingTrip.objects.get()
         self.assertEqual(set(results) - {'conflict'}, {trip.pk})
         entry = Entry.objects.get()

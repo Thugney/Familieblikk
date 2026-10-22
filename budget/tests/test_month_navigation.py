@@ -1,3 +1,4 @@
+from budget.tests.financial_support import enter_fixture_area
 from datetime import date
 from django.test import TestCase
 from django.utils import timezone
@@ -8,6 +9,7 @@ from budget.tests.test_domain import setup_family
 class MonthNavigationTests(TestCase):
     def setUp(self):
         self.user, self.house, self.category = setup_family('month-navigation@example.test')
+        enter_fixture_area(self, self.user)
         self.client.force_login(self.user)
 
     def test_missing_empty_and_whitespace_month_use_current_oslo_month(self):
@@ -23,7 +25,7 @@ class MonthNavigationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['month'], date(2026, 9, 1))
         self.assertContains(response, 'value="2026-09"')
-        self.assertContains(response, 'href="/app/oversikt/?month=2026-09"')
+        self.assertContains(response, f'href="/app/oversikt/?month=2026-09&amp;area={self.area.pk}"')
         for value in ['invalid', '2026-13', '2026-09garbage', '2026-09-01']:
             with self.subTest(value=value):
                 self.assertEqual(self.client.get('/app/oversikt/', {'month': value}).status_code, 404)
@@ -38,7 +40,7 @@ class MonthNavigationTests(TestCase):
             with self.subTest(path=path):
                 response = self.client.get(path)
                 self.assertEqual(response.status_code, 200)
-                self.assertContains(response, f'href="{overview}"')
+                self.assertContains(response, f'href="{overview}' + (f'&amp;area={self.area.pk}' if path.startswith(('/endre/', '/ny/')) else '') + '"')
                 self.assertContains(response, f'id="month" name="month" type="month" value="{current}"')
                 self.assertNotContains(response, '?month="')
                 self.assertEqual(self.client.get(overview).status_code, 200)

@@ -5,6 +5,9 @@ from django.db import models
 from django.db.models import Q
 
 
+from .financial_models import FinancialArea, FinancialAreaGrant, AreaAccessChange, FinancialRecord
+
+
 class Household(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=120)
@@ -61,6 +64,8 @@ class Invitation(models.Model):
     email = models.EmailField()
     digest = models.CharField(max_length=64, unique=True)
     expires_at = models.DateTimeField()
+    financial_sharing = models.CharField(max_length=12, blank=True, default='')
+    financial_reader_ids = models.JSONField(default=list, blank=True)
     accepted = models.BooleanField(default=False)
     revoked = models.BooleanField(default=False)
 
@@ -85,14 +90,14 @@ class FamilyRow(models.Model):
                     raise ValidationError({field.name: 'Koblingen må tilhøre samme familie.'})
 
 
-class Category(FamilyRow):
+class Category(FinancialRecord, FamilyRow):
     name = models.CharField(max_length=120)
     color = models.CharField(max_length=7, default='#456EB1')
     archived = models.BooleanField(default=False)
     def __str__(self): return self.name
 
 
-class Asset(FamilyRow):
+class Asset(FinancialRecord, FamilyRow):
     TYPES = [('savings', 'Sparemål'), ('debt', 'Gjeld'), ('fund', 'Årsutgift'), ('recipient', 'Mottaker')]
     kind = models.CharField(max_length=12, choices=TYPES)
     name = models.CharField(max_length=120)
@@ -107,7 +112,7 @@ class Asset(FamilyRow):
     def __str__(self): return self.name
 
 
-class MonthPlan(FamilyRow):
+class MonthPlan(FinancialRecord, FamilyRow):
     month = models.DateField()
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.PROTECT)
     asset = models.ForeignKey(Asset, null=True, blank=True, on_delete=models.PROTECT)
@@ -115,10 +120,12 @@ class MonthPlan(FamilyRow):
     derived = models.BooleanField(default=False)
     annual_total_ore = models.PositiveBigIntegerField(null=True, blank=True)
     class Meta:
+        base_manager_name = 'objects'
+        default_manager_name = 'objects'
         constraints = [models.CheckConstraint(condition=(Q(category__isnull=False, asset__isnull=True) | Q(category__isnull=True, asset__isnull=False)), name='plan_exactly_one_target'), models.UniqueConstraint(fields=['household', 'month', 'category'], name='unique_category_month'), models.UniqueConstraint(fields=['household', 'month', 'asset'], name='unique_asset_month')]
 
 
-class BillTemplate(FamilyRow):
+class BillTemplate(FinancialRecord, FamilyRow):
     name = models.CharField(max_length=120)
     amount_ore = models.PositiveBigIntegerField()
     first_due = models.DateField()
@@ -129,7 +136,7 @@ class BillTemplate(FamilyRow):
     archived = models.BooleanField(default=False)
 
 
-class BillOccurrence(FamilyRow):
+class BillOccurrence(FinancialRecord, FamilyRow):
     template = models.ForeignKey(BillTemplate, on_delete=models.PROTECT)
     name = models.CharField(max_length=120)
     due_date = models.DateField()
@@ -151,11 +158,13 @@ class BillOccurrence(FamilyRow):
         return super().save(*args, **kwargs)
 
     class Meta:
+        base_manager_name = 'objects'
+        default_manager_name = 'objects'
         constraints = [models.UniqueConstraint(fields=['template', 'recurrence_slot'], name='unique_bill_slot')]
 
 
 
-class Entry(FamilyRow):
+class Entry(FinancialRecord, FamilyRow):
     KINDS = [('income', 'Inntekt'), ('expense', 'Utgift'), ('refund', 'Refusjon'), ('deposit', 'Spareinnskudd'), ('withdrawal', 'Spareuttak'), ('debt', 'Gjeldsbetaling'), ('fund', 'Fondsbetaling'), ('remittance', 'Sendt utenlands')]
     kind = models.CharField(max_length=12, choices=KINDS)
     amount_ore = models.PositiveBigIntegerField()
@@ -177,7 +186,9 @@ class Entry(FamilyRow):
     fee_ore = models.PositiveBigIntegerField(default=0)
     sequence = models.PositiveBigIntegerField(default=0, editable=False)
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['occurrence'], condition=Q(active=True, occurrence__isnull=False), name='unique_active_bill_payment'), models.UniqueConstraint(fields=['household', 'idempotency_key'], name='unique_entry_request'), models.CheckConstraint(condition=Q(amount_ore__gt=0), name='entry_positive_amount'), models.UniqueConstraint(fields=['household', 'sequence'], name='unique_entry_sequence')]
+        base_manager_name = 'objects'
+        default_manager_name = 'objects'
+        constraints = [models.UniqueConstraint(fields=['occurrence'], condition=Q(active=True, occurrence__isnull=False), name='unique_active_bill_payment'), models.UniqueConstraint(fields=['financial_area', 'created_by', 'idempotency_key'], name='unique_entry_request'), models.UniqueConstraint(fields=['household', 'idempotency_key'], condition=Q(financial_area__isnull=True), name='unique_entry_request_legacy'), models.CheckConstraint(condition=Q(amount_ore__gt=0), name='entry_positive_amount'), models.UniqueConstraint(fields=['household', 'sequence'], name='unique_entry_sequence')]
 
     def save(self, *args, **kwargs):
         from django.db import transaction
@@ -192,13 +203,22 @@ class Entry(FamilyRow):
             return super().save(*args, **kwargs)
 
 
-class FundTopUp(FamilyRow):
+class FundTopUp(FinancialRecord, FamilyRow):
     occurrence = models.OneToOneField(BillOccurrence, on_delete=models.PROTECT)
     effective_month = models.DateField()
     amount_ore = models.PositiveBigIntegerField()
 
 
-class Audit(models.Model):
+class Audit(FinancialRecord):
+    METADATA_OPERATIONS = ('modultilgang', 'lokal registrering', 'handlelistevare')
+
+    def clean(self):
+        if self.operation in self.METADATA_OPERATIONS:
+            if self.financial_area_id is not None:
+                raise ValidationError('Metadata skal ikke knyttes til et budsjett.')
+            return
+        return super().clean()
+
     household = models.ForeignKey(Household, on_delete=models.PROTECT)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     object_id = models.UUIDField()
@@ -207,15 +227,17 @@ class Audit(models.Model):
     at = models.DateTimeField(auto_now_add=True)
 
 
-class ImportBatch(FamilyRow):
+class ImportBatch(FinancialRecord, FamilyRow):
     series = models.CharField(max_length=120)
     sha256 = models.CharField(max_length=64)
     reconciliation = models.JSONField(default=dict)
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['household', 'series'], name='unique_import_series')]
+        base_manager_name = 'objects'
+        default_manager_name = 'objects'
+        constraints = [models.UniqueConstraint(fields=['financial_area', 'series'], name='unique_import_series'), models.UniqueConstraint(fields=['household', 'series'], condition=Q(financial_area__isnull=True), name='unique_import_series_legacy')]
 
 
-class ImportRecord(FamilyRow):
+class ImportRecord(FinancialRecord, FamilyRow):
     batch = models.ForeignKey(ImportBatch, on_delete=models.PROTECT)
     source_id = models.CharField(max_length=240)
     source_kind = models.CharField(max_length=60)
@@ -225,6 +247,8 @@ class ImportRecord(FamilyRow):
     target_id = models.UUIDField(null=True, blank=True)
     approved_decision = models.JSONField(default=dict)
     class Meta:
+        base_manager_name = 'objects'
+        default_manager_name = 'objects'
         constraints = [models.UniqueConstraint(fields=['household', 'batch', 'source_id'], name='unique_import_source')]
 
 from .calendar_models import CalendarEvent, CalendarException, CalendarResponse, CalendarRequest  # noqa: E402,F401
@@ -232,7 +256,7 @@ from .spending_models import MonthlyBudgetHeader, PlanningRequest  # noqa: E402,
 from .push_models import PushKey, PushSubscription, CalendarNotification, PushDelivery  # noqa: E402,F401
 
 
-class CorrectionCommand(models.Model):
+class CorrectionCommand(FinancialRecord):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     household = models.ForeignKey(Household, on_delete=models.PROTECT)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
@@ -244,10 +268,12 @@ class CorrectionCommand(models.Model):
     at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['household', 'idempotency_key'], name='unique_correction_command')]
+        base_manager_name = 'objects'
+        default_manager_name = 'objects'
+        constraints = [models.UniqueConstraint(fields=['financial_area', 'actor', 'idempotency_key'], name='unique_correction_command'), models.UniqueConstraint(fields=['household', 'idempotency_key'], condition=Q(financial_area__isnull=True), name='unique_correction_command_legacy')]
 
 
-class CorrectionEvent(models.Model):
+class CorrectionEvent(FinancialRecord):
     household = models.ForeignKey(Household, on_delete=models.PROTECT)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     object_type = models.CharField(max_length=30)
@@ -270,4 +296,4 @@ class SeriesRevision(models.Model):
     event = models.OneToOneField(CorrectionEvent, on_delete=models.PROTECT)
 
 from .document_models import Document, DocumentJob, WorkflowCommand
-from .shopping_models import ShoppingList, ShoppingItem, ShoppingTrip
+from .shopping_models import ShoppingList, ShoppingItem, ShoppingTrip, ShoppingCommand

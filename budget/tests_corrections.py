@@ -1,3 +1,5 @@
+from .financial_test_helpers import install_area
+from .financial_areas import area_scope, create_area
 import uuid
 from datetime import date, timedelta
 from django.test import TestCase
@@ -16,6 +18,7 @@ class BillCorrectionsTests(TestCase):
         self.user = get_user_model().objects.create_user('correction-user', email='synthetic@example.invalid', password='synthetic-password')
         self.house = Household.objects.create(name='Synthetic correction household')
         self.member = Membership.objects.create(user=self.user, household=self.house, role='admin')
+        install_area(self, self.member)
         self.category = Category.objects.create(household=self.house, created_by=self.user, name='Test')
         self.template = BillTemplate.objects.create(household=self.house, created_by=self.user, name='Regning', amount_ore=100000, first_due=self.month, category=self.category)
         services.materialize_template(self.template, self.month)
@@ -182,7 +185,8 @@ class BillCorrectionsTests(TestCase):
     def test_foreign_get_and_csv_no_metadata(self):
         other=get_user_model().objects.create_user('foreign-correction')
         foreign=Household.objects.create(name='Foreign')
-        Membership.objects.create(user=other,household=foreign,role='admin')
+        other_member=Membership.objects.create(user=other,household=foreign,role='admin')
+        self.client.area=create_area(other_member)
         self.client.force_login(other)
         for name in ('correction','correction_history'):
             self.assertEqual(self.client.get(reverse(name,args=['bill',self.bill.pk])).status_code,404)
@@ -314,7 +318,8 @@ class BillCorrectionsTests(TestCase):
         wanted=[entry(description=f'=wanted {i}') for i in range(52)]
         excluded=[entry(category=second),entry(active=False),entry(effective_date=self.month-timedelta(days=1)),entry(kind='debt',asset=debt,category=self.category)]
         other=get_user_model().objects.create_user('filter-foreign');foreign=Household.objects.create(name='Foreign filter')
-        excluded.append(entry(household=foreign,created_by=other,category=None))
+        other_member=Membership.objects.create(user=other,household=foreign,role='admin');other_area=create_area(other_member)
+        with area_scope(other_member,other_area.pk): excluded.append(entry(household=foreign,created_by=other,category=None))
         self.member.role='member';self.member.module_access={'debt':False};self.member.save()
         self.client.force_login(self.user)
         query={'date_from':self.today.isoformat(),'date_to':self.today.isoformat(),'category':str(self.category.pk),'status':'active'}
@@ -528,12 +533,12 @@ class CorrectionMigrationTests(TransactionTestCase):
         finally:
             Bill.objects.filter(pk=duplicate.pk).update(due_date=date(2026,10,1))
             MigrationExecutor(connection).migrate([self.new])
-        preserved=Entry.objects.get(pk=entry.pk)
+        migrated = MigrationExecutor(connection).loader.project_state([self.new]).apps
+        preserved=migrated.get_model('budget', 'Entry').objects.get(pk=entry.pk)
         self.assertEqual((preserved.amount_ore,preserved.effective_date,preserved.sequence,preserved.occurrence_id),(12345,date(2026,9,1),1,bill.pk))
         self.assertTrue(preserved.active)
-        self.assertEqual(BillOccurrence.objects.get(pk=bill.pk).recurrence_slot,date(2026,9,1))
-        from .models import ImportRecord
-        self.assertEqual(ImportRecord.objects.get(pk=source.pk).target_id,entry.pk)
+        self.assertEqual(migrated.get_model('budget', 'BillOccurrence').objects.get(pk=bill.pk).recurrence_slot,date(2026,9,1))
+        self.assertEqual(migrated.get_model('budget', 'ImportRecord').objects.get(pk=source.pk).target_id,entry.pk)
 
 class ConcurrentCorrectionTests(TransactionTestCase):
     def test_reverse_restore_retry_and_competing_versions(self):
@@ -542,7 +547,8 @@ class ConcurrentCorrectionTests(TransactionTestCase):
         self.assertEqual(connection.vendor,'postgresql')
         user=get_user_model().objects.create_user('concurrent-correction')
         house=Household.objects.create(name='Concurrent synthetic')
-        Membership.objects.create(user=user,household=house,role='admin')
+        member = Membership.objects.create(user=user,household=house,role='admin')
+        install_area(self, member)
         category=Category.objects.create(household=house,created_by=user,name='Synthetic')
         today=timezone.localdate()
         template=BillTemplate.objects.create(household=house,created_by=user,name='Concurrent',amount_ore=10000,first_due=today,category=category)
@@ -553,7 +559,8 @@ class ConcurrentCorrectionTests(TransactionTestCase):
                 close_old_connections()
                 try:
                     actor=get_user_model().objects.get(pk=user.pk)
-                    return str(corrections.entry_state(actor,payment.pk,operation,version,key,event_id=event_id).pk)
+                    with area_scope(member, self.area.pk):
+                        return str(corrections.entry_state(actor,payment.pk,operation,version,key,event_id=event_id).pk)
                 except services.Conflict:
                     return 'conflict'
                 finally: close_old_connections()

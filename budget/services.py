@@ -24,8 +24,10 @@ def authorize(actor, row=None, admin=False):
         raise PermissionDenied('Ingen tilgang til denne familien.')
     if row is not None:
         access.require_write_row(member, row)
-    if (admin or (row is not None and row.created_by_id != actor.id)) and member.role != 'admin':
-        raise PermissionDenied('Bare oppretteren eller en administrator kan endre posten.')
+
+    from .financial_areas import current_area
+
+    current_area(member, write=True)
     return member
 
 
@@ -40,8 +42,10 @@ def save_row(actor, row, expected_version=None, admin=False, command=None):
     member = access.lock_member(actor)
     if not row._state.adding and row.household_id != member.household_id:
         raise PermissionDenied('Ingen tilgang til denne familien.')
-    if admin and member.role != 'admin':
-        raise PermissionDenied('Bare administrator kan endre oppsettet.')
+
+    from .financial_areas import current_area
+
+    current_area(member, write=True)
     before = {}
     current = None
     if row._state.adding:
@@ -218,6 +222,9 @@ def plan_amount(anchor, month):
 
 
 def refresh_future_plans(household):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     for plan in MonthPlan.objects.filter(household=household, derived=True, month__gte=month_start(timezone.localdate())):
         anchors = MonthPlan.objects.filter(household=household, derived=False, month__lte=plan.month, asset_id=plan.asset_id, category_id=plan.category_id).order_by('-month')
         anchor = anchors.first()
@@ -245,6 +252,9 @@ def materialize_template(template, month, cutoff=None):
 
 @transaction.atomic
 def prepare_month(household, month):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     type(household).objects.select_for_update().get(pk=household.pk)
     month = month_start(month)
     for asset in household.asset_set.filter(kind='fund'):
@@ -268,6 +278,9 @@ def prepare_month(household, month):
 
 
 def pending_bills(household, end):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     return BillOccurrence.objects.filter(household=household, cancelled=False, due_date__lte=end).exclude(pk__in=Entry.objects.filter(active=True, household=household, effective_date__lte=end, occurrence__isnull=False).values('occurrence_id'))
 
 
@@ -285,6 +298,9 @@ def fund_balance(asset, end):
 
 def reconcile_funds(household, actor=None):
     """Spill av hele fondsløpet. Påfyll tilhører første forpliktelses-/betalingsmåned."""
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     for asset in Asset.objects.filter(household=household, kind='fund'):
         events = []
         for plan in MonthPlan.objects.filter(asset=asset): events.append((plan.month, 0, 0, 'allocation', plan))
@@ -327,6 +343,9 @@ def reconcile_funds(household, actor=None):
 
 
 def ensure_fund_topups(household, month):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     reconcile_funds(household)
 
 
@@ -365,6 +384,9 @@ def pay_bill(actor, occurrence_id, effective_date, key, expected_version=None):
 
 
 def calculate(household, month, today=None, projected_asset_plans=None):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     today = today or timezone.localdate()
     start, end = month_start(month), month_end(month)
     entries = Entry.objects.filter(active=True, household=household, effective_date__range=(start, end))
@@ -454,6 +476,9 @@ def allocate_debt_plan(actor, month, strategy, extra_ore):
 
 
 def ordinary_for_period(household, start, end):
+    from .financial_areas import current_area
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     rows = Entry.objects.filter(active=True, household=household, effective_date__range=(start, end))
     return total(rows.filter(kind__in=['expense', 'remittance'])) - total(rows.filter(kind='refund', original__kind__in=['expense', 'remittance']))
 

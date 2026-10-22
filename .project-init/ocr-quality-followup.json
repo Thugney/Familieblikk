@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-23",
+  "decision": "Rejected preprocessing trial; recognition algorithm retained",
+  "synthetic_cases": 9,
+  "correct_fields_before": 19,
+  "correct_fields_after": 17,
+  "expected_fields": 26,
+  "manual_review_required": true,
+  "physical_camera_accuracy_verified": false,
+  "independent_review": "pass_reject_trial_keep_production",
+  "limitations": [
+    "Missing amount/date suggestions remain possible and require manual completion.",
+    "Synthetic fixture counts are not a real-world accuracy estimate."
+  ],
+  "separate_change": "Financial-area worker isolation may change job handling without changing recognition."
+}

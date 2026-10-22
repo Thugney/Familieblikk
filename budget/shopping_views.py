@@ -79,8 +79,6 @@ def detail(request, list_id):
     if request.method == 'POST' and not recovering and form.is_valid():
         fields = form.cleaned_data.copy()
         key, version = fields.pop('key'), fields.pop('version')
-        fields['price_ore'] = int(fields.pop('price') * 100) if fields['price'] is not None else None
-        fields.pop('price', None)
         if 'category' in fields:
             category = fields.pop('category')
             fields['category_id'] = category.pk if category else None
@@ -111,13 +109,11 @@ def item(request, item_id):
     row = get_object_or_404(ShoppingItem, pk=item_id, household=member.household, trip__isnull=True)
     data, recovering = submissions(request, row.shopping_list.version)
     initial = dict(name=row.name, quantity=row.quantity, purchased=row.purchased, removed=row.removed,
-        price=Decimal(row.price_ore)/100 if row.price_ore is not None else None, category=row.category_id, version=row.shopping_list.version)
+        version=row.shopping_list.version)
     form = ItemForm(data, member=member, initial=initial)
     if request.method == 'POST' and not recovering and form.is_valid():
         fields = form.cleaned_data.copy()
         key, version = fields.pop('key'), fields.pop('version')
-        price = fields.pop('price')
-        fields['price_ore'] = int(price * 100) if price is not None else None
         if 'category' in fields:
             category = fields.pop('category')
             fields['category_id'] = category.pk if category else None

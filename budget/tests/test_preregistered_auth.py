@@ -1,3 +1,6 @@
+from budget.financial_test_helpers import install_area, AreaClient
+from budget.financial_areas import area_scope
+from budget.financial_models import FinancialAreaGrant
 import io
 from datetime import timedelta
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +27,7 @@ class PreregisteredAuthTests(TestCase):
     def setUp(self):
         self.binding = binding()
         self.member, _ = identity.provision_owner(self.binding, PASSWORD, 'Privat testfamilie')
+        install_area(self, self.member, area=self.member.financialareagrant_set.get(role='owner').area)
 
     def test_provision_idempotent_no_email_verification_no_takeover(self):
         same, created = identity.provision_owner(self.binding, 'must-not-reset', 'Other')
@@ -57,7 +61,7 @@ class PreregisteredAuthTests(TestCase):
         self.assertEqual(importing.apply_import(self.member.user, None, source, self.binding, session).pk, first.pk)
         other, _, _ = setup_family('other@example.test')
         with self.assertRaises(PermissionDenied): importing.apply_import(other, None, source, self.binding, session)
-        self.assertIn('?month=2026-09', self.client.post('/passord/', {'email': self.member.user.email, 'password': PASSWORD}).url)
+        self.assertEqual(self.client.post('/passord/', {'email': self.member.user.email, 'password': PASSWORD}).url, '/familieport/')
 
     def test_wrong_password_rate_disabled_and_otp_account_denied(self):
         for _ in range(5):
@@ -87,35 +91,38 @@ class PreregisteredAuthTests(TestCase):
             self.assertIn('uendret', output.getvalue())
             self.assertNotIn(PASSWORD, output.getvalue())
         with patch('budget.management.commands.import_family_budget.importing.load_private_source', return_value=({'import_series': self.binding['import_series'], 'source': {'sha256': 'a' * 64}}, self.binding)):
-            call_command('import_family_budget', owner_email=self.member.user.email, household_id=str(self.member.household_id), confirm=True, stdout=io.StringIO())
+            call_command('import_family_budget', owner_email=self.member.user.email, household_id=str(self.member.household_id), area_id=str(self.area.pk), confirm=True, stdout=io.StringIO())
         self.member.provisioning_digest = 'invalid'
         self.member.save()
         with patch('budget.management.commands.import_family_budget.importing.load_private_source', return_value=({'import_series': self.binding['import_series'], 'source': {'sha256': 'a' * 64}}, self.binding)):
-            with self.assertRaises(CommandError): call_command('import_family_budget', owner_email=self.member.user.email, household_id=str(self.member.household_id), confirm=True, stdout=io.StringIO())
+            with self.assertRaises(CommandError): call_command('import_family_budget', owner_email=self.member.user.email, household_id=str(self.member.household_id), area_id=str(self.area.pk), confirm=True, stdout=io.StringIO())
 
     def test_admin_registration_separate_families_roles_and_no_budget_access(self):
-        child = identity.register_family_account(self.member.user, 'member@example.test', PASSWORD)
+        child = identity.register_family_account(self.member.user, 'member@example.test', PASSWORD, financial_sharing='private')
         self.assertEqual(child.household, self.member.household)
         self.assertIsNone(child.verified_at)
         self.assertEqual(child.identity_method, 'preregistered_member')
-        separate = identity.register_family_account(self.member.user, 'newadmin@example.test', PASSWORD, family_name='Annen familie')
+        separate = identity.register_family_account(self.member.user, 'newadmin@example.test', PASSWORD, family_name='Annen familie', financial_sharing='private')
         self.assertNotEqual(separate.household, self.member.household)
         self.assertFalse(separate.can_register_households)
         self.assertEqual(separate.role, 'admin')
-        category = Category.objects.create(household=separate.household, created_by=separate.user, name='Fremmed privat kategori')
+        separate_area = separate.financialareagrant_set.get(role='owner').area
+        with area_scope(separate, separate_area.pk):
+            category = Category.objects.create(household=separate.household, created_by=separate.user, name='Fremmed privat kategori')
         self.client.force_login(self.member.user)
         self.assertEqual(self.client.get(f'/endre/category/{category.pk}/').status_code, 404)
         self.assertNotContains(self.client.get('/app/budsjett/'), 'Fremmed privat kategori')
         self.client.force_login(child.user)
         self.assertEqual(self.client.get('/registrer/medlem/').status_code, 403)
         self.assertEqual(self.client.get('/registrer/familie/').status_code, 403)
+        self.client = AreaClient(separate_area)
         self.client.force_login(separate.user)
         self.assertEqual(self.client.get('/registrer/familie/').status_code, 403)
         self.assertEqual(self.client.get('/registrer/medlem/').status_code, 200)
         self.assertEqual(Client().get('/registrer/medlem/').status_code, 302)
         self.assertEqual(Client(enforce_csrf_checks=True).post('/registrer/medlem/', {}).status_code, 403)
-        with self.assertRaises(PermissionDenied): identity.register_family_account(separate.user, 'denied@example.test', PASSWORD, family_name='Forbidden')
-        with self.assertRaises(ValidationError): identity.register_family_account(self.member.user, child.user.email, PASSWORD)
+        with self.assertRaises(PermissionDenied): identity.register_family_account(separate.user, 'denied@example.test', PASSWORD, family_name='Forbidden', financial_sharing='private')
+        with self.assertRaises(ValidationError): identity.register_family_account(self.member.user, child.user.email, PASSWORD, financial_sharing='private')
         foreign_context = {'identity_method': separate.identity_method, 'preregistered_membership_id': separate.pk, 'provisioning_digest': separate.provisioning_digest}
         with self.assertRaises(PermissionDenied): importing.owner_membership(separate.user, None, self.binding, foreign_context)
         response = Client().post('/passord/', {'email': child.user.email, 'password': PASSWORD})
@@ -134,12 +141,12 @@ class PreregisteredAuthTests(TestCase):
     def test_successful_registration_http_posts_and_new_admin_isolation(self):
         creator_category = Category.objects.create(household=self.member.household, created_by=self.member.user, name='Kun oppretterens familie')
         self.client.post('/passord/', {'email': self.member.user.email, 'password': PASSWORD})
-        response = self.client.post('/registrer/medlem/', {'email': 'http-member@example.test', 'role': 'member', 'password1': PASSWORD, 'password2': PASSWORD, 'confirm': 'on'})
+        response = self.client.post('/registrer/medlem/', {'email': 'http-member@example.test', 'role': 'member', 'password1': PASSWORD, 'password2': PASSWORD, 'confirm': 'on', 'financial_sharing': 'private'})
         self.assertEqual(response.status_code, 302, response.content.decode())
         member = Membership.objects.get(user__email='http-member@example.test')
         self.assertEqual(member.household_id, self.member.household_id)
         self.assertEqual(member.identity_method, 'preregistered_member')
-        response = self.client.post('/registrer/familie/', {'email': 'http-admin@example.test', 'family_name': 'Helt egen familie', 'password1': PASSWORD, 'password2': PASSWORD, 'confirm': 'on'})
+        response = self.client.post('/registrer/familie/', {'email': 'http-admin@example.test', 'family_name': 'Helt egen familie', 'password1': PASSWORD, 'password2': PASSWORD, 'confirm': 'on', 'financial_sharing': 'private'})
         self.assertEqual(response.status_code, 302, response.content.decode())
         admin = Membership.objects.get(user__email='http-admin@example.test')
         self.assertNotEqual(admin.household_id, self.member.household_id)
@@ -147,7 +154,7 @@ class PreregisteredAuthTests(TestCase):
         self.assertEqual(admin.identity_method, 'preregistered_admin')
         self.assertFalse(admin.can_register_households)
         self.assertIsNone(admin.verified_at)
-        other_client = Client()
+        other_client = AreaClient(admin.financialareagrant_set.get(role='owner').area)
         response = other_client.post('/passord/', {'email': admin.user.email, 'password': PASSWORD})
         self.assertEqual(response.status_code, 302)
         self.assertNotIn('verified_email', other_client.session)
@@ -185,7 +192,7 @@ class RegistrationRaceTests(TransactionTestCase):
             close_old_connections()
             actor = get_user_model().objects.get(pk=owner.user_id)
             try:
-                identity.register_family_account(actor, 'race@example.test', PASSWORD)
+                identity.register_family_account(actor, 'race@example.test', PASSWORD, financial_sharing='private')
                 return True
             except ValidationError:
                 return False
@@ -206,7 +213,7 @@ class RegistrationRaceTests(TransactionTestCase):
                     SessionMiddleware(lambda req: None).process_request(request)
                     return identity.verify_code(request, email, code).pk
                 actor = get_user_model().objects.get(pk=owner.user_id)
-                try: return identity.register_family_account(actor, email, PASSWORD).user_id
+                try: return identity.register_family_account(actor, email, PASSWORD, financial_sharing='private').user_id
                 except ValidationError: return None
             finally: close_old_connections()
         with ThreadPoolExecutor(max_workers=2) as pool: results = list(pool.map(operation, ['otp', 'register']))

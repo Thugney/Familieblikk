@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "status": "verified_ready_for_independent_review",
+  "date": "2026-10-23",
+  "scope": "Separate budgets (FinancialArea) with explicit read-only parent grants, joint parent shared budgets, two-person access/legacy confirmation, household-shared shopping lists with private trip payment details, and per-tab URL area scoping across all financial surfaces",
+  "baseline_commit": "b3d31a2",
+  "branch": "codex/documents-shopping",
+  "browser_container": "familieblikk-financial-browser-v2",
+  "checks": [
+    {
+      "command": "manage.py test budget.tests_financial_areas budget.tests_financial_ui --keepdb --noinput",
+      "result": "25 passed in 64.877s",
+      "coverage": [
+        "missing-scope denial",
+        "reader and admin-without-grant denial",
+        "lazy grant revocation",
+        "cross-area FK and JSON database guards",
+        "cross-family grant guard",
+        "stale-query write denial",
+        "two distinct approvals and single-account bootstrap",
+        "owner/editor capability",
+        "hidden revision and totals",
+        "per-area document key",
+        "0016 additive upgrade and explicit legacy assignment preserving source raw data",
+        "UI explicit selection, two-tab isolation, reader read-only view, area URL propagation"
+      ]
+    },
+    {
+      "command": "manage.py test budget --keepdb --noinput",
+      "result": "406 passed (404 in task-102 + 2 repaired OverviewPresentationTests in 0.058s)"
+    },
+    {
+      "command": "node --test budget/tests/financial-area.test.cjs budget/tests/camera-scan.test.cjs budget/tests/shopping-refresh.test.cjs budget/tests/document-draft.test.cjs budget/tests/sw.test.cjs budget/tests/category-search.test.cjs budget/tests/calendar-draft.test.cjs tests/spending-behavior.test.cjs tests/host-network.test.cjs tests/push-behavior.test.cjs tests/loader-behavior.test.cjs",
+      "result": "60 passed, 0 failed"
+    },
+    {
+      "command": "manage.py makemigrations --check --dry-run --skip-checks",
+      "result": "No changes detected"
+    },
+    {
+      "command": "python -m compileall -q budget",
+      "result": "passed"
+    }
+  ],
+  "migrations": [
+    "0017_alter_asset_options_alter_billtemplate_options_and_more",
+    "0018_shoppingcommand_alter_audit_options_and_more",
+    "0019_alter_billoccurrence_options_and_more",
+    "0020_financial_area_guards",
+    "0021_area_guard_integer_relations",
+    "0022_financial_json_and_grants",
+    "0023_preserve_shared_shopping_commands"
+  ],
+  "files": [
+    "budget/financial_models.py",
+    "budget/financial_areas.py",
+    "budget/area_requests.py",
+    "budget/area_views.py",
+    "budget/models.py",
+    "budget/access.py",
+    "budget/forms.py",
+    "budget/identity.py",
+    "budget/services.py",
+    "budget/views.py",
+    "budget/urls.py",
+    "budget/spending_models.py",
+    "budget/spending_services.py",
+    "budget/spending_views.py",
+    "budget/correction_services.py",
+    "budget/document_models.py",
+    "budget/document_services.py",
+    "budget/document_ocr.py",
+    "budget/shopping_models.py",
+    "budget/shopping_services.py",
+    "budget/shopping_forms.py",
+    "budget/shopping_views.py",
+    "budget/static/budget/financial-area.js",
+    "budget/static/budget/ui-refresh.css",
+    "budget/templates/budget/areas.html",
+    "budget/templates/budget/area_proposal.html",
+    "budget/templates/budget/base.html",
+    "budget/templates/budget/overview_refresh.html",
+    "budget/templates/budget/page.html",
+    "budget/templates/budget/entry_list.html",
+    "budget/templates/budget/bill_list.html",
+    "budget/templates/budget/category_list.html",
+    "budget/templates/budget/documents.html",
+    "budget/templates/budget/document_detail.html",
+    "budget/templates/budget/shopping_detail.html",
+    "budget/templates/budget/more_refresh.html",
+    "budget/templatetags/budget_tags.py",
+    "budget/tests_financial_areas.py",
+    "budget/tests_financial_ui.py",
+    "budget/tests/financial-area.test.cjs",
+    "docs/DRIFT.md"
+  ],
+  "limitations": [
+    "Actual household/NAS schema and data are not auto-assigned; explicit two-person setup confirmation in the app is required on the host.",
+    "OCR limitations remain unchanged from the camera-scan contract (manual review and confirmation required)."
+  ],
+  "private_state": "No actual household data, .env, or private-data mutated."
+}

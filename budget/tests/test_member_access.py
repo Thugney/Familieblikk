@@ -10,6 +10,8 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import close_old_connections, connection, transaction
 from django.test import Client, TestCase, TransactionTestCase
+from budget.financial_areas import area_scope, create_area
+from budget.financial_test_helpers import install_area, AreaClient
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from budget import access, calendar_services as cal, push_services as push, services, forms
@@ -17,6 +19,16 @@ from budget.models import (Asset, Audit, BillOccurrence, BillTemplate, CalendarE
                            CalendarNotification, CalendarResponse, Category, Entry, Household, Membership,
                            MonthPlan, FundTopUp, PushDelivery, PushSubscription)
 from budget.spending_services import spending, planning
+
+
+def run_scoped(area, function, actor, *args, **kwargs):
+    try:
+        member = Membership.objects.get(user=actor)
+    except Membership.DoesNotExist:
+        return function(actor, *args, **kwargs)
+    with area_scope(member, area.pk):
+        return function(actor, *args, **kwargs)
+
 
 
 def family_fixture(owner):
@@ -30,6 +42,7 @@ def family_fixture(owner):
     owner.member = Membership.objects.create(household=owner.house, user=owner.user, role='member')
     owner.peer_member = Membership.objects.create(household=owner.house, user=owner.peer, role='member')
     owner.foreign_member = Membership.objects.create(household=owner.foreign_house, user=owner.foreign, role='admin')
+    install_area(owner, owner.member, editors=[owner.admin_member, owner.peer_member])
 
 
 class MemberAccessTests(TestCase):
@@ -72,7 +85,8 @@ class MemberAccessTests(TestCase):
         self.assertTrue(all(access.allows(self.member, m) for m in access.MODULES))
         Membership.objects.filter(pk=self.admin_member.pk).update(module_access={m: False for m in access.MODULES})
         self.admin_member.refresh_from_db()
-        self.assertTrue(all(access.allows(self.admin_member, m) for m in access.MODULES))
+        with area_scope(self.admin_member, self.area.pk):
+            self.assertFalse(any(access.allows(self.admin_member, m) for m in access.MODULES))
         with self.assertRaises(PermissionDenied):
             access.update_member_access(self.admin, self.admin_member.pk, {}, 1)
 
@@ -80,10 +94,11 @@ class MemberAccessTests(TestCase):
         original = self.entry()
         self.revoke('debt')
         # Construct before the supported reclassification; no rows are read.
-        with self.assertNumQueries(0):
+        with CaptureQueriesContext(connection) as constructed:
             rows = access.safe_rows(self.member, Entry.objects.all())
+        self.assertFalse(any('FROM "budget_entry"' in q['sql'] for q in constructed))
         original.kind, original.asset = 'debt', self.assets['debt']
-        services.save_entry(self.admin, original, original.version)
+        run_scoped(self.area, services.save_entry, self.admin, original, original.version)
         with self.assertNumQueries(1):
             self.assertEqual(list(rows.values_list('pk', flat=True)), [])
         refund = self.entry('refund', original=original, asset=self.assets['debt'])
@@ -119,7 +134,7 @@ class MemberAccessTests(TestCase):
                 with self.subTest(permissions=self.member.module_access, model=model.__name__), CaptureQueriesContext(connection) as queries:
                     actual = set(access.safe_rows(self.member, model.objects.all()).values_list('pk', flat=True))
                     self.assertEqual(actual, expected)
-                self.assertLessEqual(len(queries), 1)  # SQL may optimize a denied selection to no query.
+                self.assertLessEqual(sum('FROM \"budget_' + model._meta.model_name + '\"' in q['sql'] for q in queries), 1)
 
     def test_lazy_bill_plan_and_refund_queries_follow_current_asset_classification(self):
         bill = self.bill('debt')
@@ -149,8 +164,8 @@ class MemberAccessTests(TestCase):
         candidate = form.save(commit=False)
         self.assertEqual(candidate.original.kind, 'expense')
         original.kind, original.asset = 'debt', self.assets['debt']
-        services.save_entry(self.admin, original, original.version)
-        with self.assertRaises(PermissionDenied): services.save_entry(self.user, candidate)
+        run_scoped(self.area, services.save_entry, self.admin, original, original.version)
+        with self.assertRaises(PermissionDenied): run_scoped(self.area, services.save_entry, self.user, candidate)
         self.assertFalse(Entry.objects.filter(kind='refund').exists())
         self.assertEqual(candidate.original.kind, 'debt')
         self.assertEqual(candidate.original.asset_id, self.assets['debt'].pk)
@@ -161,8 +176,8 @@ class MemberAccessTests(TestCase):
         candidate = MonthPlan(household=self.house, created_by=self.user, month=self.month, asset=asset, amount_ore=100)
         replacement = Asset.objects.get(pk=asset.pk)
         replacement.kind = 'debt'
-        services.save_row(self.admin, replacement, replacement.version)
-        with self.assertRaises(PermissionDenied): services.save_row(self.user, candidate)
+        run_scoped(self.area, services.save_row, self.admin, replacement, replacement.version)
+        with self.assertRaises(PermissionDenied): run_scoped(self.area, services.save_row, self.user, candidate)
         self.assertEqual(candidate.asset.kind, 'debt')
         self.assertFalse(MonthPlan.objects.filter(asset=asset).exists())
 
@@ -214,7 +229,7 @@ class MemberAccessTests(TestCase):
             self.assertEqual(response.context['filter_form'].errors.as_data()['kind'][0].code, 'invalid_choice')
             self.assertContains(response, '<ul class="errorlist"', html=False)
             self.assertContains(response, 'Ingen poster matcher valget denne måneden.')
-            self.assertContains(response, f'href="/app/regninger/?month={period}">Nullstill filtrene')
+            self.assertContains(response, f'href="/app/regninger/?month={period}&amp;area={self.area.pk}">Nullstill filtrene')
             self.assertEqual(list(response.context['entries']), [])
 
     def test_remittance_only_empty_category_choice_explains_real_first_transfer_preparation(self):
@@ -286,7 +301,7 @@ class MemberAccessTests(TestCase):
 
     def test_admin_save_audit_and_existing_session_revocation_and_regrant(self):
         url = f'/familie/modultilgang/{self.member.pk}/'
-        admin = Client(); admin.force_login(self.admin)
+        admin = AreaClient(self.area); admin.force_login(self.admin)
         self.assertContains(admin.get('/app/familie/'), url)
         selected = [key for key in access.MODULES if key != 'debt']
         self.assertEqual(admin.post(url, {'version': 1, 'modules': selected}).status_code, 302)
@@ -294,7 +309,7 @@ class MemberAccessTests(TestCase):
         self.assertFalse(self.member.module_access['debt'])
         self.assertEqual(self.member.access_version, 2)
         self.assertEqual(self.client.get('/app/gjeld/').status_code, 403)
-        audit = Audit.objects.get(operation='modultilgang')
+        audit = Audit.all_objects.get(operation='modultilgang')
         self.assertEqual(audit.object_id, self.house.pk)
         self.assertEqual(audit.changes['membership_id'], self.member.pk)
         self.assertEqual(admin.post(url, {'version': 2, 'modules': list(access.MODULES)}).status_code, 302)
@@ -302,7 +317,7 @@ class MemberAccessTests(TestCase):
 
     def test_version_conflict_shows_latest_without_overwriting(self):
         self.revoke('calendar')
-        admin = Client(); admin.force_login(self.admin)
+        admin = AreaClient(self.area); admin.force_login(self.admin)
         response = admin.post(f'/familie/modultilgang/{self.member.pk}/', {'version': 1, 'modules': ['calendar']})
         self.assertEqual(response.status_code, 409)
         self.assertNotIn('calendar', response.context['form'].initial['modules'])
@@ -314,11 +329,11 @@ class MemberAccessTests(TestCase):
         self.assertEqual(self.client.post(url, {'version': 1}).status_code, 403)
         self.client.force_login(self.foreign)
         self.assertEqual(self.client.get(url).status_code, 404)
-        admin = Client(); admin.force_login(self.admin)
+        admin = AreaClient(self.area); admin.force_login(self.admin)
         self.assertEqual(admin.post(url, {'version': 1, 'modules': ['typo']}).status_code, 400)
-        csrf = Client(enforce_csrf_checks=True); csrf.force_login(self.admin)
+        csrf = AreaClient(self.area, enforce_csrf_checks=True); csrf.force_login(self.admin)
         self.assertEqual(csrf.post(url, {'version': 1}).status_code, 403)
-        self.assertEqual(Audit.objects.count(), 0)
+        self.assertEqual(Audit.all_objects.count(), 0)
 
     def test_pages_blocked_but_home_account_password_and_logout_remain(self):
         self.revoke(*access.MODULES)
@@ -387,35 +402,35 @@ class MemberAccessTests(TestCase):
                           ('/ny/bill/', {'accounting_class': 'fund'})]:
             with self.subTest(url=url, body=body): self.assertEqual(self.client.post(url, body).status_code, 403)
         self.assertEqual(self.client.get(f'/betal/{bill.pk}/').status_code, 403)
-        with self.assertRaises(PermissionDenied): services.pay_bill(self.user, bill.pk, self.day, uuid.uuid4())
+        with self.assertRaises(PermissionDenied): run_scoped(self.area, services.pay_bill, self.user, bill.pk, self.day, uuid.uuid4())
 
     def test_old_and_new_entry_types_both_checked_under_lock(self):
         hidden = self.entry('debt', asset=self.assets['debt'], category=None)
         ordinary = self.entry()
         self.revoke('debt')
         hidden.kind = 'expense'; hidden.category = self.category; hidden.asset = None
-        with self.assertRaises(PermissionDenied): services.save_entry(self.user, hidden, hidden.version)
+        with self.assertRaises(PermissionDenied): run_scoped(self.area, services.save_entry, self.user, hidden, hidden.version)
         ordinary.kind = 'debt'; ordinary.asset = self.assets['debt']; ordinary.category = None
-        with self.assertRaises(PermissionDenied): services.save_entry(self.user, ordinary, ordinary.version)
+        with self.assertRaises(PermissionDenied): run_scoped(self.area, services.save_entry, self.user, ordinary, ordinary.version)
         hidden.refresh_from_db(); ordinary.refresh_from_db()
         self.assertEqual((hidden.kind, ordinary.kind), ('debt', 'expense'))
 
     def test_idempotent_payment_and_entry_retries_recheck_access(self):
         bill = self.bill()
-        payment = services.pay_bill(self.user, bill.pk, self.day, uuid.uuid4())
+        payment = run_scoped(self.area, services.pay_bill, self.user, bill.pk, self.day, uuid.uuid4())
         self.revoke('bills')
-        with self.assertRaises(PermissionDenied): services.pay_bill(self.user, bill.pk, self.day, uuid.uuid4())
+        with self.assertRaises(PermissionDenied): run_scoped(self.area, services.pay_bill, self.user, bill.pk, self.day, uuid.uuid4())
         replay = Entry(household=self.house, created_by=self.user, kind='expense', amount_ore=payment.amount_ore,
                        effective_date=self.day, description='Retry', category=self.category, idempotency_key=payment.idempotency_key)
-        with self.assertRaises(PermissionDenied): services.save_entry(self.user, replay)
+        with self.assertRaises(PermissionDenied): run_scoped(self.area, services.save_entry, self.user, replay)
         self.assertEqual(Entry.objects.count(), 1)
 
-    def test_tenant_and_own_post_rules_remain_authoritative(self):
+    def test_tenant_boundary_and_area_owner_edit_capability(self):
         peer_entry = self.entry(created_by=self.peer)
-        self.assertEqual(self.client.get(f'/endre/entry/{peer_entry.pk}/').status_code, 403)
+        self.assertEqual(self.client.get(f'/endre/entry/{peer_entry.pk}/').status_code, 200)
         self.client.force_login(self.foreign)
-        self.assertEqual(self.client.get(f'/endre/entry/{peer_entry.pk}/').status_code, 404)
-        with self.assertRaises(PermissionDenied): services.save_entry(self.foreign, peer_entry, peer_entry.version)
+        self.assertEqual(self.client.get(f'/endre/entry/{peer_entry.pk}/').status_code, 403)
+        with self.assertRaises(PermissionDenied): run_scoped(self.area, services.save_entry, self.foreign, peer_entry, peer_entry.version)
 
     def test_restricted_spending_excludes_hidden_bills_remittance_refunds_and_forecast(self):
         ordinary = self.entry()
@@ -516,11 +531,11 @@ class MemberAccessTests(TestCase):
         bill = self.bill()
         self.revoke('budget', 'savings', 'debt', 'fund', 'remittance')
         paid = self.client.post(f'/betal/{bill.pk}/', {'date': self.day.isoformat(), 'key': str(uuid.uuid4()), 'version': bill.version})
-        self.assertRedirects(paid, '/app/regninger/', fetch_redirect_response=False)
+        self.assertRedirects(paid, f'/app/regninger/?area={self.area.pk}', fetch_redirect_response=False)
         payment = Entry.objects.get(occurrence=bill)
         access.require_row(self.member, payment)
         self.assertEqual(self.client.get('/ny/entry/?entry_kind=refund').status_code, 200)
-        refund = services.save_entry(self.user, Entry(kind='refund', amount_ore=1, original=payment,
+        refund = run_scoped(self.area, services.save_entry, self.user, Entry(kind='refund', amount_ore=1, original=payment,
             effective_date=self.day, description='Tillatt regningsrefusjon'))
         access.require_row(self.member, refund)
         for row in (refund, payment):
@@ -530,7 +545,7 @@ class MemberAccessTests(TestCase):
             self.assertEqual(preview.status_code, 200)
             data['confirmation'] = preview.context['confirmation']
             saved = self.client.post(url, data)
-            self.assertRedirects(saved, f'/historikk/entry/{row.pk}/', fetch_redirect_response=False)
+            self.assertRedirects(saved, f'/historikk/entry/{row.pk}/?area={self.area.pk}', fetch_redirect_response=False)
         self.assertFalse(Entry.objects.filter(active=True).exists())
         self.assertEqual(Entry.objects.count(), 2)
 
@@ -574,16 +589,16 @@ class MemberAccessTests(TestCase):
                 candidate = Entry(kind='fund', asset=bill.asset, amount_ore=amount,
                                   effective_date=self.day, description='Probe')
                 with self.subTest(amount=amount), self.assertRaises(PermissionDenied):
-                    services.save_entry(self.user, candidate)
+                    run_scoped(self.area, services.save_entry, self.user, candidate)
             with self.assertRaises(PermissionDenied):
-                services.save_entry(self.user, Entry(kind='refund', original=original, amount_ore=1,
+                run_scoped(self.area, services.save_entry, self.user, Entry(kind='refund', original=original, amount_ore=1,
                                                       effective_date=self.day, description='Probe refund'))
             for row in (original, refund):
                 with self.subTest(row=row.pk), self.assertRaises(PermissionDenied):
-                    services.delete_entry(self.user, row.pk, row.version)
+                    run_scoped(self.area, services.delete_entry, self.user, row.pk, row.version)
             original.kind, original.asset, original.category = 'expense', None, self.category
-            with self.assertRaises(PermissionDenied): services.save_entry(self.user, original, original.version)
-            with self.assertRaises(PermissionDenied): services.save_row(self.user, original, original.version)
+            with self.assertRaises(PermissionDenied): run_scoped(self.area, services.save_entry, self.user, original, original.version)
+            with self.assertRaises(PermissionDenied): run_scoped(self.area, services.save_row, self.user, original, original.version)
         self.assertEqual(Entry.objects.count(), 3)
 
     def test_fund_write_ui_and_direct_requests_follow_same_policy(self):
@@ -610,7 +625,7 @@ class MemberAccessTests(TestCase):
         plan = MonthPlan.objects.create(household=self.house, created_by=self.admin, month=self.month,
                                         asset=self.assets['fund'], amount_ore=100)
         self.assertIn(plan, access.safe_rows(self.member, MonthPlan.objects.all()))
-        services.save_entry(self.admin, Entry(kind='fund', asset=self.assets['fund'], amount_ore=1,
+        run_scoped(self.area, services.save_entry, self.admin, Entry(kind='fund', asset=self.assets['fund'], amount_ore=1,
                                              effective_date=self.day, description='Admin payment'))
 
     def test_fund_dependency_rechecks_fresh_original_and_idempotent_persisted_type(self):
@@ -620,14 +635,14 @@ class MemberAccessTests(TestCase):
         self.revoke('bills')
         updated = Entry.objects.get(pk=original.pk)
         updated.kind, updated.asset, updated.category = 'fund', self.assets['fund'], None
-        services.save_entry(self.admin, updated, updated.version)
-        with self.assertRaises(PermissionDenied): services.save_entry(self.user, candidate)
+        run_scoped(self.area, services.save_entry, self.admin, updated, updated.version)
+        with self.assertRaises(PermissionDenied): run_scoped(self.area, services.save_entry, self.user, candidate)
         self.assertEqual(candidate.original.kind, 'fund')
         replay = Entry(kind='expense', category=self.category, amount_ore=1,
                        effective_date=self.day, description='Disguised replay', idempotency_key=updated.idempotency_key)
-        with self.assertRaises(PermissionDenied): services.save_entry(self.user, replay)
+        with self.assertRaises(PermissionDenied): run_scoped(self.area, services.save_entry, self.user, replay)
         with self.assertRaises(PermissionDenied):
-            services.save_row(self.user, Entry(kind='fund', asset=self.assets['fund'], amount_ore=1,
+            run_scoped(self.area, services.save_row, self.user, Entry(kind='fund', asset=self.assets['fund'], amount_ore=1,
                                               effective_date=self.day, description='Direct save'))
         self.assertEqual(Entry.objects.count(), 1)
 
@@ -654,7 +669,10 @@ class MemberAccessTests(TestCase):
             target = visible[0]
             self.assertContains(response, f'/slett/{target.pk}/?month={period}&amp;return_to={page}')
             self.assertContains(self.client.get(f'/slett/{target.pk}/?month={period}&return_to={page}'), f'/app/{page}/?month={period}')
+        self.assertContains(self.client.get('/app/sparing/'), f'/endre/entry/{peer.pk}/')
+        self.area.grants.filter(member=self.member).update(role='reader')
         self.assertNotContains(self.client.get('/app/sparing/'), f'/endre/entry/{peer.pk}/')
+        self.area.grants.filter(member=self.member).update(role='owner')
         edited = self.client.get(f'/endre/entry/{own.pk}/?month={period}&return_to=sparing')
         self.assertContains(edited, f'/app/sparing/?month={period}')
         filtered = self.client.get('/app/sparing/', {'month': period, 'q': 'Mitt', 'kind': 'deposit'})
@@ -668,7 +686,7 @@ class MemberAccessTests(TestCase):
         preview = self.client.post(url, data)
         data['confirmation'] = preview.context['confirmation']
         deleted = self.client.post(url, data)
-        self.assertRedirects(deleted, f'/historikk/entry/{own.pk}/', fetch_redirect_response=False)
+        self.assertRedirects(deleted, f'/historikk/entry/{own.pk}/?area={self.area.pk}', fetch_redirect_response=False)
 
     def test_existing_full_budget_module_layout_has_no_added_history_section(self):
         for page in ('sparing', 'gjeld', 'arsutgifter', 'regninger'):
@@ -679,8 +697,8 @@ class MemberAccessTests(TestCase):
 
     def test_safe_home_respects_household_visibility_without_revoking_direct_access(self):
         self.revoke('bills')
-        self.house.modules = {'debt': False, 'fund': False, 'remittance': False, 'annual_navigation': False}
-        self.house.save(update_fields=['modules'])
+        self.area.modules = {'debt': False, 'fund': False, 'remittance': False, 'annual_navigation': False}
+        self.area.save(update_fields=['modules'])
         response = self.client.get('/app/oversikt/')
         pages = dict(response.context['available_pages'])
         for page in ('gjeld', 'arsutgifter', 'utland', 'arsoversikt'):
@@ -688,8 +706,8 @@ class MemberAccessTests(TestCase):
             self.assertNotContains(response, f'/app/{page}/')
             self.assertEqual(self.client.get(f'/app/{page}/').status_code, 200)
         self.assertIn('sparing', pages)
-        self.house.modules = {'debt': True, 'fund': True, 'remittance': True}
-        self.house.save(update_fields=['modules'])
+        self.area.modules = {'debt': True, 'fund': True, 'remittance': True}
+        self.area.save(update_fields=['modules'])
         pages = dict(self.client.get('/app/oversikt/').context['available_pages'])
         for page in ('gjeld', 'arsutgifter', 'utland', 'arsoversikt'): self.assertIn(page, pages)
 
@@ -805,7 +823,7 @@ class AccessLockTests(TransactionTestCase):
         return outcomes
 
     def test_claimed_delivery_waits_for_revocation_commit_and_never_transports(self):
-        client = Client(); client.force_login(self.user)
+        client = AreaClient(self.area); client.force_login(self.user)
         session = client.session
         sub = PushSubscription.objects.create(household=self.house, user=self.user,
             endpoint_digest='synthetic-waiting-delivery', session_digest=push.digest(session.session_key), active=True,
@@ -834,7 +852,7 @@ class AccessLockTests(TransactionTestCase):
             name=template.name, amount_ore=template.amount_ore, due_date=day, accounting_class='ordinary', category=category)
         key = uuid.uuid4()
         before = (bill.version, bill.amount_ore, template.version, self.house.entry_sequence)
-        outcomes = self.run_waiting_after_revocation('bills', lambda: services.pay_bill(self.user, bill.pk, day, key))
+        outcomes = self.run_waiting_after_revocation('bills', lambda: run_scoped(self.area, services.pay_bill, self.user, bill.pk, day, key))
         self.assertEqual(outcomes, ['denied'])
         self.assertFalse(Entry.objects.exists())
         self.assertFalse(Entry.objects.filter(idempotency_key=key).exists())
@@ -863,7 +881,7 @@ class AccessLockTests(TransactionTestCase):
         self.assertEqual(errors, [])
         self.assertCountEqual(outcomes, ['saved', 'conflict'])
         self.member.refresh_from_db(); self.assertEqual(self.member.access_version, 2)
-        self.assertEqual(Audit.objects.filter(operation='modultilgang').count(), 1)
+        self.assertEqual(Audit.all_objects.filter(operation='modultilgang').count(), 1)
 
     def test_waiting_mutation_reloads_permissions_after_committed_revocation(self):
         ready, finished = threading.Event(), threading.Event()
@@ -873,7 +891,7 @@ class AccessLockTests(TransactionTestCase):
             try:
                 ready.set()
                 row = Entry(kind='income', amount_ore=100, description='Must not save', effective_date=timezone.localdate())
-                services.save_entry(self.user, row)
+                run_scoped(self.area, services.save_entry, self.user, row)
                 outcome.append('saved')
             except PermissionDenied: outcome.append('denied')
             finally:
@@ -890,7 +908,7 @@ class AccessLockTests(TransactionTestCase):
         self.assertFalse(Entry.objects.exists())
 
     def test_transport_holds_household_lock_until_provider_acceptance(self):
-        client = Client(); client.force_login(self.user)
+        client = AreaClient(self.area); client.force_login(self.user)
         session = client.session
         sub = PushSubscription.objects.create(household=self.house, user=self.user, endpoint_digest='synthetic-transport',
             session_digest=push.digest(session.session_key), active=True,

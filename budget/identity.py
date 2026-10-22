@@ -115,18 +115,26 @@ def provision_owner(binding, password, family_name):
     user.save()
     house = Household.objects.create(name=family_name)
     member = Membership.objects.create(user=user, household=house, role='admin', verified_at=None, identity_method='preregistered_owner', provisioned_at=timezone.now(), provisioning_digest=fingerprint, can_register_households=True)
+    from .financial_areas import create_area
+    create_area(member)
     return member, True
 
 
 @transaction.atomic
-def register_family_account(actor, email, password, *, family_name=None, role='member'):
+def register_family_account(actor, email, password, *, family_name=None, role='member', financial_sharing=None, financial_reader_ids=()):
     from django.contrib.auth.password_validation import validate_password
-    member = Membership.objects.select_for_update().get(user=actor)
+    from .access import lock_member
+    member = lock_member(actor)
     if not settings.PREREGISTERED_LOGIN_ENABLED: raise ValidationError('Lokal forhåndsregistrering er deaktivert.')
     if not actor.is_active or member.role != 'admin': raise PermissionDenied('Bare administrator kan registrere familiemedlemmer.')
     if family_name is not None and not member.can_register_households:
         raise PermissionDenied('Du har ikke tillatelse til å opprette andre familier.')
     if role not in ('member', 'admin'): raise ValidationError('Ugyldig medlemsrolle.')
+    from . import financial_areas
+    if family_name is None:
+        validate_financial_choice(member, financial_sharing, financial_reader_ids)
+    elif financial_sharing != 'private' or financial_reader_ids:
+        raise ValidationError('En ny familie starter med et privat budsjett.')
     email = email.strip().lower()
     lock_identity_email(email)
     if get_user_model().objects.filter(email__iexact=email).exists():
@@ -140,6 +148,7 @@ def register_family_account(actor, email, password, *, family_name=None, role='m
     provenance = hashlib.sha256((str(member.pk) + ':' + str(household.pk) + ':' + email + ':' + secrets.token_hex(32)).encode()).hexdigest()
     registered = Membership.objects.create(user=user, household=household, role=assigned_role, verified_at=None, identity_method='preregistered_admin' if assigned_role == 'admin' else 'preregistered_member', provisioned_at=timezone.now(), provisioning_digest=provenance, provisioned_by=actor)
     Audit.objects.create(household=household, actor=actor, object_id=household.pk, operation='lokal registrering', changes={'membership_id': registered.pk, 'role': assigned_role, 'email_verified': False})
+    financial_areas.create_area(registered, reader_ids=financial_reader_ids)
     return registered
 
 
@@ -149,22 +158,29 @@ def create_household(user, name, verified_email):
     if verified_email != user.email.lower() or Membership.objects.filter(user=user).exists():
         raise ValidationError('Verifisert bruker må være uten familie.')
     house = Household.objects.create(name=name)
-    Membership.objects.create(user=user, household=house, role='admin', verified_at=timezone.now())
+    member = Membership.objects.create(user=user, household=house, role='admin', verified_at=timezone.now())
+    from .financial_areas import create_area
+    create_area(member)
     return house
 
 
 @transaction.atomic
-def invite(actor, email, base_url):
-    member = Membership.objects.select_for_update().get(user=actor)
+def invite(actor, email, base_url, *, financial_sharing=None, financial_reader_ids=()):
+    from .access import lock_member
+    member = lock_member(actor)
     if member.role != 'admin': raise ValidationError('Bare administrator kan invitere.')
+    validate_financial_choice(member, financial_sharing, financial_reader_ids)
     token = secrets.token_urlsafe(32)
-    row = Invitation.objects.create(household=member.household, invited_by=actor, email=email.lower(), digest=digest(token), expires_at=timezone.now() + timedelta(days=7))
+    row = Invitation.objects.create(financial_sharing=financial_sharing, financial_reader_ids=list(map(int, financial_reader_ids)), household=member.household, invited_by=actor, email=email.lower(), digest=digest(token), expires_at=timezone.now() + timedelta(days=7))
     send_mail('Invitasjon til Familieblikk', f'Du er invitert til {member.household.name}. Logg inn med denne e-postadressen og godta invitasjonen: {base_url}/invitasjon/{token}/', settings.DEFAULT_FROM_EMAIL, [email])
     return row
 
 
 @transaction.atomic
 def accept_invite(user, token, verified_email):
+    initial = Invitation.objects.filter(digest=digest(token)).only('household_id').first()
+    if initial:
+        Household.objects.select_for_update().get(pk=initial.household_id)
     get_user_model().objects.select_for_update().get(pk=user.pk)
     row = Invitation.objects.select_for_update().filter(digest=digest(token)).first()
     if not row or row.revoked or row.accepted or row.expires_at <= timezone.now() or row.email != verified_email:
@@ -172,7 +188,25 @@ def accept_invite(user, token, verified_email):
     if not Membership.objects.filter(user=row.invited_by, household=row.household, role='admin').exists():
         raise ValidationError('Invitasjonen er ikke lenger gyldig.')
     if Membership.objects.filter(user=user).exists(): raise ValidationError('Du tilhører allerede en familie. Du flyttes ikke automatisk.')
-    Membership.objects.create(user=user, household=row.household, role='member', verified_at=timezone.now())
+    inviter = Membership.objects.get(user=row.invited_by, household=row.household)
+    validate_financial_choice(inviter, row.financial_sharing, row.financial_reader_ids)
+    joined = Membership.objects.create(user=user, household=row.household, role='member', verified_at=timezone.now())
+    from .financial_areas import create_area
+    create_area(joined, reader_ids=row.financial_reader_ids)
     row.accepted = True
     row.save(update_fields=['accepted'])
     return row.household
+
+
+def validate_financial_choice(member, sharing, reader_ids):
+    if sharing not in ('private', 'named'):
+        raise ValidationError('Velg uttrykkelig privat budsjett eller navngitt innsyn.')
+    try:
+        ids = set(map(int, reader_ids))
+    except (TypeError, ValueError):
+        raise ValidationError('Ugyldige deltakere.') from None
+    if (sharing == 'private' and ids) or (sharing == 'named' and not ids):
+        raise ValidationError('Privat budsjett har ingen lesere. Navngitt innsyn krever minst én leser.')
+    actual = set(Membership.objects.filter(household=member.household, user__is_active=True, pk__in=ids).values_list('pk', flat=True))
+    if actual != ids:
+        raise ValidationError('Velg aktive medlemmer i denne familien.')

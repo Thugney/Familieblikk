@@ -13,14 +13,10 @@ class ListForm(CommandForm):
 class ItemForm(CommandForm):
     name = forms.CharField(label='Vare', max_length=120)
     quantity = forms.CharField(label='Antall / mengde', max_length=40, initial='1')
-    price = MoneyField(label='Valgfri anslått pris i NOK', required=False, min_value=0)
-    category = forms.ModelChoiceField(label='Valgfri kategori', queryset=Category.objects.none(), required=False)
     purchased = forms.BooleanField(label='Kjøpt', required=False)
     removed = forms.BooleanField(label='Fjern fra aktiv liste (historikken bevares)', required=False)
     def __init__(self, *args, member, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['category'].queryset = access.category_choices(member, Category.objects.filter(archived=False))
-        if not access.allows(member, 'budget'): self.fields.pop('category')
 
 
 class DocumentChoice(forms.ModelChoiceField):

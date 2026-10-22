@@ -460,6 +460,9 @@ class PushTests(TestCase):
         self.assertEqual(receipt().status_code, 302)
 
     def test_unread_badge_and_summary_use_only_current_recipient_and_household(self):
+        from budget.financial_test_helpers import install_area
+        install_area(self, self.members[1])
+        self.client.force_login(self.users[1])
         self.create()
         notice = CalendarNotification.objects.get(recipient=self.users[1])
         self.assertEqual(self.client.get('/push/summary/').json(), {'unread':1})

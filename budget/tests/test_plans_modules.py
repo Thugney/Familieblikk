@@ -1,3 +1,5 @@
+from budget.area_requests import financial_url
+from budget.tests.financial_support import enter_fixture_area
 """Persisted module wiring: URL defaults never replace normal validation."""
 import uuid
 from datetime import date
@@ -17,12 +19,16 @@ class PlansModulesTests(TestCase):
     def setUp(self):
         self.user, self.house, self.category = setup_family('modules-owner@example.test')
         self.other, self.foreign, self.foreign_category = setup_family('modules-other@example.test')
+        enter_fixture_area(self, self.user)
         self.month = timezone.localdate().replace(day=1)
         self.key = self.month.strftime('%Y-%m')
         self.client.force_login(self.user)
 
     def asset(self, kind='debt', foreign=False):
-        return Asset.objects.create(household=self.foreign if foreign else self.house,
+        from budget.financial_areas import area_scope
+        owner = self.other if foreign else self.user
+        with area_scope(Membership.objects.get(user=owner), owner.test_area.pk):
+            return Asset.objects.create(household=self.foreign if foreign else self.house,
             created_by=self.other if foreign else self.user, kind=kind, name='Modul '+kind,
             opening_date=self.month, opening_ore=100000, target_ore=120000,
             annual_rate=Decimal('6'), minimum_ore=10000)
@@ -37,16 +43,16 @@ class PlansModulesTests(TestCase):
                     amount='20', asset=str(asset.pk), fee_ore=0, idempotency_key=str(uuid.uuid4()), version=0, **extra)
 
     def test_navigation_respects_modules_and_selected_month(self):
-        self.house.modules = dict(debt=True, fund=True, remittance=True, annual_navigation=True)
-        self.house.save()
+        self.area.modules = dict(debt=True, fund=True, remittance=True, annual_navigation=True)
+        self.area.save()
         response = self.client.get('/app/mer/', {'month': '2026-09'})
         for page in ('regninger', 'gjeld', 'arsutgifter', 'utland', 'familie', 'tilpass', 'varsler'):
             self.assertContains(response, f'/app/{page}/?month=2026-09')
         self.assertContains(response, '/app/arsoversikt/?month=2026-09&amp;view=matrix')
         self.assertContains(response, 'Planer &amp; moduler')
         self.assertContains(response, 'id="notification-bell"')
-        self.house.modules = dict(debt=False, fund=False, remittance=False, annual_navigation=False)
-        self.house.save()
+        self.area.modules = dict(debt=False, fund=False, remittance=False, annual_navigation=False)
+        self.area.save()
         response = self.client.get('/app/mer/', {'month': self.key})
         for page in ('gjeld', 'arsutgifter', 'utland', 'arsoversikt'):
             self.assertNotContains(response, f'href="/app/{page}/')
@@ -56,12 +62,14 @@ class PlansModulesTests(TestCase):
         self.assertTrue(Asset.objects.filter(pk=debt.pk).exists())
 
     def test_badges_count_only_own_overdue_bills_and_unread(self):
+        from budget.financial_areas import area_scope
         for user, house, category in ((self.user, self.house, self.category), (self.other, self.foreign, self.foreign_category)):
-            template = BillTemplate.objects.create(household=house, created_by=user, name='Forfalt',
-                amount_ore=100, first_due=date(2026, 1, 1), monthly=False, category=category)
-            services.materialize_template(template, self.month)
-            CalendarNotification.objects.create(household=house, recipient=user, original_date=self.month,
-                kind='created', detail='Syntetisk', action_key=uuid.uuid4())
+            with area_scope(Membership.objects.get(user=user), user.test_area.pk):
+                template = BillTemplate.objects.create(household=house, created_by=user, name='Forfalt',
+                    amount_ore=100, first_due=date(2026, 1, 1), monthly=False, category=category)
+                services.materialize_template(template, self.month)
+                CalendarNotification.objects.create(household=house, recipient=user, original_date=self.month,
+                    kind='created', detail='Syntetisk', action_key=uuid.uuid4())
         response = self.client.get('/app/mer/', {'month': self.key})
         self.assertContains(response, 'aria-label="1 forfalte"')
         self.assertContains(response, 'aria-label="1 uleste"')
@@ -74,17 +82,17 @@ class PlansModulesTests(TestCase):
             self.assertEqual(response.context['form']['plan_month'].value(), self.month)
             response = self.client.post(url, self.asset_data(kind))
             self.assertEqual(response.status_code, 302, (kind, response.context['form'].errors if response.context else ''))
-            self.assertRedirects(response, f'/app/{page}/?month={self.key}', fetch_redirect_response=False)
+            self.assertRedirects(response, financial_url(f'/app/{page}/?month={self.key}', self.area.pk), fetch_redirect_response=False)
             asset = Asset.objects.get(household=self.house, name='Lagret '+kind)
             response = self.client.get(f'/endre/asset/{asset.pk}/?month={self.key}')
             self.assertEqual(response.context['page'], page)
-            self.assertContains(response, f'href="/app/{page}/?month={self.key}"')
+            self.assertContains(response, f'href="/app/{page}/?month={self.key}&amp;area={self.area.pk}"')
             data = self.asset_data(kind)
             data.update(name='Redigert '+kind, country='Bekreftet land', version=asset.version,
                         displayed_plan_month=self.month.isoformat(),
                         plan_version=response.context['form']['plan_version'].value())
             response = self.client.post(f'/endre/asset/{asset.pk}/?month={self.key}', data)
-            self.assertRedirects(response, f'/app/{page}/?month={self.key}', fetch_redirect_response=False)
+            self.assertRedirects(response, financial_url(f'/app/{page}/?month={self.key}', self.area.pk), fetch_redirect_response=False)
             asset.refresh_from_db()
             self.assertEqual(asset.name, 'Redigert '+kind)
             self.assertEqual(asset.country, 'Bekreftet land')
@@ -109,7 +117,7 @@ class PlansModulesTests(TestCase):
         self.assertEqual(form['kind'].value(), 'debt')
         self.assertEqual(str(form['asset'].value()), str(asset.pk))
         self.assertEqual(form['effective_date'].value(), self.month)
-        self.assertRedirects(self.client.post(url, self.entry_data(asset)), f'/app/gjeld/?month={self.key}', fetch_redirect_response=False)
+        self.assertRedirects(self.client.post(url, self.entry_data(asset)), financial_url(f'/app/gjeld/?month={self.key}', self.area.pk), fetch_redirect_response=False)
         self.assertEqual(Entry.objects.get(household=self.house).asset, asset)
         # The hint must not turn an invalid expense into a debt payment.
         response = self.client.post(url, self.entry_data(asset, kind='expense'))
@@ -126,7 +134,9 @@ class PlansModulesTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertFalse(Entry.objects.filter(household=self.house).exists())
         member = get_user_model().objects.create_user(username='modules-member@example.test')
-        Membership.objects.create(user=member, household=self.house, role='member')
+        from budget.financial_models import FinancialAreaGrant
+        membership = Membership.objects.create(user=member, household=self.house, role='member')
+        FinancialAreaGrant.objects.create(area=self.area, member=membership, role='reader')
         self.client.force_login(member)
         self.assertEqual(self.client.get('/ny/asset/?asset_kind=debt').status_code, 403)
         self.assertEqual(self.client.get(f'/endre/asset/{own.pk}/').status_code, 403)
@@ -135,7 +145,7 @@ class PlansModulesTests(TestCase):
     def test_return_target_cannot_be_an_external_url(self):
         debt = self.asset()
         response = self.client.post(f'/ny/entry/?month={self.key}&return_to=https://evil.example', self.entry_data(debt))
-        self.assertRedirects(response, f'/app/poster/?month={self.key}', fetch_redirect_response=False)
+        self.assertRedirects(response, financial_url(f'/app/poster/?month={self.key}', self.area.pk), fetch_redirect_response=False)
 
     def test_fund_obligation_defaults_and_payment_remain_persisted(self):
         fund = self.asset('fund')
@@ -145,11 +155,11 @@ class PlansModulesTests(TestCase):
         url = f'/ny/bill/?month={self.key}&return_to=arsutgifter'
         response = self.client.post(url, dict(name='Årlig faktura', first_due=self.month.isoformat(),
             accounting_class='fund', asset=fund.pk, amount='25', version=0))
-        self.assertRedirects(response, f'/app/arsutgifter/?month={self.key}', fetch_redirect_response=False)
+        self.assertRedirects(response, financial_url(f'/app/arsutgifter/?month={self.key}', self.area.pk), fetch_redirect_response=False)
         self.client.get('/app/regninger/', {'month': self.key})
         bill = BillOccurrence.objects.get(household=self.house, name='Årlig faktura')
         response = self.client.post(f'/betal/{bill.pk}/?month={self.key}', dict(date=self.month.isoformat(), key=uuid.uuid4(), version=bill.version))
-        self.assertRedirects(response, f'/app/regninger/?month={self.key}', fetch_redirect_response=False)
+        self.assertRedirects(response, financial_url(f'/app/regninger/?month={self.key}', self.area.pk), fetch_redirect_response=False)
         self.assertEqual(Entry.objects.get(occurrence=bill).kind, 'fund')
 
     def test_debt_strategy_extra_and_selected_month_survive_save(self):
@@ -175,8 +185,10 @@ class PlansModulesTests(TestCase):
             amount_ore=1000, original=rows[0], effective_date=self.month)
         Entry.objects.create(household=self.house, created_by=self.user, kind='refund', description='Gjeldsrefusjon',
             amount_ore=500, original=rows[2], effective_date=self.month)
-        Entry.objects.create(household=self.foreign, created_by=self.other, kind='expense', description='Fremmed',
-            amount_ore=999999, category=self.foreign_category, effective_date=self.month)
+        from budget.financial_areas import area_scope
+        with area_scope(Membership.objects.get(user=self.other), self.other.test_area.pk):
+            Entry.objects.create(household=self.foreign, created_by=self.other, kind='expense', description='Fremmed',
+                amount_ore=999999, category=self.foreign_category, effective_date=self.month)
         MonthPlan.objects.create(household=self.house, created_by=self.user, category=self.category, month=self.month, amount_ore=20000)
         template = BillTemplate.objects.create(household=self.house, created_by=self.user, name='Ikke materialiser',
             amount_ore=100, category=self.category, first_due=self.month, monthly=True)
@@ -249,7 +261,7 @@ class PlansModulesTests(TestCase):
         for key, value in (('return_to', 'gjeld'), ('entry_kind', 'debt'), ('asset', str(debt.pk)), ('strategy', 'snowball'), ('extra', '25.50')):
             self.assertContains(response, f'type="hidden" name="{key}" value="{value}"')
         response = self.client.post('/ny/entry/?'+query, self.entry_data(debt))
-        self.assertEqual(response.url, f'/app/gjeld/?month={self.key}&strategy=snowball&extra=25.50')
+        self.assertEqual(response.url, f'/app/gjeld/?month={self.key}&strategy=snowball&extra=25.50&area={self.area.pk}')
         response = self.client.get('/app/gjeld/?'+query)
         self.assertContains(response, f'/endre/asset/{debt.pk}/?month={self.key}&amp;strategy=snowball&amp;extra=25.50')
         bad = self.client.get('/ny/entry/?return_to=https://evil.example&asset=bad&entry_kind=bad')
@@ -257,10 +269,10 @@ class PlansModulesTests(TestCase):
 
     def test_overview_entry_returns_and_cancel_stay_in_overview(self):
         response = self.client.get(f'/ny/entry/?month={self.key}&return_to=oversikt')
-        self.assertContains(response, f'href="/app/oversikt/?month={self.key}"')
+        self.assertContains(response, f'href="/app/oversikt/?month={self.key}&amp;area={self.area.pk}"')
         debt = self.asset()
         response = self.client.post(f'/ny/entry/?month={self.key}&return_to=oversikt', self.entry_data(debt))
-        self.assertEqual(response.url, f'/app/oversikt/?month={self.key}')
+        self.assertEqual(response.url, f'/app/oversikt/?month={self.key}&area={self.area.pk}')
 
     def test_private_import_link_requires_actual_authenticated_owner_guard(self):
         response = self.client.get('/app/mer/')

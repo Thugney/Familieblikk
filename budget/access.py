@@ -33,7 +33,9 @@ def validate_permissions(value):
 
 
 def allows(member, module):
-    return module in MODULES and (member.role == 'admin' or member.module_access.get(module, True) is True)
+    # Area modules control navigation preferences; hidden obligations still count.
+    # Membership module permissions remain an additional capability restriction.
+    return module in MODULES and member.module_access.get(module, True) is True
 
 
 def require(member, modules):
@@ -52,7 +54,9 @@ def can_page(member, page):
 
 def visible_page(member, page):
     preference, default = PAGE_PREFERENCES.get(page, (None, True))
-    return can_page(member, page) and (preference is None or member.household.modules.get(preference, default))
+    from .financial_areas import scope_state, current_area
+    modules = current_area(member).modules if scope_state() is not None else {}
+    return can_page(member, page) and (preference is None or modules.get(preference, default))
 
 
 def require_page(member, page, matrix=False):
@@ -131,10 +135,22 @@ def row_modules(row, household_id, seen=None):
 
 
 def require_row(member, row):
+    require_area_row(member, row)
     return require(member, row_modules(row, member.household_id))
 
 
+def require_area_row(member, row, write=False):
+    if hasattr(row, 'financial_area_id'):
+        from .financial_areas import current_area
+        area = current_area(member, write=write)
+        if row.financial_area_id is None and row._state.adding and write:
+            row.financial_area = area
+        if row.financial_area_id != area.pk:
+            raise PermissionDenied('Posten tilhører et annet budsjett.')
+
+
 def require_write_row(member, row):
+    require_area_row(member, row, write=True)
     required = row_modules(row, member.household_id)
     # Fund mutations validate against balances containing bill payments. Both
     # the amount in an error and acceptance of a guessed amount reveal them.
@@ -151,7 +167,7 @@ def lock_relations(member, row, seen=None):
         raise PermissionDenied('Ugyldig kobling mellom poster.')
     seen.add(identity)
     for field in row._meta.fields:
-        if not field.is_relation or field.name in ('household', 'created_by'):
+        if not field.is_relation or field.name in ('household', 'created_by', 'financial_area'):
             continue
         related_id = getattr(row, field.attname)
         if related_id is None or not hasattr(field.related_model, 'household_id'):
@@ -219,7 +235,7 @@ def safe_rows(member, queryset):
         return queryset if allows(member, 'shopping') else queryset.none()
     if queryset.model is WorkflowCommand:
         return queryset.none()
-    if member.role == 'admin' or complete_finance(member):
+    if complete_finance(member):
         return queryset
     model = queryset.model
     if model is Entry:

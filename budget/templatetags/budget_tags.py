@@ -38,6 +38,8 @@ def unread_notifications(member):
     return CalendarNotification.objects.filter(recipient_id=member.user_id, household_id=member.household_id, read_at__isnull=True).count()
 @register.simple_tag
 def overdue_bills(member, month):
+    from budget.financial_areas import scope_state
+    if scope_state() is None: return 0
     from django.utils import timezone
     from budget import services
     from datetime import date
@@ -101,7 +103,7 @@ def can_edit(row, member):
     from django.core.exceptions import PermissionDenied
     try: require_write_row(member, row)
     except PermissionDenied: return False
-    return member.role == 'admin' or row.created_by_id == member.user_id
+    return True
 @register.filter
 def initials(value):
     words = str(value).split()
