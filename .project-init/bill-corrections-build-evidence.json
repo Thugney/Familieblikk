@@ -1,0 +1,73 @@
+{
+  "status": "pass_with_deferred",
+  "at_utc": "2026-10-22T19:17:49.413799+00:00",
+  "scope": "Akseptert trinn 1 implementert og verifisert lokalt",
+  "baseline_commit": "6855a459a3916193a6f9210a5ea3aadc14cd0fd1",
+  "branch": "codex/bill-corrections-plan",
+  "tests": {
+    "django_postgresql": 290,
+    "browser": 90,
+    "node": 41,
+    "actual_private_source_preservation": 9
+  },
+  "receipts": [
+    "work/bill-corrections-final-full-tests.log",
+    "work/bill-corrections-browser.json",
+    "work/bill-corrections-review-browser.json",
+    "work/bill-corrections-recovery-browser.json",
+    "work/bill-corrections-node-checks.json",
+    "work/bill-corrections-private-source-tests.log"
+  ],
+  "configuration_unchanged": {
+    ".env": true,
+    "requirements.lock": true,
+    "docker-compose.yml": true,
+    "docker-compose.import.yml": true
+  },
+  "source_hashes": {
+    "budget/forms.py": "7e88a6fcba1ba219717d1c9902b01015c38919b87efeef5cd9ee7da3352f3fd4",
+    "budget/models.py": "fcc6eca4b6d21a011d631e50336e4b931b2980d92dcb650ae8e1f181dfd072a9",
+    "budget/services.py": "20d7ba2ee1a3fff0fe913c8c144bca10f8d0789d037dd467dcf3815a5c568401",
+    "budget/spending_services.py": "b773886e4601094cb2fd470f8073573dcf7d5d019fe4e63ff6c15d3ac155f33d",
+    "budget/templates/budget/bill_list.html": "913800676c089f6e56afcb973c5c501f5cb3f824dce3415d69b06aaae75996fc",
+    "budget/templates/budget/entry_list.html": "bd80e8287a1779cff3d9807a70ea3620c63079e40e71f25a713f8acd96fc0dcc",
+    "budget/templates/budget/form.html": "37e6e86d932b5f266e805b8d388a25a414160511cdfc44224e59a548fd08a792",
+    "budget/templates/budget/page.html": "40e468630e0505355bd0efe53ae207f7968347dba6a84c01cc9c770f9aaddfcc",
+    "budget/tests/test_calendar.py": "506d9372754dc77c4c4caeca6ae2ef0a3ae8659400aee1e662cef22fbe886cf8",
+    "budget/tests/test_domain.py": "dfb81f56ff619adb633de9a403a1b8d5e842758e08ec2f4836032d0adbeed4d1",
+    "budget/tests/test_member_access.py": "3427a8583ba8a2dbb1cfa7279b636b3dd97d044926412b1ce8c280e4d65dd54c",
+    "budget/tests/test_plans_modules.py": "08fbf64a2b62239fac4de15cfbd678f0a0163a605d3099f57fe18169d1069b35",
+    "budget/tests/test_review_repairs.py": "e2361c202ae501050d2fb75b95278da6e8304b08db6ea7cb84e68c48d8f806ae",
+    "budget/urls.py": "834e100c731a7cf4fbc32b754aca2581ab02750c24271772f589014169938e23",
+    "budget/views.py": "db83759fefe91bec83c532b9ba9417ad9ec434d7bd2c4659fdef9c352fb15ff0",
+    "budget/correction_forms.py": "de4122c9d916331db870d57e16d3fa4f02a296431552881145d9a61d65fc3c03",
+    "budget/correction_services.py": "466eb8b1711327fd394603196f82d5512ce00443afea4fdd27c300ed60ca3fbb",
+    "budget/correction_views.py": "9c68c0d02fb1aaa681bd5adc58488fb08a1a636b9eb87dacf15690cac1e81235",
+    "budget/migrations/0014_correctioncommand_correctionevent_seriesrevision_and_more.py": "0a69ee0a1c3cdc4f650a19e04b7a855f48309458c50ba0fd9ffb9332cbfe04aa",
+    "budget/templates/budget/correction.html": "3c23d1b44943f709c259304cac26bf89f1cdcfde07ff7dc8421bb15ed56cc0f7",
+    "budget/templates/budget/correction_export.html": "ab176aafb1bda9a524b193e71f2007d83bf5e973a5b68c60e9417cbb6774983a",
+    "budget/templates/budget/correction_history.html": "9b9a80471136e7be58d320de2d560b4762c92f3c9144247419e1018aee5c7014",
+    "budget/templates/budget/economic_effects.html": "e86f85e52775dd26264ecd0f1862c0e9438e130cdf1d3738436023b5300ec747",
+    "budget/templates/budget/entry_confirmation.html": "c1e8cff29c6683a415d3eaa1934f0777059ef52192a23098489700d6db5f3eb6",
+    "budget/tests_corrections.py": "623cc2dea327fa4508ca428aee848134926b71fe1d197303883bf0aa370997ce"
+  },
+  "review": {
+    "independent_layers": [
+      "blind-review",
+      "edge-case",
+      "verification-gap"
+    ],
+    "confirmed_findings": "Rettet og kontrollert med regresjonstester; siste målrettede uavhengige kildekontroll fant ingen uløste feil.",
+    "test_only_calendar_repair": "Uordnet personliste erstattet med kontroll av riktig medlems-ID; kalenderkilde uendret."
+  },
+  "deferred": [
+    "Ytelsesmåling ved stor eksporthistorikk",
+    "Egen oversikt over fremtidige/stoppede serier"
+  ],
+  "limitations": [
+    "Forhåndsvisning begrenses til 120 måneders beregningshorisont og gir forklaring ved større spenn.",
+    "Faktisk eierdatabase og NAS er ikke migrert eller verifisert i denne lokale byggejobben. Ny release krever lesende avstemming av faktisk profil.",
+    "Ingen commit, push, avhengighetsinstallasjon eller utrulling. Senere dokument-/handlelistetrinn har egne designporter."
+  ],
+  "human_acceptance": ".project-init/bill-corrections-human-acceptance.json"
+}

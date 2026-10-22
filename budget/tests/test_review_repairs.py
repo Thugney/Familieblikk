@@ -66,8 +66,9 @@ class ReviewRepairTests(TestCase):
 
     def test_archive_materializes_unvisited_past_bills(self):
         template = BillTemplate.objects.create(household=self.house, created_by=self.user, name='Historisk', amount_ore=1000, first_due=self.prior, category=self.category)
-        template.archived = True
-        services.save_row(self.user, template, template.version)
+        from budget import correction_services as corrections
+        import uuid
+        corrections.revise_series(self.user, template.pk, 'archive', template.version, uuid.uuid4(), services.next_month(self.month), confirmed=[])
         services.prepare_month(self.house, self.prior)
         self.assertTrue(BillOccurrence.objects.filter(template=template, due_date=self.prior).exists())
 

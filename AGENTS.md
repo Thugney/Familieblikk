@@ -1,5 +1,15 @@
 # Familieblikk — planning graph
 
+## Family workflows — planning candidate 2026-10-22
+
+Authorized intake: work/family-workflows-handoff.json. Order: bill corrections/history and existing-module discovery, local document import, shared shopping lists. Local processing and explicit trip confirmation are settled; detailed designs remain candidates. No new dependency, commit, push or NAS deployment authorized for this scope.
+
+- producer-family-workflows-spec: native BMAD feature kernel and necessary companions; contract graph/nodes/producer-family-workflows-spec.md.
+- producer-bill-corrections-preview: fictional stage-one interaction candidate; contract graph/nodes/producer-bill-corrections-preview.md.
+- verifier-family-workflows-plan: independent source/spec/preview review; contract graph/nodes/verifier-family-workflows-plan.md.
+
+Intake + current source -> native spec -> fictional preview -> deterministic checks -> fresh-context verdict -> exact human acceptance. Existing accepted screens and baselines remain unchanged.
+
 ## Calendar Web Push — authorized 2026-10-21
 
 Robel requests real browser/OS push for calendar booking and accept/reject replies, repair of the calendar toolbar/person filters, preservation of the completed private Synology transfer, and commit/push when verified. pywebpush 2.5.0 with locked necessary dependencies is explicitly approved in .venv/Docker only. Follow the native build spec under _bmad-output/implementation-artifacts/spec-calendar-web-push.md. Graph nodes: producer-calendar-push (implementation and evidence), verifier-calendar-push (fresh-context source/runtime/security review). Existing accepted calendar design and preregistered accounts remain authoritative; no renewed email verification requirement. Private .env and private-data remain untracked and must survive updates. No actual NAS deployment or test notifications to family members without separate authorization.
@@ -53,3 +63,9 @@ User explicitly approved all current dashboard/category/Poster's usability and b
 ## Bindende databevaring ved hver commit, push og vanlig oppdatering
 
 Kontroller at den eksisterende `.env`, `POSTGRES_DB`, Compose-prosjektnavn, databasevolum, `PRIVATE_IMPORT_PATH` og alle nøkler bevares. Bruk bare kompatible migrasjoner på eksisterende database. Aldri kjør `down -v`, volumfjerning eller prune, flush/drop/truncate, ny restore/import/seed, eierklargjøring eller erstatning av nøkler som del av en vanlig oppdatering. Destruktiv datamigrering krever separat, uttrykkelig godkjenning. Releasetest skal kontrollere både Compose-kontrakten og lesende avstemming av de private kildepostene; syntetisk omstartstest alene beviser ikke bevaring av den faktiske profilen.
+
+## Bill corrections — accepted 2026-10-22
+Robel accepted the exact stage-one plan and candidate with “Plan is accepted”. Receipt: .project-init/bill-corrections-human-acceptance.json. Implement stage one in this existing build chat; preserve stages two/three for their later design gates. Producer owns implementation and evidence; fresh-context verifier reviews source/runtime/accounting/security. No new dependencies, commit, push or NAS deployment. Native work item: _bmad-output/implementation-artifacts/spec-bill-corrections.md.
+
+## Bill corrections publication — authorized 2026-10-22
+Robel explicitly requests commit and push of the completed stage-one work. This supersedes its earlier commit/push restriction. Publish the verified feature branch; preserve main/develop and private configuration/data. No NAS deployment is authorized.

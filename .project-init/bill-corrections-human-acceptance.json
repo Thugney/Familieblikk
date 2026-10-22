@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-22",
+  "user_statement": "Plan is accepted",
+  "scope": "Trinn 1: regningsretting, historikk, gjenoppretting, arkivering og eksport",
+  "later_stages": "Bevart plan; egne designporter før implementasjon",
+  "commit_push_deploy": false,
+  "sha256": {
+    "_bmad-output\\planning-artifacts\\bill-corrections-preview.html": "c705e5cf1326aa3eb6c986eb838fcea92cdc4eb6b8b4421c65447a84c05f6d2c",
+    "_bmad-output\\specs\\spec-familieblikk-family-workflows\\.memlog.md": "276d95586bf6e51f8b2fa2a9d6fef36a87c2361ef2cad165286a7f32dc62c73f",
+    "_bmad-output\\specs\\spec-familieblikk-family-workflows\\acceptance-tests.md": "f4cc397ca18a7c8abff4e67ff7a8e2d80b75ae5973e6693569f047feb55a4c0a",
+    "_bmad-output\\specs\\spec-familieblikk-family-workflows\\bill-corrections.md": "1c5f8398fa612b46efd8acc8ccf73c6f6f3d05cdb6a36e99e9c12d60820c4571",
+    "_bmad-output\\specs\\spec-familieblikk-family-workflows\\phased-scope.md": "47424f0d7643e7d94c4536d7c726290b9dcf7148807fb28133f961e486132202",
+    "_bmad-output\\specs\\spec-familieblikk-family-workflows\\source-discovery.md": "bc4b7207228074ced598cb6f1c2cad9c2b2f444a929c496fe1b40f0e319a7025",
+    "_bmad-output\\specs\\spec-familieblikk-family-workflows\\SPEC.md": "893245415361fc569392c0f7cc5887dd31e5186222bf9cbbb2b170ec226e5c0c"
+  }
+}

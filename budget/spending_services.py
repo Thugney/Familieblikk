@@ -38,7 +38,7 @@ def digest(value):
 
 
 def ordinary_rows(household, start, end):
-    return Entry.objects.filter(household=household, effective_date__range=(start, end)).filter(
+    return Entry.objects.filter(active=True, household=household, effective_date__range=(start, end)).filter(
         Q(kind__in=['expense', 'remittance']) |
         Q(kind='refund', original__kind__in=['expense', 'remittance'], original__household=household)
     ).select_related('category', 'original__category', 'original__occurrence')
@@ -154,7 +154,7 @@ def spending(actor, params, today=None):
         serialized.append({'id': str(row.pk), 'date': row.effective_date.isoformat(), 'description': row.description,
                            'kind': row.kind, 'amount_ore': net_amount(row), 'category_id': cat['id'],
                            'category_name': cat['name'], 'detail_url': reverse('edit', args=['entry', row.pk])})
-    income_rows = Entry.objects.filter(household=household, kind='income', effective_date__range=(first, last))
+    income_rows = Entry.objects.filter(active=True, household=household, kind='income', effective_date__range=(first, last))
     forecast = None
     monthly_scope = params.get('period', 'month') != 'custom' or (first.day == 1 and requested == month_end(requested))
     if monthly_scope and access.complete_finance(member):
@@ -214,25 +214,31 @@ def effective_plan(household, target, category=None, asset=None):
 def commitments(household, target):
     end = month_end(target)
     actual = list(BillOccurrence.objects.filter(household=household, due_date__lte=end).select_related('template'))
-    payments = {x.occurrence_id for x in Entry.objects.filter(household=household, occurrence__isnull=False, effective_date__lte=end)}
+    payments = {x.occurrence_id for x in Entry.objects.filter(active=True, household=household, occurrence__isnull=False, effective_date__lte=end)}
     result = []
     for row in actual:
-        if row.pk in payments:
+        if row.cancelled or row.pk in payments:
             continue
         result.append({'id': str(row.pk), 'name': row.name, 'due_date': row.due_date.isoformat(),
                        'amount_ore': row.amount_ore, 'accounting_class': row.accounting_class,
                        'category_id': str(row.category_id) if row.category_id else None,
                        'asset_id': str(row.asset_id) if row.asset_id else None, 'overdue': row.due_date < target})
-    existing = {(row.template_id, month_start(row.due_date)) for row in actual}
+    existing = set(BillOccurrence.objects.filter(household=household).values_list('template_id', 'recurrence_slot'))
     # Any materialized occurrence in the month overrides its template, including a moved due day.
-    for template in BillTemplate.objects.filter(household=household, archived=False, first_due__lte=end):
+    for template in BillTemplate.objects.filter(household=household, first_due__lte=end):
         cursor = month_start(template.first_due)
         while cursor <= target:
             if (template.pk, cursor) not in existing:
                 due = cursor.replace(day=min(template.first_due.day, calendar.monthrange(cursor.year, cursor.month)[1]))
-                result.append({'id': f'virtual:{template.pk}:{due}', 'name': template.name, 'due_date': due.isoformat(),
-                               'amount_ore': template.amount_ore, 'accounting_class': template.accounting_class,
-                               'category_id': str(template.category_id) if template.category_id else None,
+                from .correction_services import series_state
+                enabled, values = series_state(template, due)
+                if not enabled:
+                    if not template.monthly: break
+                    cursor = next_month(cursor)
+                    continue
+                result.append({'id': f'virtual:{template.pk}:{due}', 'name': values['name'], 'due_date': due.isoformat(),
+                               'amount_ore': values['amount_ore'], 'accounting_class': template.accounting_class,
+                               'category_id': values['category_id'],
                                'asset_id': str(template.asset_id) if template.asset_id else None, 'overdue': due < target})
             if not template.monthly:
                 break
@@ -301,7 +307,7 @@ def planning(actor, target_month=None, history=None, today=None):
     if target <= current:
         raise ValidationError('Bare fremtidige månedsplaner kan redigeres her.')
     histories = history_values(history or [], current)
-    history_dates = list(Entry.objects.filter(household=household, effective_date__lt=current).values_list('effective_date', flat=True))
+    history_dates = list(Entry.objects.filter(active=True, household=household, effective_date__lt=current).values_list('effective_date', flat=True))
     history_counts = {}
     for day in history_dates:
         history_counts[month_start(day)] = history_counts.get(month_start(day), 0) + 1
