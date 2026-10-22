@@ -36,7 +36,7 @@ def total(rows): return rows.aggregate(n=Sum('amount_ore'))['n'] or 0
 
 
 @transaction.atomic
-def save_row(actor, row, expected_version=None, admin=False):
+def save_row(actor, row, expected_version=None, admin=False, command=None):
     member = access.lock_member(actor)
     if not row._state.adding and row.household_id != member.household_id:
         raise PermissionDenied('Ingen tilgang til denne familien.')
@@ -68,11 +68,7 @@ def save_row(actor, row, expected_version=None, admin=False):
             materialize_template(current, month_start(timezone.localdate()), cutoff=timezone.localdate())
             if current.accounting_class != row.accounting_class or current.asset_id != row.asset_id:
                 raise ValidationError('Regnskapsklasse og målkobling er uforanderlige. Opprett en ny serie.')
-            if current.first_due != row.first_due or current.monthly != row.monthly or (row.archived and not current.archived):
-                future = BillOccurrence.objects.filter(template=current, due_date__gt=timezone.localdate(), payment__isnull=True)
-                if FundTopUp.objects.filter(occurrence__in=future).exists():
-                    raise ValidationError('Fremtidig serie har øremerket påfyll. Avstem forpliktelsene før forfallsendring.')
-                future.delete()
+            raise ValidationError('Bruk Endre fremtidig serie med virkningsdato og bekreftet liste.')
     if isinstance(row, MonthPlan):
         if current and current.asset_id and current.asset.kind == "savings" and current.month < month_start(timezone.localdate()):
             raise ValidationError("Avsluttet spareplan kan ikke flyttes eller endres.")
@@ -80,6 +76,10 @@ def save_row(actor, row, expected_version=None, admin=False):
     access.require_write_row(member, row)
     row.full_clean()
     row.save()
+    if isinstance(row, Entry):
+        from .correction_services import record
+        from .correction_services import snapshot
+        record(actor, row, 'edit' if current else 'create', snapshot(current) if current else {}, command=command)
     if isinstance(row, Asset) and row.kind == "fund":
         effective = month_start(timezone.localdate()) if current else month_start(row.opening_date)
         amount = row.target_ore // 12 + (row.target_ore % 12 if effective.month == 12 else 0)
@@ -89,8 +89,6 @@ def save_row(actor, row, expected_version=None, admin=False):
         if isinstance(row, Asset) and row.archived:
             MonthPlan.objects.filter(asset=row, derived=True, month__gt=month_start(timezone.localdate())).delete()
         refresh_future_plans(member.household)
-    if isinstance(row, BillTemplate):
-        BillOccurrence.objects.filter(template=row, due_date__gt=timezone.localdate(), payment__isnull=True).update(name=row.name, amount_ore=row.amount_ore, category=row.category)
     if isinstance(row, (Asset, MonthPlan, BillTemplate, BillOccurrence)):
         reconcile_funds(member.household, actor)
     changes = {field.attname: {'before': before.get(field.attname), 'after': str(getattr(row, field.attname))} for field in row._meta.fields if field.name not in ('updated_at', 'created_at') and before.get(field.attname) != str(getattr(row, field.attname))}
@@ -113,11 +111,11 @@ def validate_entry(row):
     if row.kind != 'refund' and row.original_id:
         raise ValidationError('Bare refusjoner kan kobles til opprinnelig betaling.')
     if row.kind == 'refund':
-        if not row.original_id or row.original.kind not in ('expense', 'remittance', 'debt', 'fund'):
+        if not row.original_id or not row.original.active or row.original.kind not in ('expense', 'remittance', 'debt', 'fund'):
             raise ValidationError('Refusjonen må kobles til en betaling.')
         if row.effective_date < row.original.effective_date:
             raise ValidationError('Refusjonen kan ikke komme før betalingen.')
-        refunded = total(row.original.refunds.exclude(pk=row.pk))
+        refunded = total(row.original.refunds.filter(active=True).exclude(pk=row.pk))
         if refunded + row.amount_ore > row.original.amount_ore:
             raise ValidationError('Refusjonene overstiger opprinnelig betaling.')
         row.category = row.original.category
@@ -132,7 +130,7 @@ def validate_entry(row):
 
 
 def validate_savings(asset, candidate=None, exclude_id=None):
-    events = list(Entry.objects.filter(asset=asset, kind__in=['deposit', 'withdrawal']).exclude(pk=exclude_id).order_by('effective_date', 'created_at'))
+    events = list(Entry.objects.filter(active=True, asset=asset, kind__in=['deposit', 'withdrawal']).exclude(pk=exclude_id).order_by('effective_date', 'created_at'))
     if candidate: events.append(candidate)
     balance = asset.opening_ore
     for event in sorted(events, key=lambda item: (item.effective_date, item.sequence or 2**63)):
@@ -144,7 +142,7 @@ def validate_savings(asset, candidate=None, exclude_id=None):
 
 
 @transaction.atomic
-def save_entry(actor, row, expected_version=None):
+def save_entry(actor, row, expected_version=None, command_key=None):
     member = access.lock_member(actor)
     if not row._state.adding and row.household_id != member.household_id:
         raise PermissionDenied('Ingen tilgang til denne familien.')
@@ -154,13 +152,25 @@ def save_entry(actor, row, expected_version=None):
     row.clean()
     access.require_row(member, row)
     current = None
+    from .correction_services import begin, snapshot
+    explicit_command_key = command_key
+    command_key = command_key or row.idempotency_key
     if not row._state.adding:
         current = Entry.objects.select_for_update().get(pk=row.pk, household=member.household)
         access.lock_relations(member, current)
         authorize(actor, current)
+        if explicit_command_key is None and command_key == current.idempotency_key:
+            import uuid
+            command_key = uuid.uuid4()
+        payload = snapshot(row)
+        for name in ('version', 'sequence', 'household_id', 'created_by_id', 'updated_at', 'created_at', 'idempotency_key'): payload.pop(name, None)
+        command, replay = begin(member, actor, current, 'edit_entry', expected_version, command_key, payload)
+        if replay: return current
+        row.idempotency_key = current.idempotency_key
+        if not current.active: raise ValidationError('Gjenopprett posten før redigering.')
         if current.occurrence_id:
             raise ValidationError('Bruk Angre betaling før en koblet betaling endres.')
-        if current.refunds.exists():
+        if current.refunds.filter(active=True).exists():
             raise ValidationError('Betalingen har refusjoner og må korrigeres samlet.')
         if current.kind in ('deposit', 'withdrawal') and (current.asset_id != row.asset_id or row.kind not in ('deposit', 'withdrawal')):
             Asset.objects.select_for_update().get(pk=current.asset_id)
@@ -169,7 +179,12 @@ def save_entry(actor, row, expected_version=None):
         existing = Entry.objects.filter(household=member.household, idempotency_key=row.idempotency_key).first()
         if existing:
             authorize(actor, existing)
+            fields = ('kind', 'amount_ore', 'effective_date', 'description', 'category_id', 'asset_id', 'original_id', 'received', 'income_attribution', 'original_amount', 'currency', 'exchange_rate', 'fee_ore')
+            if any(getattr(existing, field) != getattr(row, field) for field in fields): raise Conflict('Nøkkelen er allerede brukt med annet innhold.')
             return existing
+        command, _ = begin(member, actor, row, 'create_entry', row.version, command_key, snapshot(row))
+        command.result_version = row.version
+        command.save(update_fields=['result_version'])
     validate_entry(row)
     if row.kind in ('deposit', 'withdrawal'): validate_savings(row.asset, row, row.pk)
     if row.kind == 'fund' and not row.occurrence_id:
@@ -182,26 +197,15 @@ def save_entry(actor, row, expected_version=None):
         if balance < row.amount_ore:
             gap = row.amount_ore - balance
             raise ValidationError(f'Finansieringsgap: {Decimal(gap) / 100:.2f} NOK. Opprett en engangsregning koblet til årsfondet og merk den betalt. Da opprettes ett sporbart påfyll før oppgjøret.')
-    saved = save_row(actor, row, expected_version)
+    saved = save_row(actor, row, expected_version, command=command)
     reconcile_funds(member.household, actor)
     return saved
 
 
-@transaction.atomic
-def delete_entry(actor, entry_id, version):
-    member = access.lock_member(actor)
-    type(member.household).objects.select_for_update().get(pk=member.household_id)
-    row = Entry.objects.select_for_update().get(pk=entry_id, household=member.household)
-    access.lock_relations(member, row)
-    authorize(actor, row)
-    if row.version != version: raise Conflict('Posten er endret. Last inn på nytt.')
-    if row.refunds.exists(): raise ValidationError('Fjern tilknyttede refusjoner først.')
-    if row.kind in ('deposit', 'withdrawal'):
-        Asset.objects.select_for_update().get(pk=row.asset_id)
-        validate_savings(row.asset, exclude_id=row.pk)
-    Audit.objects.create(household=member.household, actor=actor, object_id=row.pk, operation='slettet', changes={'kind': row.kind})
-    row.delete()
-    reconcile_funds(member.household, actor)
+def delete_entry(actor, entry_id, version, key=None):
+    import uuid
+    from .correction_services import entry_state
+    return entry_state(actor, entry_id, 'reverse', version, key or uuid.uuid4(), reason='Feilregistrering')
 
 
 def plan_amount(anchor, month):
@@ -223,11 +227,15 @@ def refresh_future_plans(household):
 
 
 def materialize_template(template, month, cutoff=None):
+    from .correction_services import series_state
     cursor = month_start(template.first_due)
     while cursor <= month:
         due = cursor.replace(day=min(template.first_due.day, calendar.monthrange(cursor.year, cursor.month)[1]))
-        if (cutoff is None or due <= cutoff) and not BillOccurrence.objects.filter(template=template, due_date__year=cursor.year, due_date__month=cursor.month).exists():
-            BillOccurrence.objects.get_or_create(template=template, due_date=due, defaults={'household': template.household, 'created_by': template.created_by, 'name': template.name, 'amount_ore': template.amount_ore, 'accounting_class': template.accounting_class, 'category': template.category, 'asset': template.asset})
+        enabled, values = series_state(template, due)
+        if enabled and (cutoff is None or due <= cutoff):
+            BillOccurrence.objects.get_or_create(template=template, recurrence_slot=cursor,
+                defaults={'due_date': due, 'household': template.household, 'created_by': template.created_by,
+                          **values, 'accounting_class': template.accounting_class, 'asset': template.asset})
         if not template.monthly or cursor.year == 9999 and cursor.month == 12: break
         cursor = next_month(cursor)
 
@@ -251,13 +259,13 @@ def prepare_month(household, month):
             if cursor.year == 9999 and cursor.month == 12: break
             cursor = next_month(cursor)
     refresh_future_plans(household)
-    for template in BillTemplate.objects.filter(household=household, archived=False, first_due__lte=month_end(month)):
+    for template in BillTemplate.objects.filter(household=household, first_due__lte=month_end(month)):
         materialize_template(template, month)
     reconcile_funds(household)
 
 
 def pending_bills(household, end):
-    return BillOccurrence.objects.filter(household=household, due_date__lte=end).filter(Q(payment__isnull=True) | Q(payment__effective_date__gt=end))
+    return BillOccurrence.objects.filter(household=household, cancelled=False, due_date__lte=end).exclude(pk__in=Entry.objects.filter(active=True, household=household, effective_date__lte=end, occurrence__isnull=False).values('occurrence_id'))
 
 
 from django.db.models import Q
@@ -267,8 +275,8 @@ def fund_balance(asset, end):
     if end < asset.opening_date: return 0
     plans = total(MonthPlan.objects.filter(asset=asset, month__lte=end))
     topups = FundTopUp.objects.filter(occurrence__asset=asset, effective_month__lte=end).aggregate(n=Sum('amount_ore'))['n'] or 0
-    payments = total(Entry.objects.filter(asset=asset, kind='fund', effective_date__lte=end))
-    refunds = total(Entry.objects.filter(original__asset=asset, original__kind='fund', kind='refund', effective_date__lte=end))
+    payments = total(Entry.objects.filter(active=True, asset=asset, kind='fund', effective_date__lte=end))
+    refunds = total(Entry.objects.filter(active=True, original__asset=asset, original__kind='fund', kind='refund', effective_date__lte=end))
     return asset.opening_ore + plans + topups - payments + refunds
 
 
@@ -278,8 +286,8 @@ def reconcile_funds(household, actor=None):
         events = []
         for plan in MonthPlan.objects.filter(asset=asset): events.append((plan.month, 0, 0, 'allocation', plan))
         bills = list(BillOccurrence.objects.filter(asset=asset, accounting_class='fund').order_by('due_date', 'id'))
-        for index, bill in enumerate(bills): events.append((bill.due_date, 1, index, 'due', bill))
-        entries = Entry.objects.filter(household=household).filter(Q(asset=asset, kind='fund') | Q(original__asset=asset, original__kind='fund', kind='refund'))
+        for index, bill in enumerate(b for b in bills if not b.cancelled): events.append((bill.due_date, 1, index, 'due', bill))
+        entries = Entry.objects.filter(active=True, household=household).filter(Q(asset=asset, kind='fund') | Q(original__asset=asset, original__kind='fund', kind='refund'))
         for entry in entries: events.append((entry.effective_date, 2, entry.sequence, 'entry', entry))
         balance, reserved, desired, settled = asset.opening_ore, {}, {}, set()
         for day, priority, sequence, kind, row in sorted(events, key=lambda event: event[:3]):
@@ -320,15 +328,21 @@ def ensure_fund_topups(household, month):
 
 
 @transaction.atomic
-def pay_bill(actor, occurrence_id, effective_date, key):
+def pay_bill(actor, occurrence_id, effective_date, key, expected_version=None):
     member = access.lock_member(actor)
     type(member.household).objects.select_for_update().get(pk=member.household_id)
     bill = BillOccurrence.objects.select_for_update().get(pk=occurrence_id, household=member.household)
+    access.lock_relations(member, bill)
     access.require_row(member, bill)
-    existing = Entry.objects.filter(occurrence=bill).first()
+    from .correction_services import begin, record, snapshot
+    cmd, replay = begin(member, actor, bill, 'pay', expected_version if expected_version is not None else bill.version, key, {'effective_date': effective_date})
+    if replay: return Entry.objects.get(pk=cmd.result_id)
+    if bill.cancelled: raise ValidationError('Avbrutte regninger kan ikke betales.')
+    before = snapshot(bill)
+    existing = Entry.objects.filter(active=True, occurrence=bill).first()
     if existing:
         access.require_row(member, existing)
-        return existing
+        raise Conflict('Regningen er allerede betalt.')
     if effective_date < bill.created_at.date() and effective_date < bill.template.first_due:
         raise ValidationError('Betalingsdato er før forpliktelsen.')
     kind = {'ordinary': 'expense', 'debt': 'debt', 'fund': 'fund'}[bill.accounting_class]
@@ -336,6 +350,12 @@ def pay_bill(actor, occurrence_id, effective_date, key):
     validate_entry(entry)
     entry.full_clean()
     entry.save()
+    bill.version += 1
+    bill.save(update_fields=['version', 'updated_at'])
+    cmd.result_id, cmd.result_version = entry.pk, entry.version
+    cmd.save(update_fields=['result_id', 'result_version'])
+    record(actor, bill, 'pay', before, command=cmd)
+    record(actor, entry, 'create', {}, command=cmd)
     reconcile_funds(member.household, actor)
     Audit.objects.create(household=member.household, actor=actor, object_id=bill.pk, operation='betalt', changes={'entry': str(entry.pk)})
     return entry
@@ -344,7 +364,7 @@ def pay_bill(actor, occurrence_id, effective_date, key):
 def calculate(household, month, today=None, projected_asset_plans=None):
     today = today or timezone.localdate()
     start, end = month_start(month), month_end(month)
-    entries = Entry.objects.filter(household=household, effective_date__range=(start, end))
+    entries = Entry.objects.filter(active=True, household=household, effective_date__range=(start, end))
     income = total(entries.filter(kind='income', received=True))
     expected = total(entries.filter(kind='income', received=False))
     ordinary = total(entries.filter(kind__in=['expense', 'remittance'])) - total(entries.filter(kind='refund', original__kind__in=['expense', 'remittance']))
@@ -372,7 +392,7 @@ def calculate(household, month, today=None, projected_asset_plans=None):
 
 def savings_balance(asset, end=None):
     if end and end < asset.opening_date: return 0
-    rows = Entry.objects.filter(asset=asset)
+    rows = Entry.objects.filter(active=True, asset=asset)
     if end: rows = rows.filter(effective_date__lte=end)
     return asset.opening_ore + total(rows.filter(kind='deposit')) - total(rows.filter(kind='withdrawal'))
 
@@ -431,7 +451,7 @@ def allocate_debt_plan(actor, month, strategy, extra_ore):
 
 
 def ordinary_for_period(household, start, end):
-    rows = Entry.objects.filter(household=household, effective_date__range=(start, end))
+    rows = Entry.objects.filter(active=True, household=household, effective_date__range=(start, end))
     return total(rows.filter(kind__in=['expense', 'remittance'])) - total(rows.filter(kind='refund', original__kind__in=['expense', 'remittance']))
 
 
@@ -444,7 +464,7 @@ def estimated_debt_balance(asset, as_of):
     if asset.annual_rate is None or asset.opening_date > as_of:
         return None
     events = []
-    for row in Entry.objects.filter(household=asset.household, effective_date__range=(asset.opening_date, as_of)).filter(Q(asset=asset, kind='debt') | Q(original__asset=asset, original__kind='debt', kind='refund')):
+    for row in Entry.objects.filter(active=True, household=asset.household, effective_date__range=(asset.opening_date, as_of)).filter(Q(asset=asset, kind='debt') | Q(original__asset=asset, original__kind='debt', kind='refund')):
         events.append((row.effective_date, 1, row.sequence, -row.amount_ore if row.kind == 'debt' else row.amount_ore))
     cursor = next_month(month_start(asset.opening_date)) if asset.opening_date.year < 9999 or asset.opening_date.month < 12 else None
     while cursor and cursor <= as_of:

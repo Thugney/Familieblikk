@@ -148,7 +148,7 @@ class PlansModulesTests(TestCase):
         self.assertRedirects(response, f'/app/arsutgifter/?month={self.key}', fetch_redirect_response=False)
         self.client.get('/app/regninger/', {'month': self.key})
         bill = BillOccurrence.objects.get(household=self.house, name='Årlig faktura')
-        response = self.client.post(f'/betal/{bill.pk}/?month={self.key}', dict(date=self.month.isoformat(), key=uuid.uuid4()))
+        response = self.client.post(f'/betal/{bill.pk}/?month={self.key}', dict(date=self.month.isoformat(), key=uuid.uuid4(), version=bill.version))
         self.assertRedirects(response, f'/app/regninger/?month={self.key}', fetch_redirect_response=False)
         self.assertEqual(Entry.objects.get(occurrence=bill).kind, 'fund')
 

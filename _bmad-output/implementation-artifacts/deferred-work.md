@@ -14,3 +14,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-member-module-access.md`
   summary: Tillat eksplisitt avregistrering av egen serverbinding når OS-tillatelsen er avslått og nettleser-endpoint mangler.
   evidence: push.js denied-grenen er identisk i baseline e00b367 og returnerer før subscription-henting; dagens utlogging deaktiverer egen økt og ny kalendertilgangspolicy stopper alle varsler.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bill-corrections.md`
+  summary: Mål eksportvisningens låsetid ved stor syntetisk historikk før eventuell paginering.
+  evidence: Hele utvalget holdes under Household-lås; medium uverifisert ytelsesrisiko. Konkret terskel og blokkering er ikke målt.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bill-corrections.md`
+  summary: Vurder en egen oversikt over fremtidige og stoppede regningsserier.
+  evidence: Nåværende og opprinnelig navigasjon går via materialiserte forekomster; valg av fremtidig måned gjør serien tilgjengelig, men egen indeks ville forenklet oppdagelse.

@@ -137,8 +137,22 @@ class BillOccurrence(FamilyRow):
     accounting_class = models.CharField(max_length=12)
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.PROTECT)
     asset = models.ForeignKey(Asset, null=True, blank=True, on_delete=models.PROTECT)
+    recurrence_slot = models.DateField()
+    cancelled = models.BooleanField(default=False)
+    individually_corrected = models.BooleanField(default=False)
+
+    @property
+    def payment(self):
+        return self.payments.filter(active=True).first()
+
+    def save(self, *args, **kwargs):
+        if not self.recurrence_slot:
+            self.recurrence_slot = (self.due_date if self.template.monthly else self.template.first_due).replace(day=1)
+        return super().save(*args, **kwargs)
+
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['template', 'due_date'], name='unique_bill_occurrence')]
+        constraints = [models.UniqueConstraint(fields=['template', 'recurrence_slot'], name='unique_bill_slot')]
+
 
 
 class Entry(FamilyRow):
@@ -152,7 +166,10 @@ class Entry(FamilyRow):
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.PROTECT)
     asset = models.ForeignKey(Asset, null=True, blank=True, on_delete=models.PROTECT)
     original = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='refunds')
-    occurrence = models.OneToOneField(BillOccurrence, null=True, blank=True, on_delete=models.PROTECT, related_name='payment')
+    occurrence = models.ForeignKey(BillOccurrence, null=True, blank=True, on_delete=models.PROTECT, related_name='payments')
+    active = models.BooleanField(default=True)
+    reversed_at = models.DateTimeField(null=True, blank=True)
+    reversed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='reversed_entries')
     idempotency_key = models.UUIDField(default=uuid.uuid4)
     original_amount = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
     currency = models.CharField(max_length=3, blank=True)
@@ -160,7 +177,7 @@ class Entry(FamilyRow):
     fee_ore = models.PositiveBigIntegerField(default=0)
     sequence = models.PositiveBigIntegerField(default=0, editable=False)
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['household', 'idempotency_key'], name='unique_entry_request'), models.CheckConstraint(condition=Q(amount_ore__gt=0), name='entry_positive_amount'), models.UniqueConstraint(fields=['household', 'sequence'], name='unique_entry_sequence')]
+        constraints = [models.UniqueConstraint(fields=['occurrence'], condition=Q(active=True, occurrence__isnull=False), name='unique_active_bill_payment'), models.UniqueConstraint(fields=['household', 'idempotency_key'], name='unique_entry_request'), models.CheckConstraint(condition=Q(amount_ore__gt=0), name='entry_positive_amount'), models.UniqueConstraint(fields=['household', 'sequence'], name='unique_entry_sequence')]
 
     def save(self, *args, **kwargs):
         from django.db import transaction
@@ -213,3 +230,41 @@ class ImportRecord(FamilyRow):
 from .calendar_models import CalendarEvent, CalendarException, CalendarResponse, CalendarRequest  # noqa: E402,F401
 from .spending_models import MonthlyBudgetHeader, PlanningRequest  # noqa: E402,F401
 from .push_models import PushKey, PushSubscription, CalendarNotification, PushDelivery  # noqa: E402,F401
+
+
+class CorrectionCommand(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    household = models.ForeignKey(Household, on_delete=models.PROTECT)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    operation = models.CharField(max_length=40)
+    idempotency_key = models.UUIDField()
+    payload_hash = models.CharField(max_length=64)
+    result_id = models.UUIDField()
+    result_version = models.PositiveIntegerField()
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['household', 'idempotency_key'], name='unique_correction_command')]
+
+
+class CorrectionEvent(models.Model):
+    household = models.ForeignKey(Household, on_delete=models.PROTECT)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    object_type = models.CharField(max_length=30)
+    object_id = models.UUIDField()
+    operation = models.CharField(max_length=40)
+    reason = models.CharField(max_length=500)
+    before = models.JSONField(default=dict)
+    after = models.JSONField(default=dict)
+    effective_date = models.DateField(null=True)
+    command = models.ForeignKey(CorrectionCommand, null=True, on_delete=models.PROTECT)
+    reverses = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT)
+    at = models.DateTimeField(auto_now_add=True)
+
+
+class SeriesRevision(models.Model):
+    template = models.ForeignKey(BillTemplate, on_delete=models.PROTECT, related_name='revisions')
+    effective_date = models.DateField()
+    enabled = models.BooleanField(default=True)
+    values = models.JSONField(default=dict)
+    event = models.OneToOneField(CorrectionEvent, on_delete=models.PROTECT)
