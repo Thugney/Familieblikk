@@ -17,11 +17,12 @@ from django.db import transaction
 from .models import CalendarEvent, CalendarException, CalendarResponse, CalendarRequest, Household, Membership
 
 from .services import membership as budget_membership, Conflict
+from . import access
 
 OSLO = ZoneInfo('Europe/Oslo')
 
 def membership(actor):
-    try: return budget_membership(actor)
+    try: return access.require(budget_membership(actor), {'calendar'})
     except Membership.DoesNotExist: raise PermissionDenied('Opprett eller bli med i en familie for å bruke kalenderen.')
 
 def local_time(day, clock, fold=None):
@@ -46,7 +47,7 @@ def local_time(day, clock, fold=None):
 
     return next((x for x in valid if x.fold == fold), valid[0])
 
-def validate_payload(data, household):
+def validate_payload(data, household, current=None):
 
     if not isinstance(data, dict): raise ValidationError('Avtalen må inneholde gyldige felt.')
 
@@ -82,9 +83,17 @@ def validate_payload(data, household):
 
     p['participants'] = sorted(set(str(x) for x in (p['participants'] or [])))
 
-    valid = set(str(x) for x in Membership.objects.filter(household=household).values_list('pk', flat=True))
-
-    if not set(p['participants']) <= valid: raise ValidationError('Deltakeren tilhører ikke familien.')
+    valid = {str(m.pk) for m in access.calendar_members(household)}
+    # A participant revoked after booking is immutable history for this edit.
+    # The browser intentionally has no checkbox for that person. Preserve them
+    # server-side; a client may never introduce a new revoked participant.
+    retained = set()
+    if current and current['scope'] == 'selected':
+        family_ids = set(str(pk) for pk in Membership.objects.filter(household=household).values_list('pk', flat=True))
+        retained = set(current['participants']) & family_ids - valid
+    if not set(p['participants']) <= valid | retained: raise ValidationError('Deltakeren tilhører ikke familien eller mangler kalendertilgang.')
+    if p['scope'] == 'selected':
+        p['participants'] = sorted(set(p['participants']) | retained)
 
     if p['scope'] == 'selected' and not p['participants']: raise ValidationError('Velg minst ett familiemedlem.')
 
@@ -197,7 +206,7 @@ def listing(actor, first, last, selected='all'):
 
     if last < first or (last-first).days > 93: raise ValidationError('Velg et datointervall på høyst 93 dager.')
 
-    members = list(Membership.objects.filter(household=member.household).select_related('user'))
+    members = access.calendar_members(member.household)
 
     if selected not in ('all','shared') and selected not in {str(m.pk) for m in members}: raise ValidationError('Ugyldig personfilter.')
 
@@ -261,7 +270,7 @@ def mutate(actor, action, key, event_id=None, original=None, revision=None, payl
 
     if not isinstance(action,str) or not isinstance(scope,str): raise ValidationError('Ugyldig handling.')
 
-    member=membership(actor)
+    member=access.require(access.lock_member(actor), {'calendar'})
 
     Household.objects.select_for_update().get(pk=member.household_id)
 
@@ -341,10 +350,10 @@ def mutate(actor, action, key, event_id=None, original=None, revision=None, payl
             if scope=='one' and isinstance(payload,dict):
                 if payload.get('recurrence')!=current['recurrence'] or (payload.get('until') or None)!=current.get('until'): raise ValidationError('Gjentakelse og serieslutt kan bare endres for denne og fremtidige.')
                 # The end of a series limits original dates, not where an exception may move.
-                p=validate_payload({**payload,'recurrence':'none','until':None},member.household)
+                p=validate_payload({**payload,'recurrence':'none','until':None},member.household,current)
                 p['recurrence'],p['until']=current['recurrence'],current.get('until')
             else:
-                p=validate_payload(payload,member.household)
+                p=validate_payload(payload,member.household,current)
 
         if p and p['recurrence']=='monthly' and p['start']==current['start'] and event.payload['recurrence']=='monthly':
 
@@ -355,7 +364,7 @@ def mutate(actor, action, key, event_id=None, original=None, revision=None, payl
         reset=p is None or any(p.get(k)!=current.get(k) for k in ('start','end','all_day','start_time','end_time','fold','scope','participants'))
         # Future edits invite into the series even when the selected exception
         # already included that person for just this occurrence.
-        members = list(Membership.objects.filter(household=member.household))
+        members = access.calendar_members(member.household)
         invitation_baseline = event.payload if scope == 'future' and event.payload['recurrence'] != 'none' else current
         invited = ({m.pk for m in eligible(p, members)} - {m.pk for m in eligible(invitation_baseline, members)}) if p else set()
         invitation_event, invitation_original = event, original
@@ -364,6 +373,8 @@ def mutate(actor, action, key, event_id=None, original=None, revision=None, payl
 
             CalendarException.objects.update_or_create(event=event,original_date=original,defaults={'payload':p})
 
+            # Revoked participants retain metadata-only replies, but an old yes
+            # must never become acceptance of a changed time after regrant.
             if reset: event.responses.filter(original_date=original).delete()
 
         else:
@@ -393,7 +404,9 @@ def mutate(actor, action, key, event_id=None, original=None, revision=None, payl
                     if after['scope']=='selected' and str(response.member_id) not in after['participants']: continue
                     response.event=future; response.save(update_fields=['event'])
 
-            event.responses.filter(original_date__gte=original).delete()
+            # Preserve revoked members' historical replies even where a future
+            # edit resets current participants. They receive no new content.
+            event.responses.filter(original_date__gte=original, member_id__in=[m.pk for m in members]).delete()
 
         event.revision+=1; event.save()
         if invited:

@@ -6,8 +6,8 @@ const source = fs.readFileSync('budget/static/budget/push.js', 'utf8');
 const worker = fs.readFileSync('budget/static/budget/sw.js', 'utf8');
 const flush = async () => { for (let n = 0; n < 6; n++) await new Promise(resolve => setImmediate(resolve)); };
 
-function setup({permission='default', online=true, supported=true, ios=false, installed=false, serverState=null, browserSubscription=false, statusMode='', readyStalled=false, permissionStalled=false, unread=0, receiptState='pending', pushPage='varsler', subscriptionDeferred=false}={}) {
-  const calls = [], handlers = {}, controls = {}, timers = new Map(); let timerId=0, stalledAction='';
+function setup({permission='default', online=true, supported=true, ios=false, installed=false, serverState=null, browserSubscription=false, statusMode='', readyStalled=false, permissionStalled=false, unread=0, receiptState='pending', pushPage='varsler', subscriptionDeferred=false, calendarRestricted=false}={}) {
+  const calls = [], requests = [], handlers = {}, controls = {}, timers = new Map(); let timerId=0, stalledAction='';
   for (const name of ['status','enable','disable','test','recheck','test-status','notification-badge','notification-count-text','notification-bell']) controls[name] = {hidden:name !== 'status', disabled:false, textContent:'', focus(){document.activeElement=this;calls.push('focus:'+name)}, setAttribute(name,value){this[name]=value}, handlers:{}};
   for (const name of ['enable','disable','test','recheck']) controls[name].addEventListener = (event, fn) => controls[name].handlers[event] = fn;
   const subscription = {endpoint:'https://fcm.googleapis.com/fcm/send/synthetic', options:{}, toJSON(){return {endpoint:this.endpoint,keys:{p256dh:'synthetic-public',auth:'synthetic-auth'}}}, async unsubscribe(){calls.push('unsubscribe'); current=null; return true;}};
@@ -16,11 +16,19 @@ function setup({permission='default', online=true, supported=true, ios=false, in
   const reg = {pushManager:{async getSubscription(){if(subscriptionDeferred){subscriptionDeferred=false;return new Promise(resolve=>{deferredSubscription=resolve})}return current},async subscribe(options){calls.push({subscribe:options});current=subscription;return current}}};
   const navigator = {onLine:online, userAgent:ios?'iPhone':'Synthetic Browser', platform:'', maxTouchPoints:0, serviceWorker:{async register(){calls.push('register');return reg},ready:readyStalled?new Promise(()=>{}):Promise.resolve(reg)}};
   const Notification = {permission,requestPermission(){calls.push('permission');if(permissionStalled)return new Promise(()=>{});Notification.permission='granted';return Promise.resolve('granted')}};
-  const root = {hidden:true,dataset:{pushConfig:'/push/config/',pushDevice:'/push/device/',pushReceipt:'/push/receipt/',pushSummary:'/push/summary/',pushPage},querySelector(){return {value:'csrf-synthetic'}}};
-  let failure = false;
+  const root = {hidden:true,dataset:{pushConfig:'/push/config/',pushDevice:'/push/device/',pushReceipt:'/push/receipt/',pushSummary:'/push/summary/',pushPage,pushRestricted:calendarRestricted?'true':''},querySelector(){return {value:'csrf-synthetic'}}};
+  let failure = false, deniedReads = null;
   const document = {visibilityState:'visible',addEventListener(name,fn){handlers[name]=fn},querySelector(){return root},getElementById(id){return controls[id.replace('push-','')]}};
   const context = {document, navigator, Notification, AbortController, setTimeout(fn,delay){timers.set(++timerId,{fn,delay});return timerId},clearTimeout(id){timers.delete(id)},window:{isSecureContext:supported,PushManager:function(){},Notification,matchMedia(){return {matches:installed}},addEventListener(name,fn){handlers[name]=fn}},Uint8Array,Promise,atob:s=>Buffer.from(s,'base64').toString('binary'),fetch:async(url,options)=>{
+    requests.push({url,options});
     if(failure) throw Error('Synthetic network failure');
+    const requestedAction=options?.body ? JSON.parse(options.body).action : null;
+    if(deniedReads && (url==='/push/summary/' || url==='/push/receipt/' || requestedAction==='status')) {
+      return {ok:false,status:403,json:async()=>{
+        if(deniedReads==='html')throw new SyntaxError('Synthetic HTML permission denial');
+        return {error:'Kalendertilgang er slått av. Last inn siden på nytt.'};
+      }};
+    }
     if(url==='/push/config/')return stalledAction==='config'?new Promise(()=>{}):{ok:true,json:async()=>({public_key:Buffer.alloc(65).toString('base64url')})};
     if(url==='/push/summary/'){calls.push('summary');return {ok:true,json:async()=>({unread})};}
     const data=JSON.parse(options.body);calls.push(data);
@@ -30,7 +38,7 @@ function setup({permission='default', online=true, supported=true, ios=false, in
     return {ok:true,json:async()=>data.action==='status' ? {state:serverState || 'disabled',active:!!serverState,id:'device-id'} : {id:'device-id',state:data.action==='test'?'queued':'active',delivery_id:'test-job'}};
   }};
   vm.runInNewContext(source,context);
-  return {calls,handlers,controls,navigator,Notification,root,document,deferSubscription(){subscriptionDeferred=true},releaseSubscription(value=current){deferredSubscription(value)},focus(name){controls[name].focus()},setUnread(n){unread=n},setReceipt(state){receiptState=state},fail(){failure=true},stall(action){stalledAction=action},expire(delay=10000){for(const [id,t]of [...timers])if(t.delay===delay){timers.delete(id);t.fn()}},click(name){return controls[name].handlers.click()}};
+  return {calls,requests,handlers,controls,navigator,Notification,root,document,denyReads(format='json'){deniedReads=format},deferSubscription(){subscriptionDeferred=true},releaseSubscription(value=current){deferredSubscription(value)},focus(name){controls[name].focus()},setUnread(n){unread=n},setReceipt(state){receiptState=state},fail(){failure=true},stall(action){stalledAction=action},expire(delay=10000){for(const [id,t]of [...timers])if(t.delay===delay){timers.delete(id);t.fn()}},click(name){return controls[name].handlers.click()}};
 }
 
 test('push permission is requested only by explicit activation; test and disable target this device',async()=>{
@@ -88,7 +96,85 @@ test('initial healthy active device panel stays hidden throughout asynchronous s
   assert.equal(h.root.hidden,true);await flush();assert.equal(h.root.hidden,true);assert.equal(h.controls.enable.hidden,true);
   h.releaseSubscription();await flush();assert.equal(h.root.hidden,true);assert.match(h.controls.status.textContent,/Aktivert/);
   const template=fs.readFileSync('budget/templates/budget/push_preferences.html','utf8');
-  assert.match(template,/<section[^>]*hidden[^>]*data-push-config/);assert.match(template,/<\/section>\s*<noscript>/);
+  // Django conditionals may surround the fallback. Inspect the HTML skeleton so
+  // this still fails if noscript moves inside the initially hidden panel.
+  const htmlSkeleton=template.replace(/{%[\s\S]*?%}/g,'');
+  assert.match(htmlSkeleton,/<section[^>]*hidden[^>]*data-push-config/);assert.match(htmlSkeleton,/<\/section>\s*<noscript>/);
+});
+test('calendar-restricted family settings allow own-device disable without activation, tests or notification reads',async()=>{
+  for(const browserSubscription of [false,true]){
+    const h=setup({calendarRestricted:true,pushPage:'familie',permission:'granted',browserSubscription,unread:999});
+    await flush();
+    assert.equal(h.root.hidden,false);
+    assert.equal(h.controls.enable.hidden,true);
+    assert.equal(h.controls.test.hidden,true);
+    assert.equal(h.controls.recheck.hidden,true);
+    assert.equal(h.controls.disable.hidden,!browserSubscription);
+    assert.deepEqual(h.requests,[]);
+    assert.ok(!h.calls.includes('permission'));
+    assert.equal(h.controls['notification-badge'].textContent,'');
+    assert.match(h.controls.status.textContent,browserSubscription?/Kalendertilgang er slått av/:/Ingen nettleserabonnement/);
+    h.navigator.onLine=false;h.handlers.offline();assert.equal(h.controls.disable.disabled,true);
+    h.navigator.onLine=true;await h.handlers.online();
+    h.document.visibilityState='hidden';h.handlers.visibilitychange();
+    h.document.visibilityState='visible';h.handlers.visibilitychange();h.handlers.pageshow();
+    h.expire(30000);await flush();
+    // Even an obsolete test/recheck control cannot fetch a job after revocation.
+    await h.click('test');await h.click('recheck');
+    assert.deepEqual(h.requests,[]);
+    assert.equal(h.controls.enable.hidden,true);assert.equal(h.controls.test.hidden,true);
+    if(browserSubscription){
+      assert.equal(h.controls.disable.disabled,false);
+      await h.click('disable');
+      assert.equal(h.requests.length,1);
+      assert.equal(h.requests[0].url,'/push/device/');
+      assert.deepEqual(JSON.parse(h.requests[0].options.body),{action:'disable',endpoint:'https://fcm.googleapis.com/fcm/send/synthetic'});
+      assert.ok(h.calls.includes('unsubscribe'));
+      assert.equal(h.controls.disable.hidden,true);
+      assert.equal(h.controls.enable.hidden,true);assert.equal(h.controls.test.hidden,true);
+      assert.match(h.controls.status.textContent,/Deaktivert/);
+    }
+    assert.ok(!h.calls.includes('summary'));
+    assert.ok(!h.calls.some(x=>x&&typeof x==='object'&&(x.action==='subscribe'||x.action==='test'||x.action==='status')));
+  }
+});
+test('open authorized notification page handles later JSON or HTML permission denials and still disables own device',async()=>{
+  for(const format of ['json','html']){
+    const h=setup({pushPage:'varsler',permission:'granted',serverState:'active',unread:4});
+    await flush();
+    assert.match(h.controls.status.textContent,/Aktivert/);
+    assert.equal(h.controls['notification-badge'].textContent,'4');
+    await h.click('test');await flush();
+    assert.match(h.controls['test-status'].textContent,/venter i leveringskøen/);
+    const before=h.requests.length;
+    h.denyReads(format);
+    h.setUnread(999); // A rejected summary must not apply this invented count.
+    await h.handlers.online();await flush();
+    const rejected=h.requests.slice(before);
+    assert.ok(rejected.some(r=>r.url==='/push/summary/'));
+    assert.ok(rejected.some(r=>r.url==='/push/receipt/'));
+    assert.ok(rejected.some(r=>r.url==='/push/device/'&&JSON.parse(r.options.body).action==='status'));
+    assert.match(h.controls.status.textContent,/Last inn/);
+    assert.match(h.controls.status.textContent,/Status er ukjent; prøv igjen eller deaktiver/);
+    assert.match(h.controls['test-status'].textContent,/Last inn/);
+    assert.match(h.controls['test-status'].textContent,/Bruk Kontroller teststatus/);
+    assert.equal(h.controls['notification-badge'].textContent,'4');
+    assert.equal(h.controls['notification-count-text'].textContent,'4 uleste varsler');
+    assert.match(h.controls['notification-bell']['aria-label'],/4 uleste/);
+    assert.equal(h.controls.disable.hidden,false);
+    assert.equal(h.controls.disable.disabled,false);
+    assert.equal(h.controls.test.hidden,true);
+    await h.click('recheck');
+    assert.match(h.controls['test-status'].textContent,/Last inn/);
+    await h.click('disable');
+    assert.ok(h.requests.some(r=>r.url==='/push/device/'&&JSON.parse(r.options.body).action==='disable'));
+    assert.ok(h.calls.includes('unsubscribe'));
+    assert.match(h.controls.status.textContent,/Deaktivert på denne enheten/);
+    assert.equal(h.controls.disable.hidden,true);
+    assert.equal(h.controls['notification-badge'].textContent,'4');
+    assert.ok(!h.calls.includes('permission'));
+    assert.ok(!h.calls.some(x=>x&&typeof x==='object'&&x.action==='subscribe'));
+  }
 });
 test('failed and retrying active device warnings remain actionable on ordinary pages',async()=>{
   for(const serverState of ['failed','retrying']){

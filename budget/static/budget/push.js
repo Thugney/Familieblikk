@@ -2,6 +2,7 @@
   'use strict';
   const root = document.querySelector('[data-push-config]');
   if (!root) return;
+  const restricted = root.dataset.pushRestricted === 'true';
   const status = document.getElementById('push-status');
   const enable = document.getElementById('push-enable');
   const disable = document.getElementById('push-disable');
@@ -19,10 +20,10 @@
   function message(text) { status.textContent = text; }
   function testMessage(text) { testStatus.hidden = false; testStatus.textContent = text; }
   function controls(active) {
-    const hidePanel = active && bindingState === 'active' && root.dataset.pushPage !== 'varsler';
+    const hidePanel = !restricted && active && bindingState === 'active' && root.dataset.pushPage !== 'varsler';
     if (hidePanel && !root.hidden && document.activeElement === enable) document.getElementById('notification-bell').focus();
     root.hidden = hidePanel;
-    enable.hidden = active; disable.hidden = !subscription; test.hidden = !active;
+    enable.hidden = active || restricted; disable.hidden = !subscription; test.hidden = !active || restricted;
     if (supported && Notification.permission === 'denied') enable.hidden = true;
     enable.disabled = busy || !navigator.onLine; disable.disabled = busy || !navigator.onLine; test.disabled = busy || !navigator.onLine || !deviceId;
     recheck.hidden = !lastDelivery; recheck.disabled = busy || !navigator.onLine;
@@ -47,6 +48,7 @@
     return requestJson(url, {method:'POST', credentials:'same-origin', cache:'no-store', headers:{'Content-Type':'application/json', 'X-CSRFToken':csrf}, body:JSON.stringify(data)});
   }
   async function refreshUnread() {
+    if (restricted) return;
     clearTimeout(summaryTimer);
     const generation = ++unreadGeneration;
     if (document.visibilityState === 'hidden') return;
@@ -99,6 +101,12 @@
       candidateRegistration = await bounded(navigator.serviceWorker.register('/sw.js', {scope:'/'}));
       candidateSubscription = await bounded(candidateRegistration.pushManager.getSubscription());
       if (generation !== deviceGeneration) return;
+      if (restricted) {
+        registration = candidateRegistration; subscription = candidateSubscription;
+        deviceId = null; controls(false);
+        message(candidateSubscription ? 'Kalendertilgang er slått av. Du kan avregistrere denne enheten.' : 'Ingen nettleserabonnement på denne enheten.');
+        return;
+      }
       if (!candidateSubscription) { registration = candidateRegistration; subscription = null; deviceId = null; bindingState = 'disabled'; controls(false); message('Varsler er ikke aktivert på denne enheten.'); return; }
       await bounded(navigator.serviceWorker.ready);
       if (generation !== deviceGeneration) return;

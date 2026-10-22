@@ -13,10 +13,13 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from . import push_services as push
 from .models import CalendarNotification, Membership, PushDelivery, PushSubscription
+from . import access
 
 
-def member_for(request):
-    try: return Membership.objects.get(user=request.user)
+def member_for(request, calendar=True):
+    try:
+        member = Membership.objects.get(user=request.user)
+        return access.require(member, {'calendar'}) if calendar else member
     except Membership.DoesNotExist: raise PermissionDenied('Bli med i en familie først.') from None
 
 
@@ -44,7 +47,7 @@ def device(request):
     try:
         data = request_data(request)
         action = data.get('action')
-        member = member_for(request)
+        member = member_for(request, calendar=action != 'disable')
         if action == 'subscribe' and set(data) == {'action', 'subscription'}:
             sub = push.subscribe(request, data['subscription'])
             return JsonResponse({'id': str(sub.pk), 'state': sub.state})

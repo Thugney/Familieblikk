@@ -11,15 +11,15 @@ class Element {
   set textContent(value){this.children=[];this.text=String(value);} get textContent(){return (this.text||'')+this.children.map(c=>c.textContent).join('');}
   setAttribute(key,value){this.attributes[key]=String(value);if(key==='value')this.value=String(value);if(key==='hidden')this.hidden=true;if(key==='disabled')this.disabled=true;if(key.startsWith('data-'))this.dataset[key.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=String(value);}
   getAttribute(key){if(key.startsWith('data-'))return this.dataset[key.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]??null;return this.attributes[key]??null;}
-  append(...nodes){for(const node of nodes){node.parentElement=this;this.children.push(node);}}
+  append(...nodes){for(const node of nodes){node.parentElement=this;node.ownerDocument=this.ownerDocument;this.children.push(node);}}
   prepend(node){node.parentElement=this;this.children.unshift(node);}
   replaceChildren(...nodes){this.children.forEach(c=>c.parentElement=null);this.children=[];this.text='';this.append(...nodes);}
   remove(){if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(c=>c!==this);this.parentElement=null;}
   addEventListener(type,listener){(this.listeners[type]??=[]).push(listener);}
-  async dispatch(type){const event={type,target:this,key:'',preventDefault(){this.defaultPrevented=true;}};for(const listener of this.listeners[type]||[])await listener(event);await settle();}
+  async dispatch(type,values={}){const event={type,target:this,key:'',preventDefault(){this.defaultPrevented=true;},...values};for(const listener of this.listeners[type]||[])await listener(event);await settle();return event;}
   async click(){if(!this.disabled)await this.dispatch('click');}
   showModal(){this.open=true;}close(){this.open=false;for(const listener of this.listeners.close||[])listener({target:this});}
-  focus(){}
+  focus(){if(this.ownerDocument)this.ownerDocument.activeElement=this;}
   matches(selector){
     if(selector.endsWith(':checked'))return this.checked&&this.matches(selector.slice(0,-8));
     if(selector.startsWith('#'))return this.id===selector.slice(1);
@@ -39,7 +39,7 @@ function fixture(target='2026-11') {
 async function harness(options={}) {
   const root=new Element('section');root.setAttribute('data-spending-workspace','');
   const add=(id,parent=root,tag='div')=>{const node=new Element(tag);node.id=id;parent.append(node);return node;};
-  const boot=add('spending-boot');boot.textContent=JSON.stringify({initial_tab:options.initial_tab||'planning',month:'2026-10',urls:{spending:'/spending',planning:'/planning',preview:'/preview',save:'/save'}});
+  const boot=add('spending-boot');boot.textContent=JSON.stringify({initial_tab:options.initial_tab||'planning',can_plan:options.can_plan,can_annual:options.can_annual,month:'2026-10',urls:{spending:'/spending',planning:'/planning',preview:'/preview',save:'/save'}});
   const tabs=new Element();tabs.className='sp-tabs';root.append(tabs);
   for(const name of ['spending','annual','planning']){const b=add('sp-tab-'+name,tabs,'button');b.setAttribute('data-sp-tab',name);add('sp-panel-'+name);}
   for(const id of ['sp-status','sp-error','sp-retry','sp-results','sp-search','sp-period','sp-start','sp-end','sp-year','sp-annual-category','sp-annual-results','sp-reset','sp-dates','sp-category-summary','sp-category-options','sp-filters','sp-detail','sp-detail-title','sp-detail-content','sp-confirm','sp-confirm-title','sp-confirm-content','sp-confirm-error','sp-confirm-action'])add(id,root,['sp-detail','sp-confirm'].includes(id)?'dialog':'div');
@@ -48,6 +48,7 @@ async function harness(options={}) {
   const csrf=new Element('input');csrf.setAttribute('name','csrfmiddlewaretoken');csrf.value='synthetic-csrf';form.append(csrf);
   const close=add('close-confirm',root.querySelector('#sp-confirm'),'button');close.setAttribute('data-sp-close','');
   const document={querySelector:s=>root.matches(s)?root:root.querySelector(s),createElement:t=>new Element(t),createElementNS:(_,t)=>new Element(t),createTextNode:t=>{const n=new Element('#text');n.textContent=t;return n;}};
+  const attachDocument=node=>{node.ownerDocument=document;node.children.forEach(attachDocument);};attachDocument(root);
   const window=new Element('window'),navigator={onLine:true},requests=[];
   let failPlanning=0,failPreview=0;
   const fetch=async(url,request={})=>{
@@ -68,6 +69,6 @@ async function harness(options={}) {
   const context=vm.createContext({document,window,navigator,Node:Element,fetch,URL,Intl,Date,AbortController,structuredClone,crypto:{randomUUID},setTimeout,clearTimeout,location:{origin:'https://family.test'},console});
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../budget/static/budget/spending.js'),'utf8'),context);
   await settle();await settle();
-  return {root,form,requests,$:selector=>root.querySelector(selector),async input(selector,value){const node=root.querySelector(selector);node.value=value;await node.dispatch('input');},async change(selector,value){const node=root.querySelector(selector);node.value=value;await node.dispatch('change');},async online(value){navigator.onLine=value;await window.dispatch(value?'online':'offline');},failPlanning(){failPlanning++;},failPreview(){failPreview++;},settle};
+  return {root,form,requests,document,$:selector=>root.querySelector(selector),async keydown(key){return tabs.dispatch('keydown',{key});},async input(selector,value){const node=root.querySelector(selector);node.value=value;await node.dispatch('input');},async change(selector,value){const node=root.querySelector(selector);node.value=value;await node.dispatch('change');},async online(value){navigator.onLine=value;await window.dispatch(value?'online':'offline');},failPlanning(){failPlanning++;},failPreview(){failPreview++;},settle};
 }
 module.exports={harness,Element};

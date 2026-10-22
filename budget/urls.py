@@ -8,6 +8,7 @@ urlpatterns = [
     path('registrer/medlem/', views.register_account_view, name='register_member'),
     path('registrer/familie/', views.register_account_view, {'new_household': True}, name='register_household'),
     path('familieport/', views.family_gate, name='family_gate'), path('utlogging/', views.logout_view, name='logout'),
+    path('familie/modultilgang/<int:member_id>/', views.member_access_view, name='member_access'),
     path('invitasjon/<str:token>/', views.invitation_view, name='invitation'),
     path('app/kalender/', calendar_views.calendar_page, name='calendar'),
     path('app/kalender/data/', calendar_views.calendar_data, name='calendar_data'),

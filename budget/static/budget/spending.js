@@ -47,6 +47,11 @@
   const $ = selector => root.querySelector(selector);
   const $$ = selector => [...root.querySelectorAll(selector)];
   const boot = JSON.parse($('#spending-boot').textContent);
+  if (boot.can_plan === false) $('#sp-tab-planning').hidden = true;
+  if (boot.can_annual === false) {
+    $('#sp-tab-annual').hidden = true;
+    $('#sp-period option[value="year"]')?.remove();
+  }
   const form = $('#sp-plan-form');
   let tab = boot.initial_tab || 'spending', data, annualData, plan, draft, preview, saveKey, saving = false, searchTimer, activeDetail, historySelection=[];
   let confirmAction, retryAction;
@@ -147,7 +152,7 @@
     categoryOptions(result.category_options);
     const target = $('#sp-results'), metrics = el('div',{class:'sp-metrics'},[
       metric('Utgifter i valgt utvalg',money(result.total_ore),`${result.pagination.count} poster · ${dateName(result.period.start)} – ${dateName(result.period.end)}`),
-      metric('Alle utgifter i perioden',money(result.period_total_ore ?? result.total_ore),'Før kategori- og søkefilter'),
+      metric(result.restricted_selection ? 'Tillatte utgifter i perioden' : 'Alle utgifter i perioden',money(result.period_total_ore ?? result.total_ore),'Før kategori- og søkefilter'),
       metric('Kategorier med treff',String(result.categories.filter(c=>c.entry_count>0).length),result.period.to_today?'Perioden er avgrenset til i dag':'Hele det valgte tidsrommet')]);
     const left = el('section',{class:'sp-section'},[el('h2',{text:'Hvor gikk pengene?'}),p('Hele utvalget, kategori for kategori. Trykk for detaljer.'),breakdown(result.categories,c=>openDetail(c,currentFilters())),p('Søylene sammenligner registrerte beløp. Refusjoner reduserer forbruk på refusjonsdatoen. 0 kr betyr registrert null eller ingen treff i dette utvalget.')]);
     const income = el('div',{class:'sp-income'},[el('h3',{text:'Inntekt i perioden'}),p(result.income.label),row('Faktisk mottatt',money(result.income.received_ore)),row('Forventet / ikke mottatt',money(result.income.expected_entries_ore))]);
@@ -306,12 +311,13 @@
   }
   function resetFilters() { selected.clear();$('#sp-search').value='';$('#sp-period').value='month';$('#sp-dates').hidden=true;$$('[data-sp-category-filter]').forEach(c=>c.checked=false);updateCategorySummary();loadSpending(); }
   function switchTab(next) {
+    if (next === 'planning' && boot.can_plan === false || next === 'annual' && boot.can_annual === false) return;
     tab=next;clearError();
     for(const b of $$('[data-sp-tab]')) { const active=b.dataset.spTab===tab;b.setAttribute('aria-selected',active);b.tabIndex=active?0:-1;$('#sp-panel-'+b.dataset.spTab).hidden=!active; }
     if(tab==='spending')loadSpending();else if(tab==='annual')loadAnnual();else loadPlan();
   }
   for(const b of $$('[data-sp-tab]'))b.addEventListener('click',()=>switchTab(b.dataset.spTab));
-  $('.sp-tabs').addEventListener('keydown',e=> {const buttons=$$('[data-sp-tab]'),i=buttons.indexOf(document.activeElement);if(i<0||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?buttons.length-1:(i+(e.key==='ArrowRight'?1:buttons.length-1))%buttons.length;switchTab(buttons[next].dataset.spTab);buttons[next].focus();});
+  $('.sp-tabs').addEventListener('keydown',e=> {const buttons=$$('[data-sp-tab]').filter(b=>!b.hidden),i=buttons.indexOf(document.activeElement);if(i<0||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?buttons.length-1:(i+(e.key==='ArrowRight'?1:buttons.length-1))%buttons.length;switchTab(buttons[next].dataset.spTab);buttons[next].focus();});
   $('#sp-search').addEventListener('input',()=> {spendingGate.invalidate();clearTimeout(searchTimer);status('Oppdaterer søket…');searchTimer=setTimeout(loadSpending,300);});
   $('#sp-filters').addEventListener('submit',e=>{e.preventDefault();loadSpending();});
   $('#sp-period').addEventListener('change',()=>{$('#sp-dates').hidden=$('#sp-period').value!=='custom';loadSpending();});

@@ -78,6 +78,20 @@ class FamilyForm(forms.Form):
     name = forms.CharField(label='Familiens navn', max_length=120)
 
 
+class MemberAccessForm(forms.Form):
+    version = forms.IntegerField(widget=forms.HiddenInput, min_value=1)
+    modules = forms.MultipleChoiceField(label='Tillatte moduler', required=False,
+                                       widget=forms.CheckboxSelectMultiple)
+
+    def __init__(self, *args, member, **kwargs):
+        from .access import MODULES, allows
+        super().__init__(*args, **kwargs)
+        self.fields['modules'].choices = list(MODULES.items())
+        if not self.is_bound:
+            self.initial.update(version=member.access_version,
+                                modules=[key for key in MODULES if allows(member, key)])
+
+
 class RowForm(forms.ModelForm):
     version = forms.IntegerField(widget=forms.HiddenInput, initial=0, required=False)
     amount = MoneyField(label='Beløp i NOK')

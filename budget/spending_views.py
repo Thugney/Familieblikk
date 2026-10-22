@@ -9,6 +9,7 @@ from django.views.decorators.http import require_GET, require_POST
 from . import spending_services as service
 from .services import Conflict
 from .spending_forms import month_value
+from . import access
 
 
 def api(view):
@@ -63,22 +64,25 @@ def planning_save(request):
 def shell_context(request, initial_tab='spending'):
     from .views import NAV
     member = service.membership(request.user)
+    access.require_page(member, 'arsoversikt' if initial_tab == 'annual' else 'budsjett')
+    access.require(member, {'budget'})
     try:
         selected = month_value(request.GET.get('month') or service.month_key(timezone.localdate()))
     except ValidationError:
         selected = timezone.localdate().replace(day=1)
     return {'member': member, 'nav': NAV, 'page': 'arsoversikt' if initial_tab == 'annual' else 'budsjett',
             'title': 'Året i bilder' if initial_tab == 'annual' else 'Forbruk og plan', 'month': selected,
-            'spending_boot': {'initial_tab': initial_tab, 'urls': service.URLS, 'month': service.month_key(selected), 'can_save': member.role == 'admin'}}
+            'spending_boot': {'initial_tab': initial_tab, 'urls': service.URLS, 'month': service.month_key(selected), 'can_save': member.role == 'admin',
+                              'can_plan': access.complete_finance(member), 'can_annual': access.allows(member, 'annual'),
+                              'restricted_selection': not access.complete_finance(member)}}
 
 
 @login_required
 @require_GET
 def render_shell(request, initial_tab='spending'):
-    try:
-        context = shell_context(request, initial_tab)
-    except PermissionDenied:
-        return redirect('family_gate')
+    from .models import Membership
+    if not Membership.objects.filter(user=request.user).exists(): return redirect('family_gate')
+    context = shell_context(request, initial_tab)
     response = render(request, 'budget/spending.html', context)
     response['Cache-Control'] = 'no-store, private'
     return response
