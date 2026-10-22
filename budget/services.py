@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 from .models import Asset, Audit, BillOccurrence, BillTemplate, Entry, FundTopUp, Membership, MonthPlan
+from . import access
 
 
 class Conflict(ValidationError):
@@ -21,6 +22,8 @@ def authorize(actor, row=None, admin=False):
     member = membership(actor)
     if row is not None and row.household_id != member.household_id:
         raise PermissionDenied('Ingen tilgang til denne familien.')
+    if row is not None:
+        access.require_write_row(member, row)
     if (admin or (row is not None and row.created_by_id != actor.id)) and member.role != 'admin':
         raise PermissionDenied('Bare oppretteren eller en administrator kan endre posten.')
     return member
@@ -34,8 +37,11 @@ def total(rows): return rows.aggregate(n=Sum('amount_ore'))['n'] or 0
 
 @transaction.atomic
 def save_row(actor, row, expected_version=None, admin=False):
-    member = authorize(actor, row if not row._state.adding else None, admin)
-    type(member.household).objects.select_for_update().get(pk=member.household_id)
+    member = access.lock_member(actor)
+    if not row._state.adding and row.household_id != member.household_id:
+        raise PermissionDenied('Ingen tilgang til denne familien.')
+    if admin and member.role != 'admin':
+        raise PermissionDenied('Bare administrator kan endre oppsettet.')
     before = {}
     current = None
     if row._state.adding:
@@ -43,11 +49,16 @@ def save_row(actor, row, expected_version=None, admin=False):
         row.created_by = actor
     else:
         current = type(row).objects.select_for_update().get(pk=row.pk, household=member.household)
+        access.lock_relations(member, current)
+        authorize(actor, current, admin)
         before = {field.attname: str(getattr(current, field.attname)) for field in current._meta.fields if field.name not in ('updated_at', 'created_at')}
         if expected_version != current.version:
             raise Conflict('Posten er endret av noen andre. Last inn ny versjon; feltene dine er beholdt.')
         row.created_by_id = current.created_by_id
         row.version = current.version + 1
+    access.lock_relations(member, row)
+    access.require_write_row(member, row)
+    if current:
         if isinstance(row, Asset):
             if current.kind == "fund": prepare_month(member.household, month_start(timezone.localdate()))
             if current.kind != row.kind and (Entry.objects.filter(asset=current).exists() or MonthPlan.objects.filter(asset=current).exists() or BillTemplate.objects.filter(asset=current).exists() or BillOccurrence.objects.filter(asset=current).exists()):
@@ -66,6 +77,7 @@ def save_row(actor, row, expected_version=None, admin=False):
         if current and current.asset_id and current.asset.kind == "savings" and current.month < month_start(timezone.localdate()):
             raise ValidationError("Avsluttet spareplan kan ikke flyttes eller endres.")
         row.derived = False
+    access.require_write_row(member, row)
     row.full_clean()
     row.save()
     if isinstance(row, Asset) and row.kind == "fund":
@@ -133,17 +145,19 @@ def validate_savings(asset, candidate=None, exclude_id=None):
 
 @transaction.atomic
 def save_entry(actor, row, expected_version=None):
-    member = authorize(actor, row if not row._state.adding else None)
-    type(member.household).objects.select_for_update().get(pk=member.household_id)
+    member = access.lock_member(actor)
+    if not row._state.adding and row.household_id != member.household_id:
+        raise PermissionDenied('Ingen tilgang til denne familien.')
     row.household = member.household
+    access.lock_relations(member, row)
+    access.require_write_row(member, row)
     row.clean()
-    if row.original_id:
-        Entry.objects.select_for_update().get(pk=row.original_id, household=member.household)
-    if row.asset_id:
-        Asset.objects.select_for_update().get(pk=row.asset_id, household=member.household)
+    access.require_row(member, row)
     current = None
     if not row._state.adding:
-        current = Entry.objects.get(pk=row.pk, household=member.household)
+        current = Entry.objects.select_for_update().get(pk=row.pk, household=member.household)
+        access.lock_relations(member, current)
+        authorize(actor, current)
         if current.occurrence_id:
             raise ValidationError('Bruk Angre betaling før en koblet betaling endres.')
         if current.refunds.exists():
@@ -153,7 +167,9 @@ def save_entry(actor, row, expected_version=None):
             validate_savings(current.asset, exclude_id=current.pk)
     else:
         existing = Entry.objects.filter(household=member.household, idempotency_key=row.idempotency_key).first()
-        if existing: return existing
+        if existing:
+            authorize(actor, existing)
+            return existing
     validate_entry(row)
     if row.kind in ('deposit', 'withdrawal'): validate_savings(row.asset, row, row.pk)
     if row.kind == 'fund' and not row.occurrence_id:
@@ -173,9 +189,10 @@ def save_entry(actor, row, expected_version=None):
 
 @transaction.atomic
 def delete_entry(actor, entry_id, version):
-    member = membership(actor)
+    member = access.lock_member(actor)
     type(member.household).objects.select_for_update().get(pk=member.household_id)
     row = Entry.objects.select_for_update().get(pk=entry_id, household=member.household)
+    access.lock_relations(member, row)
     authorize(actor, row)
     if row.version != version: raise Conflict('Posten er endret. Last inn på nytt.')
     if row.refunds.exists(): raise ValidationError('Fjern tilknyttede refusjoner først.')
@@ -304,11 +321,14 @@ def ensure_fund_topups(household, month):
 
 @transaction.atomic
 def pay_bill(actor, occurrence_id, effective_date, key):
-    member = membership(actor)
+    member = access.lock_member(actor)
     type(member.household).objects.select_for_update().get(pk=member.household_id)
     bill = BillOccurrence.objects.select_for_update().get(pk=occurrence_id, household=member.household)
+    access.require_row(member, bill)
     existing = Entry.objects.filter(occurrence=bill).first()
-    if existing: return existing
+    if existing:
+        access.require_row(member, existing)
+        return existing
     if effective_date < bill.created_at.date() and effective_date < bill.template.first_due:
         raise ValidationError('Betalingsdato er før forpliktelsen.')
     kind = {'ordinary': 'expense', 'debt': 'debt', 'fund': 'fund'}[bill.accounting_class]
@@ -388,6 +408,7 @@ def debt_projection(assets, strategy='avalanche', extra_ore=0):
 
 @transaction.atomic
 def allocate_debt_plan(actor, month, strategy, extra_ore):
+    access.lock_member(actor)
     member = authorize(actor, admin=True)
     type(member.household).objects.select_for_update().get(pk=member.household_id)
     if month.day != 1: raise ValidationError('Velg første dag i måneden.')

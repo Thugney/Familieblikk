@@ -31,6 +31,7 @@ from py_vapid import Vapid
 from pywebpush import WebPushException, webpush
 
 from .models import CalendarNotification, Household, Membership, PushDelivery, PushKey, PushSubscription
+from . import access
 
 MAX_ATTEMPTS = 8
 MAX_AGE = timedelta(hours=24)
@@ -115,7 +116,9 @@ def valid_binding(subscription, secret=None):
     if not subscription.active: return False
     secret = secret or decrypt(subscription.secret_ciphertext)
     user = get_user_model().objects.filter(pk=subscription.user_id, is_active=True).first()
-    if not user or not Membership.objects.filter(user_id=user.pk, household_id=subscription.household_id).exists(): return False
+    if not user: return False
+    member = Membership.objects.filter(user_id=user.pk, household_id=subscription.household_id).first()
+    if not member or not access.allows(member, 'calendar'): return False
     session = Session.objects.filter(session_key=secret['session_key'], expire_date__gt=timezone.now()).first()
     if not session: return False
     data = session.get_decoded()
@@ -124,7 +127,7 @@ def valid_binding(subscription, secret=None):
 
 @transaction.atomic
 def subscribe(request, data):
-    member = Membership.objects.select_related('household').get(user=request.user)
+    member = access.require(access.lock_member(request.user), {'calendar'})
     Household.objects.select_for_update().get(pk=member.household_id)
     info = validate_subscription(data)
     if not request.session.session_key: raise PermissionDenied('Logg inn på nytt før du aktiverer varsler.')
@@ -159,9 +162,9 @@ def disable_session(request, endpoint=None):
 
 def record_calendar_action(actor, member, event, action_key, kind, original, payload, recipient_members=None):
     """Called inside calendar mutate's household lock and transaction."""
-    people = Membership.objects.filter(household=member.household).select_related('user')
-    if payload['scope'] != 'shared': people = people.filter(pk__in=payload['participants'])
-    if recipient_members is not None: people = people.filter(pk__in=recipient_members)
+    people = access.calendar_members(member.household)
+    if payload['scope'] != 'shared': people = [p for p in people if str(p.pk) in payload['participants']]
+    if recipient_members is not None: people = [p for p in people if p.pk in recipient_members]
     users = {person.user_id: person.user for person in people}
     if kind != 'created': users[event.created_by_id] = event.created_by
     users.pop(actor.pk, None)
@@ -169,14 +172,15 @@ def record_calendar_action(actor, member, event, action_key, kind, original, pay
     verb = {'created': 'opprettet', 'yes': 'godtok', 'no': 'avslo'}[kind]
     for user_id in users:
         # The original creator may no longer belong to this household.
-        if not Membership.objects.filter(user_id=user_id, household=member.household).exists(): continue
+        recipient = Membership.objects.filter(user_id=user_id, household=member.household).first()
+        if not recipient or not access.allows(recipient, 'calendar'): continue
         notice = CalendarNotification.objects.create(household=member.household, recipient_id=user_id, event=event, original_date=original, kind=kind, action_key=action_key, detail=f'{actor_label} {verb} «{payload["title"]}».'[:400])
         PushDelivery.objects.bulk_create([PushDelivery(notification=notice, subscription=sub) for sub in PushSubscription.objects.filter(user_id=user_id, household=member.household, active=True)])
 
 
 @transaction.atomic
 def queue_test(request, subscription_id):
-    member = Membership.objects.get(user=request.user)
+    member = access.require(access.lock_member(request.user), {'calendar'})
     sub = PushSubscription.objects.select_for_update().filter(pk=subscription_id, user=request.user, household=member.household, session_digest=digest(request.session.session_key or ''), active=True).first()
     if not sub or not valid_binding(sub): raise ValidationError('Aktiver varsler på denne enheten først.')
     if sub.last_test_at and sub.last_test_at > timezone.now() - timedelta(seconds=60): raise ValidationError('Vent ett minutt mellom testvarsler.')
@@ -229,18 +233,26 @@ def retry_delay(response, attempts):
 def deliver_claim(delivery_id, token, sender=None):
     # Lock subscription through the bounded HTTP call: disabling/logout wins before
     # a future delivery can start. Row lock + fencing token exclude two workers.
-    initial = PushDelivery.objects.filter(pk=delivery_id).values('subscription_id').first()
+    initial = PushDelivery.objects.filter(pk=delivery_id).values('subscription_id', 'subscription__household_id').first()
     if not initial: return 'cancelled'
+    # Keep the same first lock as revocation through provider acceptance. A
+    # provider-accepted notification cannot subsequently be recalled.
+    Household.objects.select_for_update().get(pk=initial['subscription__household_id'])
     # NO KEY UPDATE still serializes disable/rebind, while allowing concurrent
     # calendar outbox inserts to validate their subscription foreign key.
     sub = PushSubscription.objects.select_for_update(no_key=True).get(pk=initial['subscription_id'])
+    if sub.household_id != initial['subscription__household_id']:
+        return 'cancelled'
     row = PushDelivery.objects.select_for_update(of=('self',)).select_related('notification').get(pk=delivery_id)
     if row.state != 'sending' or row.lease_token != token: return row.state
     now = timezone.now()
     notice = row.notification
+    recipient_member = Membership.objects.filter(user_id=sub.user_id, household_id=sub.household_id).first()
     if notice and (notice.recipient_id != sub.user_id or notice.household_id != sub.household_id):
         # A delayed insert can refer to this endpoint's former identity.
         row.state, row.last_error = 'cancelled', 'binding_changed'
+    elif recipient_member and not access.allows(recipient_member, 'calendar'):
+        row.state, row.last_error = 'cancelled', 'access_revoked'
     elif row.created_at < now - MAX_AGE or row.attempts >= MAX_ATTEMPTS:
         row.state, row.last_error = 'failed', 'expired'
         sub.state = 'failed'; sub.save(update_fields=['state', 'updated_at'])

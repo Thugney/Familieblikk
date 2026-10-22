@@ -10,3 +10,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-background-calendar-alerts.md`
   summary: Bekreft fysisk bakgrunnsvarsel på autorisert Windows- og Android-enhet etter NAS-oppdatering.
   evidence: Arbeider/kryptering og faktisk serviceworker er verifisert med simulert leverandørtransport; NAS-worker kjører ifølge brukerens ps-utdata. Faktisk leverandøraksept og OS-visning på brukerens enheter med lukket app er fortsatt uobservert og vil avklare eventuell leveringsfeil.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-member-module-access.md`
+  summary: Tillat eksplisitt avregistrering av egen serverbinding når OS-tillatelsen er avslått og nettleser-endpoint mangler.
+  evidence: push.js denied-grenen er identisk i baseline e00b367 og returnerer før subscription-henting; dagens utlogging deaktiverer egen økt og ny kalendertilgangspolicy stopper alle varsler.

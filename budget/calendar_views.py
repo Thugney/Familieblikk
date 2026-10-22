@@ -53,9 +53,8 @@ def selected_month(request):
 @require_GET
 
 def calendar_page(request):
-
-    try: member=service.membership(request.user)
-    except PermissionDenied: return redirect('family_gate')
+    if not service.Membership.objects.filter(user=request.user).exists(): return redirect('family_gate')
+    member=service.membership(request.user)
 
     error=''
 
@@ -91,7 +90,7 @@ def calendar_page(request):
 
     except ValueError: budget_month=timezone.localdate().replace(day=1)
 
-    members=service.Membership.objects.filter(household=member.household).select_related('user')
+    members=service.access.calendar_members(member.household)
 
     context={'member':member,'nav':NAV,'page':'kalender','title':'Familiekalender','month':budget_month,'cal_month':current,'previous':(current-timedelta(days=1)).strftime('%Y-%m'),'next':(last+timedelta(days=1)).strftime('%Y-%m'),'events':events,'weeks':weeks,'members':members,'person':selected,'calendar_error':error,'calendar_form':CalendarForm(member.household),'weekdays':['Man','Tir','Ons','Tor','Fre','Lør','Søn']}
 

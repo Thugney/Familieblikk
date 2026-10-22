@@ -123,7 +123,7 @@ class PlansModulesTests(TestCase):
             self.assertEqual(self.client.get('/ny/entry/', {'asset': value}).status_code, 404)
         own = self.asset()
         response = self.client.post(f'/ny/entry/?month={self.key}&entry_kind=debt&asset={own.pk}', self.entry_data(foreign))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 404)
         self.assertFalse(Entry.objects.filter(household=self.house).exists())
         member = get_user_model().objects.create_user(username='modules-member@example.test')
         Membership.objects.create(user=member, household=self.house, role='member')

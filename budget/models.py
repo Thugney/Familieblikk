@@ -13,10 +13,17 @@ class Household(models.Model):
     entry_sequence = models.PositiveBigIntegerField(default=0)
 
 
+def validate_module_access(value):
+    from .access import validate_permissions
+    validate_permissions(value)
+
+
 class Membership(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     household = models.ForeignKey(Household, on_delete=models.PROTECT)
     role = models.CharField(max_length=10, choices=[('admin', 'Administrator'), ('member', 'Medlem')])
+    module_access = models.JSONField(default=dict, blank=True, validators=[validate_module_access])
+    access_version = models.PositiveIntegerField(default=1)
     verified_at = models.DateTimeField(null=True, blank=True)
     identity_method = models.CharField(max_length=30, default='email_code', choices=[('email_code', 'E-postkode'), ('preregistered_owner', 'Eksplisitt forhåndsregistrert eier'), ('preregistered_admin', 'Lokalt registrert administrator'), ('preregistered_member', 'Lokalt registrert medlem')])
     provisioned_at = models.DateTimeField(null=True, blank=True)

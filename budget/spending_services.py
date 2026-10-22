@@ -15,6 +15,7 @@ from .models import (Asset, Audit, BillOccurrence, BillTemplate, Category, Entry
                      MonthlyBudgetHeader, PlanningRequest)
 from .services import Conflict, fund_balance, month_start, month_end, next_month, plan_amount
 from .spending_forms import exact_fields, history_values, month_value, ore_value, uuid_value
+from . import access
 
 URLS = {'spending': '/app/forbruk/data/', 'planning': '/app/plan/data/',
         'preview': '/app/plan/preview/', 'save': '/app/plan/save/'}
@@ -94,6 +95,8 @@ def period_bounds(params, today):
 
 def spending(actor, params, today=None):
     member = membership(actor)
+    access.require(member, {'budget'})
+    if params.get('period') == 'year': access.require(member, {'annual'})
     household = member.household
     today = today or timezone.localdate()
     first, last, requested = period_bounds(params, today)
@@ -108,7 +111,7 @@ def spending(actor, params, today=None):
     known = {str(c.pk) for c in categories} | {'uncategorized'}
     if any(x not in known for x in selected):
         raise ValidationError('En valgt kategori finnes ikke i familien.')
-    period_rows = list(ordinary_rows(household, first, last))
+    period_rows = list(access.safe_rows(member, ordinary_rows(household, first, last)))
     rows = []
     for row in period_rows:
         cat = category_info(row_category(row))
@@ -127,7 +130,9 @@ def spending(actor, params, today=None):
     for cat in [category_info(c) for c in categories] + [UNCATEGORIZED]:
         if cat['id'] in selected and cat['id'] not in groups:
             groups[cat['id']] = {**cat, 'amount_ore': 0, 'entry_count': 0}
-    warn = coverage(household)
+    warn = coverage(household) if access.complete_finance(member) else {
+        'unresolved_import_count': 0, 'completeness_confirmed': False,
+        'warning': 'Utvalg: bare poster fra tillatte moduler vises. Skjulte opplysninger og summer er utelatt.'}
     trend = []
     cursor = month_start(first)
     while cursor <= month_start(requested):
@@ -152,7 +157,7 @@ def spending(actor, params, today=None):
     income_rows = Entry.objects.filter(household=household, kind='income', effective_date__range=(first, last))
     forecast = None
     monthly_scope = params.get('period', 'month') != 'custom' or (first.day == 1 and requested == month_end(requested))
-    if monthly_scope:
+    if monthly_scope and access.complete_finance(member):
         forecast_first, forecast_last = month_start(first), month_start(last)
         month_count = (forecast_last.year - forecast_first.year) * 12 + forecast_last.month - forecast_first.month + 1
         headers = list(MonthlyBudgetHeader.objects.filter(household=household, month__range=(forecast_first, forecast_last)))
@@ -163,6 +168,8 @@ def spending(actor, params, today=None):
         forecast_scope = 'Forventet inntekt i hele månedsplaner ' + scope + ' (ikke mottatt inntekt).'
         if forecast is None:
             forecast_scope += ' Månedsplanene er ikke fullstendig utfylt.'
+    elif not access.complete_finance(member):
+        forecast_scope = 'Full månedsprognose krever tilgang til alle økonomimoduler.'
     else:
         forecast_scope = 'Månedsprognose vises ikke for et delvis egendefinert datospenn.'
     return {'period': {'start': first.isoformat(), 'end': last.isoformat(), 'requested_end': requested.isoformat(),
@@ -170,7 +177,7 @@ def spending(actor, params, today=None):
             'filters': {'categories': selected, 'q': q}, 'period_total_ore': sum(net_amount(r) for r in period_rows),
             'total_ore': sum(net_amount(r) for r in rows), 'category_options': [category_info(c) for c in categories] + [UNCATEGORIZED],
             'categories': sorted(groups.values(), key=lambda c: (-c['amount_ore'], c['name'].casefold())),
-            'trend': trend, 'coverage': warn,
+            'trend': trend, 'coverage': warn, 'restricted_selection': not access.complete_finance(member),
             'income': {'received_ore': sum(r.amount_ore for r in income_rows if r.received),
                        'expected_entries_ore': sum(r.amount_ore for r in income_rows if not r.received),
                        'forecast_ore': forecast, 'forecast_scope': forecast_scope,
@@ -285,7 +292,7 @@ def plan_totals(data, category_amounts=None, asset_amounts=None, income=None):
 
 @transaction.atomic
 def planning(actor, target_month=None, history=None, today=None):
-    member = membership(actor)
+    member = access.require(access.lock_member(actor), access.FINANCE)
     household = member.household
     Household.objects.select_for_update().get(pk=household.pk)
     today = today or timezone.localdate()
@@ -436,7 +443,7 @@ def preview(actor, draft):
 @transaction.atomic
 def save_plan(actor, payload):
     exact_fields(payload, ['draft', 'confirmation_digest', 'confirm', 'key'])
-    member = membership(actor)
+    member = access.require(access.lock_member(actor), access.FINANCE)
     Household.objects.select_for_update().get(pk=member.household_id)
     locked_household_id = member.household_id
     member.refresh_from_db()
