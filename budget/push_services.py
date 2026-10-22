@@ -134,6 +134,8 @@ def subscribe(request, data):
     # cancel old jobs, so a new session can never receive the previous identity's queue.
     if existing and (existing.user_id != request.user.pk or existing.household_id != member.household_id or existing.session_digest != digest(request.session.session_key)):
         existing.deliveries.filter(state__in=['pending', 'sending']).update(state='cancelled', lease_token=None, lease_until=None)
+        # Diagnostic jobs belong to the former session, not to a reusable endpoint.
+        existing.deliveries.filter(notification__isnull=True).delete()
     if not existing: existing = PushSubscription(endpoint_digest=endpoint_hash)
     existing.user = request.user
     existing.household = member.household
@@ -155,10 +157,11 @@ def disable_session(request, endpoint=None):
         PushDelivery.objects.filter(subscription=row, state__in=['pending', 'sending']).update(state='cancelled', lease_token=None, lease_until=None)
 
 
-def record_calendar_action(actor, member, event, action_key, kind, original, payload):
+def record_calendar_action(actor, member, event, action_key, kind, original, payload, recipient_members=None):
     """Called inside calendar mutate's household lock and transaction."""
     people = Membership.objects.filter(household=member.household).select_related('user')
     if payload['scope'] != 'shared': people = people.filter(pk__in=payload['participants'])
+    if recipient_members is not None: people = people.filter(pk__in=recipient_members)
     users = {person.user_id: person.user for person in people}
     if kind != 'created': users[event.created_by_id] = event.created_by
     users.pop(actor.pk, None)
@@ -199,7 +202,7 @@ class NoRedirectSession(requests.Session):
 def transport(subscription_info, private_pem, payload, topic):
     vapid = Vapid.from_pem(private_pem.encode())
     with NoRedirectSession() as session:
-        return webpush(subscription_info=subscription_info, data=json.dumps(payload, separators=(',', ':')), vapid_private_key=vapid, vapid_claims={'sub': 'https://blikk.betilab.com'}, content_encoding='aes128gcm', ttl=300, timeout=10, headers={'Topic': topic}, requests_session=session)
+        return webpush(subscription_info=subscription_info, data=json.dumps(payload, separators=(',', ':')), vapid_private_key=vapid, vapid_claims={'sub': 'https://blikk.betilab.com'}, content_encoding='aes128gcm', ttl=86400, timeout=10, headers={'Topic': topic, 'Urgency': 'high'}, requests_session=session)
 
 
 @transaction.atomic

@@ -82,6 +82,66 @@ class PushTests(TestCase):
         self.create(scope='selected', participants=[str(self.members[0].pk), str(self.members[1].pk)])
         self.assertEqual(list(CalendarNotification.objects.values_list('recipient_id', flat=True)), [self.users[1].pk])
 
+    def test_edit_invites_only_new_effective_participants_once(self):
+        self.subscribe()
+        for edit_scope in ('one', 'future'):
+            with self.subTest(scope=edit_scope):
+                event = self.create(scope='selected', participants=[str(self.members[0].pk)])
+                key = uuid.uuid4()
+                payload = {**event.payload, 'participants':[str(self.members[0].pk), str(self.members[1].pk)]}
+                args = dict(event_id=event.pk, original='2026-10-22', revision=event.revision, payload=payload, scope=edit_scope)
+                cal.mutate(self.users[0], 'edit', key, **args)
+                notice = CalendarNotification.objects.get(action_key=key)
+                self.assertEqual(notice.recipient_id, self.users[1].pk)
+                self.assertEqual(notice.event_id == event.pk, edit_scope == 'one')
+                self.assertEqual(PushDelivery.objects.filter(notification=notice).count(), 1)
+                cal.mutate(self.users[0], 'edit', key, **args)
+                self.assertEqual(CalendarNotification.objects.filter(action_key=key).count(), 1)
+
+    def test_selected_to_shared_invites_only_new_members_and_metadata_does_not_invite(self):
+        event = self.create(scope='selected', participants=[str(self.members[0].pk), str(self.members[1].pk)])
+        key = uuid.uuid4()
+        cal.mutate(self.users[0], 'edit', key, event_id=event.pk, original='2026-10-22', revision=event.revision,
+                   payload={**event.payload, 'scope':'shared', 'participants':[]})
+        self.assertEqual(list(CalendarNotification.objects.filter(action_key=key).values_list('recipient_id', flat=True)), [self.users[2].pk])
+        event.refresh_from_db()
+        key = uuid.uuid4()
+        cal.mutate(self.users[0], 'edit', key, event_id=event.pk, original='2026-10-22', revision=event.revision,
+                   payload={**cal.occurrence(event, date(2026,10,22)), 'title':'Ny tittel'})
+        self.assertFalse(CalendarNotification.objects.filter(action_key=key).exists())
+
+    def test_future_edit_invites_one_occurrence_guest_into_series_but_one_edit_does_not(self):
+        for scope in ('one', 'future'):
+            with self.subTest(scope=scope):
+                event = self.create(scope='selected', participants=[str(self.members[0].pk)])
+                payload = {**event.payload, 'participants':[str(self.members[0].pk), str(self.members[1].pk)]}
+                cal.mutate(self.users[0], 'edit', uuid.uuid4(), event_id=event.pk, original='2026-10-22', revision=event.revision, payload=payload)
+                event.refresh_from_db()
+                key = uuid.uuid4()
+                cal.mutate(self.users[0], 'edit', key, event_id=event.pk, original='2026-10-22', revision=event.revision,
+                           payload={**payload, 'title':'Oppdatert serie'}, scope=scope)
+                recipients = list(CalendarNotification.objects.filter(action_key=key).values_list('recipient_id', flat=True))
+                self.assertEqual(recipients, [self.users[1].pk] if scope == 'future' else [])
+
+    def test_moved_future_invitation_opens_replacement_occurrence(self):
+        event = self.create(scope='selected', participants=[str(self.members[0].pk)])
+        key = uuid.uuid4()
+        cal.mutate(self.users[0], 'edit', key, event_id=event.pk, original='2026-10-29', revision=event.revision,
+                   payload={**event.payload, 'start':'2026-11-05', 'end':'2026-11-05',
+                            'participants':[str(self.members[0].pk), str(self.members[1].pk)]}, scope='future')
+        notice = CalendarNotification.objects.get(action_key=key, recipient=self.users[1])
+        replacement = CalendarEvent.objects.get(series_key=event.series_key, payload__start='2026-11-05')
+        self.assertNotEqual(replacement.pk, event.pk)
+        self.assertEqual(notice.event_id, replacement.pk)
+        self.assertEqual(notice.original_date, date(2026,11,5))
+        opened = self.client.get(f'/push/open/{notice.pk}/')
+        self.assertIn('cal_month=2026-11', opened.url)
+        self.assertIn('event='+str(replacement.pk), opened.url)
+        self.assertIn('original=2026-11-05', opened.url)
+        page = self.client.get(opened.url)
+        self.assertEqual(page.status_code, 200)
+        self.assertTrue(any(row['id'] == str(replacement.pk) and row['original'] == '2026-11-05' for row in page.context['events']))
+
     def test_response_notifies_other_participants_and_creator_even_when_not_participant(self):
         event = self.create(scope='selected', participants=[str(self.members[1].pk), str(self.members[2].pk)])
         self.reply(event)
@@ -166,6 +226,24 @@ class PushTests(TestCase):
         self.assertEqual(sub.household_id, self.foreign.pk)
         self.assertEqual(PushDelivery.objects.get().state, 'cancelled')
 
+    def test_rebind_removes_former_sessions_test_receipts_and_preserves_calendar_history(self):
+        for recipient in (1, 2, 3):
+            with self.subTest(new_user=recipient):
+                self.client = Client(); self.client.force_login(self.users[1])
+                sub = self.subscribe(); self.create()
+                calendar_ids = set(sub.deliveries.filter(notification__isnull=False).values_list('pk',flat=True))
+                notice_ids = set(CalendarNotification.objects.values_list('pk',flat=True))
+                tests = [PushDelivery.objects.create(subscription=sub, state=state) for state in ('pending','sending','sent','failed','cancelled')]
+                self.subscribe()
+                self.assertTrue(all(PushDelivery.objects.filter(pk=row.pk).exists() for row in tests))
+                other = Client(); other.force_login(self.users[recipient]); self.subscribe(other)
+                self.assertFalse(PushDelivery.objects.filter(pk__in=[row.pk for row in tests]).exists())
+                self.assertEqual(set(PushDelivery.objects.filter(pk__in=calendar_ids).values_list('pk',flat=True)), calendar_ids)
+                self.assertEqual(set(CalendarNotification.objects.values_list('pk',flat=True)), notice_ids)
+                for row in tests:
+                    result = other.post('/push/receipt/', data=json.dumps({'delivery_id':str(row.pk)}), content_type='application/json')
+                    self.assertEqual(result.status_code, 404)
+
     def test_logout_cancels_pending_delivery(self):
         sub = self.subscribe(); self.create()
         self.client.post('/utlogging/')
@@ -229,6 +307,8 @@ class PushTests(TestCase):
             self.assertEqual(self.deliver(push.transport), 'sent')
         prepared = captured[0]
         self.assertEqual(prepared.headers['Content-Encoding'], 'aes128gcm')
+        self.assertEqual(prepared.headers['TTL'], '86400')
+        self.assertEqual(prepared.headers['Urgency'], 'high')
         decoded = http_ece.decrypt(prepared.body, private_key=self.browser_private, auth_secret=unb64(self.info['keys']['auth']), version='aes128gcm')
         payload = json.loads(decoded)
         self.assertEqual(payload['body'], push.GENERIC_TEXT['created'])
@@ -352,6 +432,52 @@ class PushTests(TestCase):
         self.assertNotIn(self.info['keys']['auth'], status.content.decode())
         self.client.post('/push/device/', data=json.dumps({'action': 'disable', 'endpoint': self.info['endpoint']}), content_type='application/json')
         sub.refresh_from_db(); self.assertFalse(sub.active)
+
+    def test_receipt_is_private_csrf_protected_and_only_current_sessions_test_delivery(self):
+        sub = self.subscribe(); job = push.queue_test(self.request, sub.pk)
+        def receipt(client=self.client, delivery=job.pk):
+            return client.post('/push/receipt/', data=json.dumps({'delivery_id':str(delivery)}), content_type='application/json')
+        self.assertEqual(self.client.get('/push/receipt/').status_code, 405)
+        csrf = Client(enforce_csrf_checks=True); csrf.force_login(self.users[1])
+        self.assertEqual(receipt(csrf).status_code, 403)
+        another_session = Client(); another_session.force_login(self.users[1])
+        foreign = Client(); foreign.force_login(self.users[3])
+        self.assertEqual(receipt(another_session).status_code, 404)
+        self.assertEqual(receipt(foreign).status_code, 404)
+        self.create()
+        actual = PushDelivery.objects.exclude(notification=None).get()
+        self.assertEqual(receipt(delivery=actual.pk).status_code, 404)
+        for state, attempts, expected in [('pending',0,'pending'),('sending',1,'sending'),('pending',1,'retry'),('failed',8,'failed'),('cancelled',0,'cancelled'),('sent',1,'sent')]:
+            PushDelivery.objects.filter(pk=job.pk).update(state=state, attempts=attempts)
+            result = receipt()
+            self.assertEqual(result.json()['state'], expected)
+            self.assertEqual(result.json()['provider_accepted'], state == 'sent')
+            self.assertFalse(result.json()['os_display_confirmed'])
+            self.assertIn('no-store', result['Cache-Control'])
+            self.assertNotIn(self.info['endpoint'], result.content.decode())
+            self.assertNotIn(self.info['keys']['auth'], result.content.decode())
+        self.client.logout()
+        self.assertEqual(receipt().status_code, 302)
+
+    def test_unread_badge_and_summary_use_only_current_recipient_and_household(self):
+        self.create()
+        notice = CalendarNotification.objects.get(recipient=self.users[1])
+        self.assertEqual(self.client.get('/push/summary/').json(), {'unread':1})
+        for url in ['/app/oversikt/', '/app/kalender/', '/app/familie/', '/ny/entry/']:
+            page = self.client.get(url)
+            self.assertContains(page, 'id="notification-bell"')
+            self.assertContains(page, 'Varsler, 1 uleste')
+            self.assertContains(page, 'data-push-config=')
+            self.assertContains(page, '/static/budget/push.js')
+        CalendarNotification.objects.create(household=self.foreign, recipient=self.users[1], original_date=date(2026,10,22), kind='created', action_key=uuid.uuid4(), detail='Foreign household')
+        self.assertEqual(self.client.get('/push/summary/').json(), {'unread':1})
+        result = self.client.post(f'/push/read/{notice.pk}/')
+        self.assertEqual(result.status_code,302)
+        self.assertEqual(self.client.get('/push/summary/').json(), {'unread':0})
+        self.assertContains(self.client.get('/app/oversikt/'), 'Varsler, ingen uleste')
+        self.assertIn('no-store', self.client.get('/push/summary/')['Cache-Control'])
+        self.client.force_login(self.users[3])
+        self.assertEqual(self.client.get('/push/summary/').json(), {'unread':0})
 
     def test_old_series_notification_explains_future_split_and_deleted_event(self):
         for change in ('split', 'deleted', 'missing'):
