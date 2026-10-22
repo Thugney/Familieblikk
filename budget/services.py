@@ -159,6 +159,9 @@ def save_entry(actor, row, expected_version=None, command_key=None):
         current = Entry.objects.select_for_update().get(pk=row.pk, household=member.household)
         access.lock_relations(member, current)
         authorize(actor, current)
+        from .models import Document, ShoppingTrip
+        if current.kind != row.kind and (Document.objects.filter(entry=current).exists() or ShoppingTrip.objects.filter(entry=current).exists()):
+            raise ValidationError('En dokument- eller turkoblet post beholder posttypen. Rett beløp/dato eller bruk angre med bevart historikk.')
         if explicit_command_key is None and command_key == current.idempotency_key:
             import uuid
             command_key = uuid.uuid4()

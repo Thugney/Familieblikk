@@ -268,3 +268,6 @@ class SeriesRevision(models.Model):
     enabled = models.BooleanField(default=True)
     values = models.JSONField(default=dict)
     event = models.OneToOneField(CorrectionEvent, on_delete=models.PROTECT)
+
+from .document_models import Document, DocumentJob, WorkflowCommand
+from .shopping_models import ShoppingList, ShoppingItem, ShoppingTrip

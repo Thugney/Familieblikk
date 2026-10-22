@@ -12,13 +12,14 @@ from .models import (Asset, Audit, BillOccurrence, BillTemplate, Category, Entry
 MODULES = {
     'budget': 'Budsjett og poster', 'bills': 'Regninger', 'savings': 'Sparing',
     'debt': 'Gjeld og strategi', 'fund': 'Årsfond', 'remittance': 'Utenlandsregistreringer',
-    'annual': 'Årsoversikt', 'calendar': 'Kalender',
+    'annual': 'Årsoversikt', 'calendar': 'Kalender', 'documents': 'Skann kvittering', 'shopping': 'Handlelister',
 }
-FINANCE = frozenset(MODULES) - {'annual', 'calendar'}
+FINANCE = frozenset(MODULES) - {'annual', 'calendar', 'documents', 'shopping'}
 ASSETS = {'savings': 'savings', 'debt': 'debt', 'fund': 'fund', 'recipient': 'remittance'}
 KINDS = {'income': 'budget', 'expense': 'budget', 'deposit': 'savings',
          'withdrawal': 'savings', 'debt': 'debt', 'fund': 'fund', 'remittance': 'remittance'}
 PAGES = {'poster': {'budget'}, 'budsjett': {'budget'}, 'kategorier': {'budget'},
+         'dokumenter': {'documents'}, 'handlelister': {'shopping'},
          'regninger': {'bills'}, 'sparing': {'savings'}, 'gjeld': {'debt'},
          'arsutgifter': {'fund'}, 'utland': {'remittance'}, 'kalender': {'calendar'},
          'varsler': {'calendar'}, 'arsoversikt': {'annual', 'budget'}}
@@ -74,6 +75,7 @@ def lock_member(actor):
 
 
 def row_modules(row, household_id, seen=None):
+    from .models import Document, ShoppingList, ShoppingItem, ShoppingTrip
     if row.household_id != household_id:
         raise PermissionDenied('Ingen tilgang til denne familien.')
     seen = set() if seen is None else seen
@@ -82,7 +84,15 @@ def row_modules(row, household_id, seen=None):
         raise PermissionDenied('Ugyldig kobling mellom poster.')
     seen.add(identity)
     required = set()
-    if isinstance(row, Category):
+    if isinstance(row, Document):
+        required.add('documents')
+        if row.entry_id:
+            required.update(row_modules(row.entry, household_id, seen.copy()))
+        if row.bill_id:
+            required.update(row_modules(row.bill, household_id, seen.copy()))
+    elif isinstance(row, (ShoppingList, ShoppingItem, ShoppingTrip)):
+        required.add('shopping')
+    elif isinstance(row, Category):
         required.add('budget')
     elif isinstance(row, Asset):
         required.add(ASSETS.get(row.kind, 'unknown'))
@@ -199,6 +209,16 @@ def _entry_predicate(member, prefix='', refunds=True):
 def safe_rows(member, queryset):
     """Lazy SQL policy: no earlier Python-approved IDs or relation snapshots."""
     queryset = queryset.filter(household_id=member.household_id)
+    from .models import Document, ShoppingList, ShoppingItem, ShoppingTrip, WorkflowCommand
+    if queryset.model is Document:
+        if not allows(member, 'documents'):
+            return queryset.none()
+        return queryset.filter(_category_tenant(member, '') & (Q(entry__isnull=True) | Q(entry_id__in=safe_rows(member, Entry.objects.all()).values('pk'))) &
+                               (Q(bill__isnull=True) | Q(bill_id__in=safe_rows(member, BillOccurrence.objects.all()).values('pk'))))
+    if queryset.model in (ShoppingList, ShoppingItem, ShoppingTrip):
+        return queryset if allows(member, 'shopping') else queryset.none()
+    if queryset.model is WorkflowCommand:
+        return queryset.none()
     if member.role == 'admin' or complete_finance(member):
         return queryset
     model = queryset.model

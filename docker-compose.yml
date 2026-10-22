@@ -64,6 +64,37 @@ services:
     cap_drop: [ALL]
     stop_grace_period: 20s
     command: [python, manage.py, push_worker]
+  document-worker:
+    build: .
+    image: familieblikk:local
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Sett Django-hemmelighet}
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: ${POSTGRES_PORT:-6452}
+      POSTGRES_DB: ${POSTGRES_DB:-familieblikk}
+      POSTGRES_USER: ${POSTGRES_APP_USER:-familieblikk_app}
+      POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?Sett separat apppassord}
+      PRIVATE_DOCUMENT_ROOT: /private-documents
+      PRIVATE_SCAN_ROOT: /private-scans
+    volumes:
+      - documents:/private-documents:ro
+      - scan-spool:/private-scans
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs: ['/tmp:size=256m,mode=1777']
+    mem_limit: 768m
+    cpus: 1
+    pids_limit: 64
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    stop_grace_period: 20s
+    command: [python, manage.py, document_worker]
   app:
     build: .
     image: familieblikk:local
@@ -92,6 +123,11 @@ services:
       EMAIL_USE_TLS: ${EMAIL_USE_TLS:-1}
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-}
       PRIVATE_IMPORT_ROOT: /private-import
+      PRIVATE_DOCUMENT_ROOT: /private-documents
+      PRIVATE_SCAN_ROOT: /private-scans
+    volumes:
+      - documents:/private-documents
+      - scan-spool:/private-scans
     depends_on:
       db:
         condition: service_healthy
@@ -104,3 +140,5 @@ services:
     command: [gunicorn, familieblikk.wsgi:application, --bind, '0.0.0.0:6451', --workers, '2', --no-control-socket, --access-logfile, '-', --access-logformat, '%(s)s %(L)s']
 volumes:
   database: {}
+  documents: {}
+  scan-spool: {}

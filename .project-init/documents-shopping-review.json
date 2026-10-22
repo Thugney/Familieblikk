@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "reviewer": "camera_completion_audit",
+  "verdict": "pass_governing_contract_with_ocr_quality_limitations",
+  "scope": "Amended stage 2 temporary local photo scanning, reviewed structured fields and explicit posting/linking; stage 3 shared lists and one-expense trips.",
+  "open_blockers": [],
+  "decision_basis": "The governing camera section explicitly permits uncertain/missing recognition, manual entry and retake, and forbids automatic posting. Actual native recognition, conservative omissions, reviewed correction, cleanup, accounting and access boundaries are proved. This is a qualified workflow pass, not a pass of the failed exact-extraction diagnostic or a claim of reliable automatic field completion.",
+  "findings": [
+    {
+      "id": "ocr-completeness",
+      "severity": "material_limitation",
+      "blocking": false,
+      "file": "budget/document_ocr.py",
+      "line": 140,
+      "evidence": [
+        "work/camera-varied-repaired-evidence.json",
+        "work/camera-quality-review.json"
+      ],
+      "finding": "Final native fixture diagnostic remains passed=false and acceptance_passed=false. Weak unrelated text can suppress otherwise clear totals/dates. Grocery/invoice remain incomplete; tilted fixture withholds numeric/date fields. Only the lowcontrast ordinary fixture fully extracts requested fields. Manual completion may be frequent.",
+      "disposition": "Disclose prominently; accepted only within explicit reviewed/manual-fallback contract. Do not reinterpret the failed diagnostic as passed."
+    }
+  ],
+  "requirement_coverage_artifact": "work/camera-completion-audit.json",
+  "controls_verified": [
+    "Temporary JPEG/PNG entry and preview/retake/discard; explicit desktop and phone-width image picker.",
+    "Bounded private multipart reception, native decode/OCR, spool/scratch cleanup and no private service-worker cache.",
+    "Atomic candidates/cleanup intent, generation fencing, expiry, cancellation and crash recovery.",
+    "No automatic money; editable review, required fields/category, explicit expense/unpaid bill/authorized links.",
+    "Exact and concurrent retries; late trip scan and reverse/restore keep one expense.",
+    "Two-member actual browser stale conflict/recovery and clean polling refresh.",
+    "Cross-family and revoked-module denial; no list-only financial metadata leak.",
+    "Legacy originals preserved; dedicated spool excluded from tested native backup; restored structured state.",
+    "Read-only private audit confirms 72 rows/raw data and digest unchanged; seven configuration invariants preserved."
+  ],
+  "performed_by_this_reviewer": [
+    "Read governing amendment, approval, spec, source, tests and evidence; historical PDF/archive requirements treated as superseded.",
+    "Independently reconciled all171 producer source SHA256 values with zero mismatches.",
+    "Read actual outputs:374 full Django/PostgreSQL before final OCR-only repair,91 relevant tests after repair,57 Node checks.",
+    "Inspected desktop/manual, phone-width preview/review, two-member conflict/synchronization screenshots and replacement v6 viewport screenshot.",
+    "Read private before/after audit locally and compared booleans/digest equality without copying private values.",
+    "Read independent final quality source recheck: all3 accepted defects closed, no open blockers."
+  ],
+  "not_run_by_this_reviewer": [
+    "Did not rerun suites or native OCR; reviewed their recorded outputs and independent source review.",
+    "Did not operate physical camera, actual NAS, external push or actual family writes."
+  ],
+  "manual_fallback_evidence": "work/camera-manual-fallback-evidence.json",
+  "replacement_evidence": "work/camera-final-reviewed-viewport.png",
+  "source_receipt": ".project-init/documents-shopping-build-evidence.json",
+  "source_hash_count": 171,
+  "source_hash_mismatches": 0,
+  "image_manifest": "sha256:9f4a4829420c11c433f9483c359d0b80741525c4b41acfb96814ee74ab3b544e",
+  "limitations": [
+    "Physical phone shutter unobserved; actual desktop browser at phone width exercised picker/preview/discard and reviewed existing scan.",
+    "Five generated fixtures do not establish real-world accuracy. Initial wrong110,09 suggestion and missing1250 were manually corrected before explicit oneexpense/oneunpaidbill posting; final OCR repair reduces completeness and does not guarantee absence of future wrong suggestions.",
+    "Full374 suite preceded final OCR-only changes;91 affected tests passed afterward. Node/UI unchanged apart from separately browser-verified hidden-control fix.",
+    "Crash/expiry ages injected rather than real15-minute wait.",
+    "Current backup wrapper not rerun; native equivalent backup/restore and legacy-only archive exclusion tested. Historical wrapper/push-isolation evidence supports unchanged boundaries only.",
+    "Actual NAS deployment and physical OS push not verified."
+  ],
+  "separate_budgets": "Still draft pending product choices/design; explicitly not completed or approved by this verdict.",
+  "authority": "Independent technical verification only; no new human acceptance, deployment, commit, push or dependency authorization.",
+  "private_values_in_output": false
+}

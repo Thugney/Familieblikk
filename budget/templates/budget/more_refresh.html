@@ -8,6 +8,8 @@
 {% if household.modules.annual_navigation != False and member|allows_page:"arsoversikt" %}<a href="{% url 'page' 'arsoversikt' %}?month={{ month|date:'Y-m' }}{% if member|can_matrix %}&amp;view=matrix{% endif %}"><span><strong>Årsoversikt{% if member|can_matrix %} (Matrise){% endif %}</strong><small>Måned for måned og kategorier</small></span><span aria-hidden="true">›</span></a>{% endif %}
 </div></section>
 <section><h2>Familien og appen</h2><div class="menu-grid">
+{% if member|allows_module:'documents' %}<a href="{% url 'documents' %}"><span><strong>Skann kvittering</strong><small>Fang beløp, dato og betalingsmottaker</small></span><span aria-hidden="true">›</span></a>{% endif %}
+{% if member|allows_module:'shopping' %}<a href="{% url 'shopping_lists' %}"><span><strong>Handlelister</strong><small>Del varer og bekreft handleturer</small></span><span aria-hidden="true">›</span></a>{% endif %}
 <a href="{% url 'page' 'tilpass' %}?month={{ month|date:'Y-m' }}"><span><strong>Tilpass appen</strong><small>Velg hvilke moduler familien bruker</small></span><span aria-hidden="true">›</span></a>
 <a href="{% url 'page' 'familie' %}?month={{ month|date:'Y-m' }}"><span><strong>Familie &amp; innstillinger</strong><small>Medlemmer, roller og konto</small></span><span aria-hidden="true">›</span></a>
 {% if member|allows_module:"calendar" %}<a href="{% url 'page' 'varsler' %}?month={{ month|date:'Y-m' }}"><span><strong>Varsler &amp; Push</strong><small>Avtaler, svar og enhetens varsler</small></span><span aria-hidden="true">›</span></a>{% endif %}

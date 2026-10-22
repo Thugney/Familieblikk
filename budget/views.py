@@ -23,7 +23,7 @@ from .models import Asset, BillOccurrence, BillTemplate, Category, Entry, Import
 
 
 NAV = [('oversikt', 'Oversikt'), ('poster', 'Poster'), ('budsjett', 'Budsjett'), ('sparing', 'Sparing'), ('kalender', 'Kalender'), ('mer', 'Mer')]
-TITLES = dict(NAV + [('kategorier', 'Kategorier og rammer'), ('regninger', 'Regninger'), ('gjeld', 'Gjeld'), ('arsutgifter', 'Årsutgifter'), ('utland', 'Sendt utenlands'), ('arsoversikt', 'Årsoversikt'), ('familie', 'Familie og innstillinger'), ('tilpass', 'Tilpass appen'), ('import', 'Familiens kildeimport'), ('varsler', 'Varsler')])
+TITLES = dict(NAV + [('dokumenter', 'Skann kvittering'), ('handlelister', 'Handlelister'), ('kategorier', 'Kategorier og rammer'), ('regninger', 'Regninger'), ('gjeld', 'Gjeld'), ('arsutgifter', 'Årsutgifter'), ('utland', 'Sendt utenlands'), ('arsoversikt', 'Årsoversikt'), ('familie', 'Familie og innstillinger'), ('tilpass', 'Tilpass appen'), ('import', 'Familiens kildeimport'), ('varsler', 'Varsler')])
 
 
 def source_money(value):
@@ -750,7 +750,7 @@ def worker_view(request):
 def public_asset(request, name):
     from pathlib import Path
     from django.http import FileResponse
-    allowed = {'ui-refresh.css': 'text/css', 'ui-refresh.js': 'application/javascript', 'figtree-latin.woff2': 'font/woff2', 'app.css': 'text/css', 'app.js': 'application/javascript', 'push.js': 'application/javascript', 'loader.css': 'text/css', 'loader.js': 'application/javascript', 'loader-logo.png': 'image/png', 'loader-icon.png': 'image/png', 'icon.svg': 'image/svg+xml', 'calendar.css': 'text/css', 'calendar.js': 'application/javascript', 'spending.css': 'text/css', 'spending.js': 'application/javascript'}
+    allowed = {'camera-scan.js': 'application/javascript', 'document-draft.js': 'application/javascript', 'shopping.js': 'application/javascript', 'ui-refresh.css': 'text/css', 'ui-refresh.js': 'application/javascript', 'figtree-latin.woff2': 'font/woff2', 'app.css': 'text/css', 'app.js': 'application/javascript', 'push.js': 'application/javascript', 'loader.css': 'text/css', 'loader.js': 'application/javascript', 'loader-logo.png': 'image/png', 'loader-icon.png': 'image/png', 'icon.svg': 'image/svg+xml', 'calendar.css': 'text/css', 'calendar.js': 'application/javascript', 'spending.css': 'text/css', 'spending.js': 'application/javascript'}
     if name not in allowed: raise Http404
     response = FileResponse((Path(__file__).parent / 'static/budget' / name).open('rb'), content_type=allowed[name])
     response['Cache-Control'] = 'public, max-age=0, must-revalidate'

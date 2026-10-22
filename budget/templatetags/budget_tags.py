@@ -2,6 +2,19 @@ from decimal import Decimal
 from django import template
 from django.utils.safestring import mark_safe
 register = template.Library()
+@register.inclusion_tag('budget/workflow_links.html')
+def workflow_links(member, row):
+    from budget import access
+    from budget.models import Document, Entry, BillOccurrence, ShoppingTrip
+    documents, trips = [], []
+    if isinstance(row, Entry):
+        documents = access.safe_rows(member, Document.objects.filter(entry=row))
+        if access.allows(member, 'shopping'):
+            trips = ShoppingTrip.objects.filter(household=member.household, entry=row)
+    elif isinstance(row, BillOccurrence):
+        documents = access.safe_rows(member, Document.objects.filter(bill=row))
+    return {'documents': documents, 'trips': trips}
+
 @register.filter
 def allows_module(member, module):
     from budget.access import allows
@@ -73,7 +86,7 @@ def debt_navigation_query(context):
 @register.simple_tag(takes_context=True)
 def module_navigation(context, member):
     modules = member.household.modules
-    links = [('regninger', 'Regninger', None), ('gjeld', 'Gjeld & strategi', 'debt'), ('arsutgifter', 'Årsutgifter (Fond)', 'fund'), ('utland', 'Sendt utenlands', 'remittance'), ('arsoversikt', 'Årsoversikt (Matrise)', 'annual_navigation'), ('familie', 'Familie & innstillinger', None), ('tilpass', 'Tilpass appen', None), ('varsler', 'Varsler & Push', None), ('import', 'Mer / Kildeimport', None)]
+    links = [('regninger', 'Regninger', None), ('dokumenter', 'Skann kvittering', None), ('handlelister', 'Handlelister', None), ('gjeld', 'Gjeld & strategi', 'debt'), ('arsutgifter', 'Årsutgifter (Fond)', 'fund'), ('utland', 'Sendt utenlands', 'remittance'), ('arsoversikt', 'Årsoversikt (Matrise)', 'annual_navigation'), ('familie', 'Familie & innstillinger', None), ('tilpass', 'Tilpass appen', None), ('varsler', 'Varsler & Push', None), ('import', 'Mer / Kildeimport', None)]
     links = [link for link in links if link[0] != 'import' or can_access_private_import(context)]
     from budget.access import visible_page, complete_finance
     return [(key, 'Årsoversikt' if key == 'arsoversikt' and not complete_finance(member) else label)

@@ -1,5 +1,23 @@
 # Familieblikk — planning graph
 
+## Camera and shopping publication — authorized 2026-10-22
+
+Robel explicitly requested: "commit and push then i will pull build and then test and then give my feedback on later on". Commit and push the verified camera/shopping feature branch. This supersedes earlier publication restrictions for stages 2 and 3 only. Preserve private configuration/data; no NAS deployment or separate-budget implementation is authorized. OCR limitations remain disclosed for user testing.
+
+## Kamera-skanning — presisering som overstyrer dokumentarkiv 2026-10-22
+
+Robel presiserer at han tar bilde og skanner nødvendige felt (sum, dato, betalingsmottaker), ikke laster opp PDF/faktura som permanent vedlegg. Kvittering: .project-init/camera-scan-amendment.json. Permanent originalarkiv er ikke lenger målet. Bruk egen server til midlertidig behandling med allerede godkjent OCR og forkast nye skannebilder etter behandling. Dette er implementasjonsvalget etter brukerens ønske om anbefaling og beskjed om at spørsmålet allerede er besvart; ikke be om samme avklaring igjen. Native spesifikasjon beskriver nødvendig revisjon og verifikasjon. Ikke fortsett mot ferdigmelding for gammel opplastingsflyt. Bevar økonomidata, godkjent eksplisitt bokføringsbekreftelse og pågående handlearbeid; ingen automatisk sletting av eksisterende filer følger av selve planpresiseringen.
+
+## Separate budsjetter — bestilt utvidelse 2026-10-22
+
+Robel har bestilt separate budsjetter i denne byggechatten. Godkjente regler: eksplisitt privat/navngitt foreldreinnsyn ved medlemsopprettelse; foreldre har leserett, medlemmet administrerer egen økonomi; administratorrollen gir ikke automatisk finansinnsyn; kalenderen forblir felles. Senere delingsendringer krever bekreftelse fra budsjetteier og familieadministrator sammen. Varig kvittering: .project-init/financial-areas-approval.json. Native kandidat: _bmad-output/implementation-artifacts/spec-financial-areas.md. Uavhengig planreview er utført; konkrete åpne produktvalg og detaljdesign er fortsatt uavklart. Ingen faktisk legacy-tildeling, eldre PC-restore over NAS, nye avhengigheter eller publisering/utrulling er autorisert. Dokument-/handleimplementasjonen bevares og verifiseres mens disse valgene avklares.
+
+## Documents and shopping — implementation approved 2026-10-22
+
+Lokal implementasjon er teknisk verifisert mot revidert kamerakontrakt. Bevis: `.project-init/documents-shopping-build-evidence.json`; uavhengig verdict: `work/documents-shopping-verdict.json`. 374 fulle tester før siste OCR-reparasjon, 91 berørte tester etter og 57 Node-kontroller består. OCR-kvalitet er begrenset: fem-variantdiagnosen består ikke eksakt utfylling, og manuell retting kan være vanlig; gjennomgang og eksplisitt bekreftelse er nødvendig. Ikke påstå automatisk nøyaktighet eller at separate budsjetter er ferdige. Ingen commit/push/NAS-utrulling er gjort eller autorisert for dette omfanget.
+
+Robel explicitly requested implementation of stages 2 and 3, then stated “I approve both plans /goal”. Both remain in the active goal; this supersedes their earlier plan-only status. Receipt: .project-init/documents-shopping-approval.json. Native build spec: _bmad-output/implementation-artifacts/spec-documents-shopping.md. Producer implements document/OCR and shared-shopping workflows sequentially; fresh-context verifier checks source, financial isolation, permissions and runtime evidence. New dependencies still need approval. No commit, push or NAS deployment is implied. Preserve all private state and accepted existing UI.
+
 ## Family workflows — planning candidate 2026-10-22
 
 Authorized intake: work/family-workflows-handoff.json. Order: bill corrections/history and existing-module discovery, local document import, shared shopping lists. Local processing and explicit trip confirmation are settled; detailed designs remain candidates. No new dependency, commit, push or NAS deployment authorized for this scope.

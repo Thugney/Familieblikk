@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-22",
+  "source": "Direct user clarification in the active build chat",
+  "verbatim": "I will not be uploafing actual pdf invoices or reciet. But take a picture and then we gather the sum date and to whom the bill is paid no actual upload we scan and capture the neccessary data",
+  "supersedes": "PDF/file-upload and permanently retained original-document archive in stage 2",
+  "confirmed": {
+    "entry_point": "Take a picture and scan it",
+    "captured_fields": ["amount", "date", "payee"],
+    "review": "Review extracted fields and confirm before creating or linking a financial record",
+    "retention": "Save necessary structured data rather than retain an invoice/receipt attachment"
+  },
+  "processing_decision": "Use the already approved local OCR engine on the user's own server for temporary photo processing, then discard the photo. Selected as an implementation decision after the user asked for the best reliable approach and said the clarification was already answered; not a new verbatim approval claim.",
+  "pending_clarification": null,
+  "implementation_status": "Existing permanent-upload/archive implementation no longer satisfies the clarified stage-2 intent; do not mark goal complete or deploy it",
+  "preservation": "Keep existing actual household data and unrelated work. No existing saved files are deleted by this amendment record. No new dependencies or external processing are authorized."
+}

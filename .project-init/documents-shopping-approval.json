@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-22",
+  "user_statement": "I approve both plans /goal",
+  "preceding_instruction": "Okay implement 2 and 3",
+  "scope": [
+    "Stage 2: private local invoice and receipt upload, OCR, review and explicit posting or linking",
+    "Stage 3: shared shopping lists and explicitly confirmed trips creating one linked expense"
+  ],
+  "implementation_authorized": true,
+  "exact_visual_candidate_acceptance_claimed": false,
+  "new_dependency_installation_authorized": true,
+  "dependency_approval": {
+    "statement": "Approve Docker-only OCR dependencies",
+    "scope": "Project Docker image only; no global or local venv installation",
+    "packages": {
+      "tesseract-ocr": "5.5.0-1+b1",
+      "tesseract-ocr-nor": "1:4.1.0-2",
+      "tesseract-ocr-eng": "1:4.1.0-2",
+      "poppler-utils": "25.03.0-5+deb13u4"
+    },
+    "required_libraries_included": true
+  },
+  "host_information": {
+    "user_reported": true,
+    "synology_identity": "DS3622xs+ on custom hardware",
+    "cpu": "Intel Xeon D-1531",
+    "ram_approx_gb": 20,
+    "future_intent": "May move to Azure or another service later; portable container/storage boundary, no cloud provisioning now"
+  },
+  "commit_push_deployment_authorized": false,
+  "requirements_source": "_bmad-output/specs/spec-familieblikk-family-workflows/phased-scope.md",
+  "preservation": "Preserve existing household records, permissions, calendar/push, .env, database identity/volume, private import path and keys. No restore, import, seed or destructive migration."
+}

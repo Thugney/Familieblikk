@@ -50,3 +50,12 @@ if os.environ.get('DJANGO_TRUST_PROXY') == '1':
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', '1') == '1'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'familieblikk@localhost')
 PRIVATE_IMPORT_ROOT = Path(os.environ.get('PRIVATE_IMPORT_ROOT', str(BASE_DIR / 'private-data/family-budget')))
+PRIVATE_DOCUMENT_ROOT = Path(os.environ.get('PRIVATE_DOCUMENT_ROOT', str(BASE_DIR / 'private-data/documents')))
+PRIVATE_SCAN_ROOT = Path(os.environ.get('PRIVATE_SCAN_ROOT', str(BASE_DIR / 'private-data/scan-spool')))
+FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
+FILE_UPLOAD_HANDLERS = [
+    'budget.document_upload.DocumentUploadLimitHandler',
+    'django.core.files.uploadhandler.MemoryFileUploadHandler',
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+]
+DATA_UPLOAD_MAX_MEMORY_SIZE = 11 * 1024 * 1024

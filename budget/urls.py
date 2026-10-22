@@ -1,6 +1,15 @@
 from django.urls import path
-from . import views, calendar_views, spending_views, push_views, correction_views
+from . import views, calendar_views, spending_views, push_views, correction_views, document_views, shopping_views
 urlpatterns = [
+    path('app/dokumenter/', document_views.documents, name='documents'),
+    path('dokument/<uuid:document_id>/', document_views.detail, name='document_detail'),
+    path('dokument/<uuid:document_id>/original/', document_views.original, name='document_original'),
+    path('app/handlelister/', shopping_views.lists, name='shopping_lists'),
+    path('handleliste/<uuid:list_id>/', shopping_views.detail, name='shopping_detail'),
+    path('handleliste/<uuid:list_id>/versjon/', shopping_views.revision, name='shopping_revision'),
+    path('handleliste/<uuid:list_id>/fullfor/', shopping_views.complete, name='shopping_complete'),
+    path('handleliste/vare/<uuid:item_id>/', shopping_views.item, name='shopping_item'),
+    path('handletur/<uuid:trip_id>/kvittering/', shopping_views.receipt, name='shopping_receipt'),
     path('retting/<str:kind>/<uuid:row_id>/', correction_views.correction_view, name='correction'),
     path('historikk/<str:kind>/<uuid:row_id>/', correction_views.history_view, name='correction_history'),
     path('eksport/<str:kind>/', correction_views.export_view, name='correction_export'),

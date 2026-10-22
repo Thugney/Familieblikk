@@ -497,6 +497,12 @@ class CorrectionMigrationTests(TransactionTestCase):
     old = ('budget', '0013_membership_module_access')
     new = ('budget', '0014_correctioncommand_correctionevent_seriesrevision_and_more')
 
+    def tearDown(self):
+        # Restore current schema before TransactionTestCase flush and later tests.
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+        super().tearDown()
+
     def test_upgrade_preserves_source_identity_and_collision_is_atomic(self):
         executor=MigrationExecutor(connection)
         executor.migrate([self.old])

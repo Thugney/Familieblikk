@@ -1,0 +1,16 @@
+{% extends 'budget/base.html' %}{% load static %}{% block head_extra %}<style>#camera-scan-form [hidden]{display:none!important}</style>{% endblock %}{% block content %}
+<section class="work-surface form-surface"><h1>Skann kvittering eller faktura</h1>
+<p>Ta et tydelig bilde. Vi foreslår beløp, dato og betalingsmottaker – du kontrollerer og bekrefter før noe bokføres.</p>
+<p>Bildet sendes midlertidig til familiens egen server for tekstgjenkjenning og slettes etter behandling. Vi beholder bare nødvendige felt. Ingen ekstern OCR-tjeneste brukes.</p>
+<form id="camera-scan-form" method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}
+<button id="camera-picker" type="button" class="secondary" hidden>Velg eksisterende bilde</button>
+<p id="camera-guidance">Ha alle kanter innenfor bildet, hold kameraet rett og bruk jevnt lys. JPEG eller PNG, høyst 10 MiB og 25 megapiksler.</p>
+<img id="camera-preview" alt="Forhåndsvisning av bildet du vil skanne" hidden style="max-width:100%;max-height:480px;object-fit:contain">
+<p id="camera-status" role="status" aria-live="polite"></p>
+<button id="camera-retake" type="button" class="secondary" hidden>Ta nytt bilde</button>
+<button id="camera-clear" type="button" class="secondary" hidden>Forkast bilde</button>
+<button id="camera-submit" class="primary">Skann bildet</button>
+<button name="mode" value="manual" formnovalidate class="secondary">Fyll inn manuelt</button>
+</form><p>Ved avbrudd ryddes ubehandlede bilder etter 15 minutter når arbeideren kjører. Hvis serveren er nede, fortsetter ryddingen ved oppstart.</p></section>
+<section class="work-surface"><h2>Skanninger og gjennomgåtte detaljer</h2>{% for row in rows %}<article class="row"><div><a href="{% url 'document_detail' row.pk %}">{% if row.transient %}{{ row.supplier|default:'Skanning' }} · {{ row.created_at|date:'d.m.Y H:i' }}{% else %}{{ row.filename }} · Eldre original{% endif %}</a><p>{% if row.cancelled %}Avbrutt{% elif row.confirmed %}Bekreftet og koblet{% elif row.job.status == 'ready' %}Klar til gjennomgang{% elif row.job.status == 'failed' %}Fyll inn manuelt eller ta nytt bilde{% else %}Venter på lokal tekstgjenkjenning{% endif %}</p></div></article>{% empty %}<p>Ingen skanninger ennå.</p>{% endfor %}<nav aria-label="Skannesider">{% if rows.has_previous %}<a href="?document_page={{ rows.previous_page_number }}">Forrige</a>{% endif %} <span>Side {{ rows.number }} av {{ rows.paginator.num_pages }}</span> {% if rows.has_next %}<a href="?document_page={{ rows.next_page_number }}">Neste</a>{% endif %}</nav></section>{% endblock %}
+{% block scripts_extra %}<script src="{% static 'budget/camera-scan.js' %}" defer></script>{% endblock %}
