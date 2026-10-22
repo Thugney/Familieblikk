@@ -101,11 +101,13 @@ def summary(request):
 @login_required
 @require_POST
 def mark_read(request, notification_id):
+    from .views import selected_month, module_url
+    month = selected_month(request)
     member = member_for(request)
     notice = get_object_or_404(CalendarNotification, pk=notification_id, recipient=request.user, household=member.household)
     if not notice.read_at:
         notice.read_at = timezone.now(); notice.save(update_fields=['read_at'])
-    return redirect('page', page='varsler')
+    return redirect(module_url('varsler', month)) if 'month' in request.GET else redirect('page', page='varsler')
 
 
 @login_required

@@ -161,14 +161,15 @@ def add_calendar_months(day, count):
 
 @login_required
 def page_view(request, page='oversikt'):
-    if page in ('budsjett', 'arsoversikt'):
+    if page == 'budsjett' or page == 'arsoversikt' and request.GET.get('view') != 'matrix':
         from .spending_views import render_shell
         return render_shell(request, 'annual' if page == 'arsoversikt' else 'spending')
     if page not in TITLES: raise Http404
     member = get_member(request)
     if not member: return redirect('family_gate')
     month = selected_month(request)
-    services.prepare_month(member.household, month)
+    # The explicit annual matrix is a read-only report, including future months.
+    if page != 'arsoversikt': services.prepare_month(member.household, month)
     house = member.household
     totals = services.calculate(house, month)
     month_entries = Entry.objects.filter(household=house, effective_date__range=(month, services.month_end(month)))
@@ -260,34 +261,66 @@ def page_view(request, page='oversikt'):
         from .models import CalendarNotification
         ctx['calendar_notifications'] = CalendarNotification.objects.filter(household=house, recipient=request.user).order_by('-created_at')[:100]
     if page == 'arsoversikt':
-        services.prepare_month(house, date(month.year, 12, 1))
-        cumulative = 0
-        rows = []
+        # Project existing anchors without materializing future plans or bills.
+        year_entries = list(Entry.objects.filter(household=house, effective_date__year=month.year).select_related('original'))
+        year_plans = list(MonthPlan.objects.filter(household=house).order_by('month'))
+        year_category_rows = list(Category.objects.filter(household=house))
+        year_asset_rows = list(Asset.objects.filter(household=house))
+        plan_groups = {}
+        for plan in year_plans: plan_groups.setdefault((plan.category_id, plan.asset_id), []).append(plan)
+        # prepare_month supplies this annual anchor when no explicit fund plan exists.
+        # Project it in memory only, including December's remainder.
+        for asset in year_asset_rows:
+            group = plan_groups.setdefault((None, asset.pk), [])
+            if asset.kind == 'fund' and asset.target_ore and not any(not p.derived for p in group):
+                effective = services.month_start(asset.opening_date)
+                amount = asset.target_ore // 12 + (asset.target_ore % 12 if effective.month == 12 else 0)
+                group.append(MonthPlan(asset_id=asset.pk, month=effective, amount_ore=amount, annual_total_ore=asset.target_ore))
+                group.sort(key=lambda p: p.month)
+        archived_targets = {(c.pk, None) for c in year_category_rows if c.archived} | {(None, a.pk) for a in year_asset_rows if a.archived}
+        def effective_amount(period, category_id=None, asset_id=None):
+            applicable = [p for p in plan_groups.get((category_id, asset_id), []) if p.month <= period]
+            exact = next((p for p in applicable if p.month == period), None)
+            if not exact and (category_id, asset_id) in archived_targets and period > services.month_start(timezone.localdate()): return 0
+            if exact and (not exact.derived or period < services.month_start(timezone.localdate())): return exact.amount_ore
+            anchors = [p for p in applicable if not p.derived]
+            return services.plan_amount(anchors[-1], period) if anchors else exact.amount_ore if exact else 0
+        category_spent, category_ytd = {}, {}
+        for entry in year_entries:
+            category_id, amount = entry.category_id, entry.amount_ore
+            if entry.kind == 'refund' and entry.original and entry.original.kind in ('expense', 'remittance'):
+                category_id, amount = entry.original.category_id, -amount
+            elif entry.kind not in ('expense', 'remittance'): continue
+            key = (category_id, entry.effective_date.month)
+            category_spent[key] = category_spent.get(key, 0) + amount
+            if entry.effective_date <= timezone.localdate(): category_ytd[category_id] = category_ytd.get(category_id, 0) + amount
+        asset_ids = {a.pk for a in year_asset_rows}
+        cumulative, rows = 0, []
         for n in range(1, 13):
             period = date(month.year, n, 1)
-            result = services.calculate(house, period)
-            has_data = Entry.objects.filter(household=house, effective_date__year=month.year, effective_date__month=n).exists()
+            projected = {asset_id: effective_amount(period, asset_id=asset_id) for asset_id in asset_ids}
+            result = services.calculate(house, period, projected_asset_plans=projected)
+            budget = sum(effective_amount(period, category_id=c.pk) for c in year_category_rows)
+            has_data = any(entry.effective_date.month == n for entry in year_entries)
+            has_values = has_data or budget != 0 or any(result[key] != 0 for key in ('bills', 'savings', 'debt', 'funds'))
             cumulative += result['cash']
-            rows.append({'month': period, 'totals': result, 'has_data': has_data, 'cumulative': cumulative, 'budget': services.total(MonthPlan.objects.filter(household=house, month=period, category__isnull=False))})
+            rows.append({'month': period, 'totals': result, 'has_data': has_data, 'has_values': has_values, 'cumulative': cumulative, 'budget': budget})
         ctx['year_rows'] = rows
         year_categories = []
-        for category in Category.objects.filter(household=house):
+        for category in year_category_rows:
             periods = []
             for n in range(1, 13):
                 period = date(month.year, n, 1)
-                monthly = Entry.objects.filter(household=house, effective_date__range=(period, services.month_end(period)))
-                spent = services.total(monthly.filter(category=category, kind__in=['expense', 'remittance'])) - services.total(monthly.filter(kind='refund', original__category=category, original__kind__in=['expense', 'remittance']))
-                budget = services.total(MonthPlan.objects.filter(household=house, category=category, month=period))
-                periods.append({'month': period, 'spent': spent, 'budget': budget})
-            budget = sum(item['budget'] for item in periods)
-            actual = sum(item['spent'] for item in periods)
-            year_categories.append({'name': category.name, 'periods': periods, 'budget': budget, 'actual': actual, 'variance': budget - actual, 'ytd': sum(item['spent'] for item in periods if item['month'] <= timezone.localdate())})
+                periods.append({'month': period, 'spent': category_spent.get((category.pk, n), 0), 'budget': effective_amount(period, category_id=category.pk)})
+            budget, actual = sum(item['budget'] for item in periods), sum(item['spent'] for item in periods)
+            year_categories.append({'name': category.name, 'periods': periods, 'budget': budget, 'actual': actual, 'variance': budget - actual, 'ytd': category_ytd.get(category.pk, 0)})
         ctx['year_categories'] = year_categories
     if page == 'gjeld':
         debts = list(Asset.objects.filter(household=house, kind='debt', archived=False))
         for debt in debts:
             debt.opening_ore = services.estimated_debt_balance(debt, timezone.localdate())
         strategy = request.GET.get('strategy', 'avalanche')
+        if strategy not in ('avalanche', 'snowball'): strategy = 'avalanche'
         try: extra = max(int(Decimal(request.GET.get('extra', '0').replace(',', '.')) * 100), 0)
         except Exception: extra = 0
         if any(debt.opening_ore is None for debt in debts):
@@ -300,7 +333,7 @@ def page_view(request, page='oversikt'):
                 ctx['projection']['completion'] = add_calendar_months(timezone.localdate(), ctx['projection']['months'])
         ctx['extra'] = Decimal(extra) / 100
         ctx['strategy'] = strategy
-        ctx['debt_plan_form'] = forms.DebtPlanForm(initial={'month': month, 'strategy': strategy})
+        ctx['debt_plan_form'] = forms.DebtPlanForm(initial={'month': month, 'strategy': strategy, 'extra': Decimal(extra) / 100})
     if page == 'utland':
         ytd_end = min(services.month_end(month), timezone.localdate())
         ytd_rows = Entry.objects.filter(household=house, effective_date__range=(date(month.year, 1, 1), ytd_end))
@@ -319,6 +352,21 @@ def page_view(request, page='oversikt'):
 
 
 EDIT_TYPES = {'entry': (Entry, forms.EntryForm, False, 'poster'), 'category': (Category, forms.CategoryForm, True, 'budsjett'), 'asset': (Asset, forms.AssetForm, True, 'sparing'), 'plan': (MonthPlan, forms.PlanForm, True, 'budsjett'), 'bill': (BillTemplate, forms.BillForm, False, 'regninger')}
+ASSET_PAGES = {'savings': 'sparing', 'debt': 'gjeld', 'fund': 'arsutgifter', 'recipient': 'utland'}
+
+
+def debt_context(query):
+    strategy = query.get('strategy')
+    if strategy not in ('avalanche', 'snowball'): return {}
+    try:
+        extra = Decimal(query.get('extra', '0').replace(',', '.'))
+        if not extra.is_finite() or extra < 0 or extra > Decimal('999999999999.99'): return {'strategy': strategy}
+        return {'strategy': strategy, 'extra': format(extra, '.2f')}
+    except (ValueError, ArithmeticError, AttributeError): return {'strategy': strategy}
+
+
+def module_url(page, month, query=None):
+    return reverse('page', args=[page]) + '?' + urlencode({'month': month.strftime('%Y-%m'), **(debt_context(query) if page == 'gjeld' and query is not None else {})})
 
 
 @login_required
@@ -327,15 +375,36 @@ def edit_view(request, kind, row_id=None):
     member = get_member(request)
     if not member: return redirect('family_gate')
     model, form_type, admin, destination = EDIT_TYPES[kind]
+    month = selected_month(request)
+    allowed_returns = {'entry': ('oversikt', 'poster', 'sparing', 'gjeld', 'arsutgifter', 'utland'), 'asset': tuple(ASSET_PAGES.values()), 'bill': ('regninger', 'arsutgifter', 'gjeld'), 'plan': ('budsjett', 'kategorier', 'sparing', 'gjeld', 'arsutgifter'), 'category': ('budsjett', 'kategorier')}
+    requested_return = request.GET.get('return_to')
+    if requested_return in allowed_returns[kind]: destination = requested_return
     row = get_object_or_404(model, pk=row_id, household=member.household) if row_id else model(household=member.household, created_by=request.user)
     services.authorize(request.user, row if row_id else None, admin)
     kwargs = {'instance': row}
     if issubclass(form_type, forms.RowForm): kwargs['household'] = member.household
     initial = {'version': row.version if row_id else 0}
+    if not row_id:
+        # URL hints supply GET defaults only; submitted values use normal validation.
+        if kind == 'entry' and request.GET.get('entry_kind') in dict(Entry.KINDS): initial['kind'] = request.GET['entry_kind']
+        if kind == 'asset' and request.GET.get('asset_kind') in ASSET_PAGES: initial['kind'] = request.GET['asset_kind']
+        if kind == 'bill' and request.GET.get('accounting_class') in ('ordinary', 'debt', 'fund'): initial['accounting_class'] = request.GET['accounting_class']
+        if kind == 'bill' and request.GET.get('once') == '1': initial['monthly'] = False
+        if kind in ('entry', 'bill', 'plan') and request.GET.get('asset'):
+            try: asset_id = uuid.UUID(request.GET['asset'])
+            except ValueError: raise Http404
+            initial['asset'] = get_object_or_404(Asset, household=member.household, pk=asset_id)
+        if 'month' in request.GET:
+            if kind == 'entry': initial['effective_date'] = month
+            if kind == 'plan': initial['month'] = month
+            if kind == 'bill': initial['first_due'] = month
     if kind == 'asset' and row_id: initial.update(opening=Decimal(row.opening_ore) / 100, target=Decimal(row.target_ore) / 100, plan=Decimal(row.minimum_ore) / 100 if row.kind == 'debt' else None)
     if kind == 'asset':
-        try: plan_month = date.fromisoformat(request.GET.get('plan_month', services.month_start(timezone.localdate()).isoformat()))
+        if row_id: destination = ASSET_PAGES[row.kind]
+        elif initial.get('kind'): destination = ASSET_PAGES[initial['kind']]
+        try: plan_month = date.fromisoformat(request.GET.get('plan_month', month.isoformat()))
         except ValueError: raise Http404
+        if plan_month.day != 1: raise Http404
         displayed_plan = MonthPlan.objects.filter(asset=row, month=plan_month).first() if row_id else None
         initial.update(plan_month=plan_month, displayed_plan_month=plan_month, plan_version=displayed_plan.version if displayed_plan else 0)
         if displayed_plan: initial['plan'] = Decimal(displayed_plan.amount_ore) / 100
@@ -364,21 +433,28 @@ def edit_view(request, kind, row_id=None):
                         house.version += 1
                         house.save(update_fields=['modules', 'version'])
                     if kind == 'asset' and form.cleaned_data.get('plan') is not None:
-                        plan = existing_plan or MonthPlan(household=member.household, created_by=request.user, asset=row, month=form.cleaned_data['plan_month'])
+                        # Saving a fund can itself create/update its annual anchor.
+                        # The displayed version was checked above under the same lock.
+                        plan = MonthPlan.objects.filter(household=member.household, asset=row, month=form.cleaned_data['plan_month']).first()
+                        plan_version = plan.version if plan else 0
+                        plan = plan or MonthPlan(household=member.household, created_by=request.user, asset=row, month=form.cleaned_data['plan_month'])
                         plan.amount_ore = int(form.cleaned_data['plan'] * 100)
-                        services.save_row(request.user, plan, form.cleaned_data.get('plan_version') or 0, True)
+                        services.save_row(request.user, plan, plan_version, True)
             messages.success(request, 'Endringen er lagret.')
-            return redirect('page', page=destination)
+            if kind == 'asset': destination = ASSET_PAGES[row.kind]
+            return redirect(module_url(destination, month, request.GET)) if 'month' in request.GET else redirect('page', page=destination)
         except (ValidationError, PermissionDenied) as error:
             form.add_error(None, error_text(error))
             status = 409 if isinstance(error, services.Conflict) else 400
-    return render(request, 'budget/form.html', {'form': form, 'title': 'Rediger' if row_id else 'Ny registrering', 'member': member, 'nav': NAV, 'page': destination, 'back': reverse('page', args=[destination])}, status=status)
+    return render(request, 'budget/form.html', {'form': form, 'title': 'Rediger' if row_id else 'Ny registrering', 'member': member, 'nav': NAV, 'month': month, 'page': destination, 'back': module_url(destination, month, request.GET)}, status=status)
 
 
 @login_required
 def delete_view(request, row_id):
     member = get_member(request)
     if not member: return redirect('family_gate')
+    month = selected_month(request)
+    destination = 'utland' if request.GET.get('return_to') == 'utland' else 'poster'
     row = get_object_or_404(Entry, pk=row_id, household=member.household)
     services.authorize(request.user, row)
     error = None
@@ -386,24 +462,26 @@ def delete_view(request, row_id):
         try:
             services.delete_entry(request.user, row.pk, int(request.POST.get('version', 0)))
             messages.success(request, 'Posten er slettet / betalingen er angret.')
-            return redirect('page', page='poster')
+            return redirect(module_url(destination, month, request.GET)) if 'month' in request.GET else redirect('page', page='poster')
         except (ValidationError, ValueError) as exc: error = error_text(exc)
-    return render(request, 'budget/confirm.html', {'member': member, 'nav': NAV, 'row': row, 'title': 'Bekreft sletting / angre betaling', 'error': error})
+    return render(request, 'budget/confirm.html', {'member': member, 'nav': NAV, 'month': month, 'back': module_url(destination, month, request.GET), 'row': row, 'title': 'Bekreft sletting / angre betaling', 'error': error})
 
 
 @login_required
 def pay_view(request, row_id):
     member = get_member(request)
     if not member: return redirect('family_gate')
+    month = selected_month(request)
+    destination = request.GET.get('return_to') if request.GET.get('return_to') in ('gjeld', 'arsutgifter') else 'regninger'
     bill = get_object_or_404(BillOccurrence, pk=row_id, household=member.household)
     form = forms.PaymentForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         try:
             services.pay_bill(request.user, bill.pk, form.cleaned_data['date'], form.cleaned_data['key'])
             messages.success(request, 'Betalingen er registrert én gang. Appen har ikke flyttet penger.')
-            return redirect('page', page='regninger')
+            return redirect(module_url(destination, month, request.GET)) if 'month' in request.GET else redirect('page', page=destination)
         except ValidationError as error: form.add_error(None, error)
-    return render(request, 'budget/form.html', {'form': form, 'title': f'Merk {bill.name} som betalt', 'explanation': 'Dette registrerer faktisk betaling i budsjettet. Appen utfører ingen bankbetaling.', 'member': member, 'nav': NAV, 'back': reverse('page', args=['regninger'])})
+    return render(request, 'budget/form.html', {'form': form, 'title': f'Merk {bill.name} som betalt', 'explanation': 'Dette registrerer faktisk betaling i budsjettet. Appen utfører ingen bankbetaling.', 'member': member, 'nav': NAV, 'month': month, 'page': destination, 'back': module_url(destination, month, request.GET)})
 
 
 @login_required
@@ -419,7 +497,7 @@ def preferences_view(request):
             house.version += 1
             house.save()
         messages.success(request, 'Familiens visningsvalg er lagret. Forpliktelser og historikk er bevart.')
-        return redirect('page', page='tilpass')
+        return redirect(module_url('tilpass', selected_month(request))) if 'month' in request.GET else redirect('page', page='tilpass')
     return render(request, 'budget/form.html', {'form': form, 'title': 'Tilpass appen', 'member': member, 'nav': NAV}, status=400)
 
 
@@ -432,7 +510,7 @@ def debt_plan_view(request):
         try:
             services.allocate_debt_plan(request.user, form.cleaned_data['month'], form.cleaned_data['strategy'], int((form.cleaned_data['extra'] or 0) * 100))
             messages.success(request, 'Månedsplanens kvoter per gjeld er lagret.')
-            return redirect('page', page='gjeld')
+            return redirect(module_url('gjeld', form.cleaned_data['month']) + '&' + urlencode({'strategy': form.cleaned_data['strategy'], 'extra': form.cleaned_data['extra'] or 0}))
         except ValidationError as exc: form.add_error(None, exc)
     return render(request, 'budget/form.html', {'form': form, 'title': 'Fordel gjeldsplan', 'member': member, 'nav': NAV}, status=400)
 
