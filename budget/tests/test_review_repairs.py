@@ -119,7 +119,7 @@ class ReviewRepairTests(TestCase):
         self.house.modules = {'debt': True, 'fund': True, 'remittance': True}
         self.house.save()
         response = self.client.get('/app/mer/')
-        for route in ['gjeld', 'arsutgifter', 'utland']: self.assertContains(response, f'href="/app/{route}/"')
+        for route in ['gjeld', 'arsutgifter', 'utland']: self.assertContains(response, f'href="/app/{route}/?month={timezone.localdate():%Y-%m}"')
 
     def test_old_savings_plan_cannot_move_and_asset_plan_conflicts(self):
         goal = self.asset('savings')

@@ -263,3 +263,20 @@ body.ui-refresh{font-family:Figtree,system-ui,sans-serif;background:var(--canvas
 .ui-refresh .push-preferences h2{font-size:20px;margin-top:0}
 .ui-refresh .push-preferences .actions{display:flex;flex-wrap:wrap;gap:10px}
 .ui-refresh #push-status,.ui-refresh #push-test-status{max-width:75ch}
+/* Plans reuse the existing navigation and surfaces. Keep the profile anchored. */
+.ui-refresh .sidebar{overflow:hidden}
+.ui-refresh .sidebar>.brand,.ui-refresh .sidebar>.family-tag,.ui-refresh .sidebar>.profile{flex-shrink:0}
+.ui-refresh .sidebar-navigation{min-height:0;overflow-y:auto;flex:1;padding:0 2px}
+.ui-refresh .module-nav{margin-top:22px}
+.ui-refresh .module-nav h2{font-size:12px;line-height:1.5;letter-spacing:.04em;color:var(--muted);padding:0 17px 6px}
+.ui-refresh .sidebar nav a{flex-shrink:0}
+.ui-refresh .sidebar nav a>span{min-width:0;overflow-wrap:anywhere}
+.ui-refresh .module-count{margin-left:auto;flex-shrink:0;padding:1px 6px;border-radius:999px;background:var(--soft);color:var(--primary);font-size:11px}
+.ui-refresh .sidebar nav a[aria-current] .module-count{background:white}
+.ui-refresh .top-actions{display:grid;grid-template-columns:minmax(0,1fr) 44px;max-width:100%;flex:0 1 auto;overflow:visible}
+.ui-refresh .top-actions form{display:grid;grid-template-columns:minmax(0,1fr) auto;min-width:0}
+.ui-refresh .top-actions input[type=month]{width:100%;min-width:0}
+.ui-refresh .notification-bell{width:44px;height:44px;overflow:visible;justify-self:end}
+.ui-refresh[data-page=oversikt] .notification-bell{background:transparent;color:white;border-color:#b5d0c5}
+.ui-refresh[data-page=oversikt] .notification-bell:hover{background:#0e4a38}
+.ui-refresh .matrix-budget{display:block;color:var(--muted);font-size:12px;white-space:nowrap}

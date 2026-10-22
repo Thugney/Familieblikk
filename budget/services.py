@@ -321,7 +321,7 @@ def pay_bill(actor, occurrence_id, effective_date, key):
     return entry
 
 
-def calculate(household, month, today=None):
+def calculate(household, month, today=None, projected_asset_plans=None):
     today = today or timezone.localdate()
     start, end = month_start(month), month_end(month)
     entries = Entry.objects.filter(household=household, effective_date__range=(start, end))
@@ -329,18 +329,22 @@ def calculate(household, month, today=None):
     expected = total(entries.filter(kind='income', received=False))
     ordinary = total(entries.filter(kind__in=['expense', 'remittance'])) - total(entries.filter(kind='refund', original__kind__in=['expense', 'remittance']))
     pending = pending_bills(household, end)
+    def asset_plan(asset):
+        if projected_asset_plans is not None: return projected_asset_plans.get(asset.pk, 0)
+        return total(MonthPlan.objects.filter(asset=asset, month=start))
     bills = total(pending.filter(accounting_class='ordinary'))
     savings, released = 0, 0
     for asset in Asset.objects.filter(household=household, kind='savings'):
         net = total(entries.filter(asset=asset, kind='deposit')) - total(entries.filter(asset=asset, kind='withdrawal'))
-        plan = total(MonthPlan.objects.filter(asset=asset, month=start))
+        plan = asset_plan(asset)
         savings += max(plan, net, 0)
         released += max(-net, 0)
     debt = 0
     for asset in Asset.objects.filter(household=household, kind='debt'):
         paid = total(entries.filter(asset=asset, kind='debt')) - total(entries.filter(kind='refund', original__asset=asset, original__kind='debt'))
-        debt += max(total(MonthPlan.objects.filter(asset=asset, month=start)), paid + total(pending.filter(asset=asset, accounting_class='debt')))
-    funds = total(MonthPlan.objects.filter(household=household, asset__kind='fund', month=start)) + total(FundTopUp.objects.filter(household=household, effective_month=start))
+        debt += max(asset_plan(asset), paid + total(pending.filter(asset=asset, accounting_class='debt')))
+    fund_plans = total(MonthPlan.objects.filter(household=household, asset__kind='fund', month=start)) if projected_asset_plans is None else sum(asset_plan(asset) for asset in Asset.objects.filter(household=household, kind='fund'))
+    funds = fund_plans + total(FundTopUp.objects.filter(household=household, effective_month=start))
     available = income + released - ordinary - bills - savings - debt - funds
     cash = income + total(entries.filter(kind='withdrawal')) - ordinary - total(entries.filter(kind__in=['debt', 'fund', 'deposit'])) + total(entries.filter(kind='refund', original__kind__in=['debt', 'fund']))
     return dict(income=income, expected=expected, ordinary=ordinary, bills=bills, savings=savings, released=released, debt=debt, funds=funds, available=available, cash=cash, daily=available // (end.day - today.day + 1) if start == month_start(today) else None)
