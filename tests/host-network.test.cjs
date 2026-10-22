@@ -13,7 +13,7 @@ function config(extra = {}, includeImport = false) {
   const keep = /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|USERPROFILE|HOME|APPDATA|LOCALAPPDATA|TEMP|TMP|DOCKER_CONFIG|PROGRAMFILES(?:\(X86\))?|PROGRAMDATA|COMSPEC)$/i;
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => keep.test(key)));
   Object.assign(env, {DJANGO_SECRET_KEY:'synthetic-host-test-key', POSTGRES_PASSWORD:'synthetic-owner-only', POSTGRES_APP_PASSWORD:'synthetic-app-only', ...extra});
-  if (includeImport) env.PRIVATE_IMPORT_PATH = directory;
+  if (includeImport && !env.PRIVATE_IMPORT_PATH) env.PRIVATE_IMPORT_PATH = directory;
   const args = ['compose', '--env-file', file, '-f', 'docker-compose.yml'];
   if (includeImport) args.push('-f', 'docker-compose.import.yml');
   try {
@@ -73,6 +73,26 @@ test('oppdatering bevarer eksplisitt gjenopprettet DB og privat import uten ny e
   assert.doesNotMatch(c.services.migrate.command.join(' '),/provision_owner|restore|apply_import|seed/);
   const ignore=fs.readFileSync(path.join(root,'.gitignore'),'utf8');
   assert.ok(ignore.includes('/Familieblikk-Synology-overforing.zip'));assert.ok(ignore.includes('/Familieblikk-Synology-overforing/'));
+});
+
+test('releasekontrakten bevarer eksisterende prosjektnavn, volum, hemmelighet og importvalg', () => {
+  const overrides = {COMPOSE_PROJECT_NAME:'synthetic_existing_nas',POSTGRES_DB:'synthetic_restored_household',DJANGO_SECRET_KEY:'synthetic-existing-key-never-replace',PRIVATE_IMPORT_PATH:root};
+  const after = config(overrides,true);
+  assert.equal(after.name,'synthetic_existing_nas');
+  assert.equal(after.volumes.database.name,'synthetic_existing_nas_database');
+  for(const name of ['app','migrate','push-worker']){
+    assert.equal(after.services[name].environment.DJANGO_SECRET_KEY,overrides.DJANGO_SECRET_KEY);
+    assert.equal(after.services[name].environment.POSTGRES_DB,overrides.POSTGRES_DB);
+  }
+  assert.equal(after.services.app.volumes.find(v=>v.target==='/private-import').source.replaceAll('\\','/'),root.replaceAll('\\','/'));
+  assert.doesNotMatch(after.services.migrate.command.join(' '),/provision_owner|restore|apply_import|seed|flush|DROP|TRUNCATE/i);
+  const dockerignore=fs.readFileSync(path.join(root,'.dockerignore'),'utf8');
+  assert.ok(dockerignore.startsWith('*\n'));
+  assert.doesNotMatch(dockerignore,/^!(?:\.env|private-data|Familieblikk-Synology)/m);
+  for(const name of ['AGENTS.md','rules.md','docs/DRIFT.md']){
+    const rules=fs.readFileSync(path.join(root,name),'utf8');
+    for(const term of ['POSTGRES_DB','PRIVATE_IMPORT_PATH','down -v','prune','flush/drop/truncate','separat'])assert.ok(rules.includes(term),name+' missing preservation rule '+term);
+  }
 });
 
 test('Docker-image og privat import beholder host-nettverk og port 6451', () => {

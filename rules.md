@@ -18,3 +18,8 @@ Robel svarte på SMTP-/kodeavklaringen: «nei ikke kode bare pre-registered hvis
 ### Utvidelse av forhåndsregistrering — godkjent av Robel
 
 «ikke bare meg men som admin jeg kan også registrere familien og andre familie». Familieadministratorer kan opprette egne familiemedlemmer med passord uten e-postkode. Den eksplisitt klargjorte eieren får en separat registreringsrett til å opprette andre private familier med egen administrator. Registreringsrett gir ikke budsjettinnsyn eller medlemskap i de andre familiene. Vanlige medlemmer kan ikke registrere brukere; andre familieadministratorer kan bare administrere egen familie med mindre separat registreringsrett gis eksplisitt. Eksisterende kontoer overtas ikke, og én familie per bruker gjelder. Nye familier starter tomme; Robels kilde er fortsatt bare hans egen familie. Gjeldende passordregler, CSRF, økter, feilforsøksgrenser og hemmelighetsgrenser gjelder alle forhåndsregistrerte kontoer.
+
+
+## Bindende databevaring ved hver commit, push og vanlig oppdatering
+
+Kontroller at den eksisterende `.env`, `POSTGRES_DB`, Compose-prosjektnavn, databasevolum, `PRIVATE_IMPORT_PATH` og alle nøkler bevares. Bruk bare kompatible migrasjoner på eksisterende database. Aldri kjør `down -v`, volumfjerning eller prune, flush/drop/truncate, ny restore/import/seed, eierklargjøring eller erstatning av nøkler som del av en vanlig oppdatering. Destruktiv datamigrering krever separat, uttrykkelig godkjenning. Releasetest skal kontrollere både Compose-kontrakten og lesende avstemming av de private kildepostene; syntetisk omstartstest alene beviser ikke bevaring av den faktiske profilen.

@@ -2,6 +2,10 @@ from decimal import Decimal
 from django import template
 from django.utils.safestring import mark_safe
 register = template.Library()
+@register.simple_tag
+def unread_notifications(member):
+    from budget.models import CalendarNotification
+    return CalendarNotification.objects.filter(recipient_id=member.user_id, household_id=member.household_id, read_at__isnull=True).count()
 @register.filter
 def nok(value):
     if value is None: return '—'

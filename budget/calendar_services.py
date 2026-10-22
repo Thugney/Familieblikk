@@ -353,6 +353,12 @@ def mutate(actor, action, key, event_id=None, original=None, revision=None, payl
         if p and scope=='future' and event.payload['recurrence']!='none' and date.fromisoformat(p['start']) < original:
             raise ValidationError('Denne og fremtidige kan ikke starte før den valgte originaldatoen. Flytt bare denne avtalen for å bevare tidligere avtaler.')
         reset=p is None or any(p.get(k)!=current.get(k) for k in ('start','end','all_day','start_time','end_time','fold','scope','participants'))
+        # Future edits invite into the series even when the selected exception
+        # already included that person for just this occurrence.
+        members = list(Membership.objects.filter(household=member.household))
+        invitation_baseline = event.payload if scope == 'future' and event.payload['recurrence'] != 'none' else current
+        invited = ({m.pk for m in eligible(p, members)} - {m.pk for m in eligible(invitation_baseline, members)}) if p else set()
+        invitation_event, invitation_original = event, original
 
         if scope=='one' or event.payload['recurrence']=='none':
 
@@ -373,6 +379,7 @@ def mutate(actor, action, key, event_id=None, original=None, revision=None, payl
                 # A new segment retains creator and family; old segment and prior exceptions remain intact.
 
                 future=CalendarEvent.objects.create(household=event.household,created_by=event.created_by,payload=p,series_key=event.series_key)
+                invitation_event, invitation_original = future, date.fromisoformat(p['start'])
 
                 # Replacing future exceptions may change a particular occurrence even when
                 # the cutoff edit changes only metadata. Reconcile each original separately.
@@ -389,6 +396,9 @@ def mutate(actor, action, key, event_id=None, original=None, revision=None, payl
             event.responses.filter(original_date__gte=original).delete()
 
         event.revision+=1; event.save()
+        if invited:
+            from .push_services import record_calendar_action
+            record_calendar_action(actor, member, invitation_event, key, 'created', invitation_original, p, recipient_members=invited)
 
     else: raise ValidationError('Ugyldig handling.')
 
