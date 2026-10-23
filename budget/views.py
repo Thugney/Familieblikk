@@ -9,6 +9,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.validators import MaxLengthValidator
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.core.paginator import Paginator
@@ -73,6 +74,8 @@ def password_change_view(request):
     member = get_member(request)
     if not member or not member.identity_method.startswith('preregistered_'): raise PermissionDenied
     form = PasswordChangeForm(request.user, request.POST or None)
+    for field in ('old_password', 'new_password1', 'new_password2'):
+        form.fields[field].validators.append(MaxLengthValidator(identity.MAX_PASSWORD_LENGTH))
     if request.method == 'POST' and form.is_valid():
         user = form.save()
         update_session_auth_hash(request, user)
@@ -141,8 +144,9 @@ def selected_month(request):
     value = request.GET.get('month', '').strip()
     if not value: return timezone.localdate().replace(day=1)
     if not re.fullmatch(r'[0-9]{4}-[0-9]{2}', value): raise Http404('Ugyldig måned')
-    try: return date.fromisoformat(value + '-01')
-    except ValueError: raise Http404('Ugyldig måned')
+    from .work_limits import validate_period
+    try: return validate_period(date.fromisoformat(value + '-01'))
+    except (ValueError, ValidationError): raise Http404('Ugyldig måned')
 
 
 def add_calendar_months(day, count):
@@ -152,6 +156,7 @@ def add_calendar_months(day, count):
 
 
 @login_required
+@transaction.atomic
 def page_view(request, page='oversikt'):
     member = get_member(request)
     if not member: return redirect('family_gate')

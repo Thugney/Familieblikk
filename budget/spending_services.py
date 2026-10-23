@@ -16,6 +16,7 @@ from .models import (Asset, Audit, BillOccurrence, BillTemplate, Category, Entry
 from .services import Conflict, fund_balance, month_start, month_end, next_month, plan_amount
 from .spending_forms import exact_fields, history_values, month_value, ore_value, uuid_value
 from . import access
+from .work_limits import month_steps, validate_period, validate_financial_work
 
 from .financial_areas import current_area, can_write
 
@@ -235,6 +236,7 @@ def commitments(household, target):
     from .financial_areas import current_area
     if current_area().household_id != household.pk:
         raise PermissionDenied('Budsjettet tilhorer en annen familie.')
+    validate_financial_work(household, target)
     end = month_end(target)
     actual = list(BillOccurrence.objects.filter(household=household, due_date__lte=end).select_related('template'))
     payments = {x.occurrence_id for x in Entry.objects.filter(active=True, household=household, occurrence__isnull=False, effective_date__lte=end)}
@@ -273,6 +275,7 @@ def fund_available_before(household, asset, target, bills):
     from .financial_areas import current_area
     if current_area().household_id != household.pk:
         raise PermissionDenied('Budsjettet tilhorer en annen familie.')
+    validate_period(target)
     before = target - timedelta(days=1)
     balance = fund_balance(asset, before)
     # Match prepare_month's known allocation anchors from their effective dates. Missing
@@ -282,6 +285,7 @@ def fund_available_before(household, asset, target, bills):
     anchors = [row for row in plans if not row.derived]
     implicit_annual_anchor = not anchors and bool(asset.target_ore)
     cursor = min([row.month for row in anchors], default=month_start(asset.opening_date))
+    month_steps(cursor, target)
     current = month_start(timezone.localdate())
     while cursor < target:
         if asset.archived and cursor > current:

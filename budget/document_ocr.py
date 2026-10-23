@@ -20,16 +20,30 @@ from . import document_spool
 
 def limits():
     import resource
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     resource.setrlimit(resource.RLIMIT_AS, (512 * 1024**2, 512 * 1024**2))
     resource.setrlimit(resource.RLIMIT_CPU, (40, 40))
     resource.setrlimit(resource.RLIMIT_FSIZE, (80 * 1024**2, 80 * 1024**2))
+
+
+def decoder_environment(directory):
+    """Native decoders need locale/executable lookup, never application secrets.
+
+    The image probe and PDF inspection also call run(), sharing this boundary.
+    Windows needs SystemRoot to load system libraries; all temporary files stay
+    inside the existing per-job scratch directory.
+    """
+    allowed = ('PATH', 'SYSTEMROOT', 'WINDIR', 'PATHEXT', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TZ')
+    environment = {key: os.environ[key] for key in allowed if key in os.environ}
+    environment.update(OMP_THREAD_LIMIT='1', TMPDIR=str(directory), TMP=str(directory), TEMP=str(directory))
+    return environment
 
 
 def run(arguments, timeout=45):
     with document_spool.scratch() as directory:
         with (directory / 'output').open('w+b') as output:
             subprocess.run(arguments, check=True, stdout=output, stderr=subprocess.DEVNULL, timeout=timeout,
-                env={**os.environ, 'OMP_THREAD_LIMIT': '1', 'TMPDIR': str(directory)},
+                env=decoder_environment(directory),
                 preexec_fn=limits if os.name == 'posix' else None)
             output.seek(0)
             data = output.read(200_001)
@@ -38,19 +52,19 @@ def run(arguments, timeout=45):
             return data.decode('utf-8', 'replace')
 
 
+class LegacyPDFManualReview(ValueError):
+    pass
+
+
 def recognize(document):
+    if document.content_type == 'application/pdf':
+        raise LegacyPDFManualReview('Automatisk PDF-lesing er deaktivert. Originalen er bevart; fyll inn feltene manuelt.')
     source = document_spool.path_for(document.storage_key) if document.transient else path_for(document.storage_key)
-    if document.content_type != 'application/pdf':
-        if document.transient:
-            # One uniform-text pass suits receipt blocks. TSV quality signals
-            # suppress doubtful lines; they are not calibrated probabilities.
-            return readable_lines(run(['tesseract', str(source), 'stdout', '-l', 'nor+eng', '--psm', '6', 'tsv']))
-        return run(['tesseract', str(source), 'stdout', '-l', 'nor+eng'])
-    with document_spool.scratch() as directory:
-        run(['pdftoppm', '-scale-to', '2200', '-png', str(source), str(directory / 'page')], timeout=60)
-        pages = sorted(directory.glob('page-*.png'))
-        if not 1 <= len(pages) <= 10: raise ValueError('Ugyldig sidetall')
-        return '\n'.join(run(['tesseract', str(page), 'stdout', '-l', 'nor+eng'], timeout=30) for page in pages)[:200_000]
+    if document.transient:
+        # One uniform-text pass suits receipt blocks. TSV quality signals
+        # suppress doubtful lines; they are not calibrated probabilities.
+        return readable_lines(run(['tesseract', str(source), 'stdout', '-l', 'nor+eng', '--psm', '6', 'tsv']))
+    return run(['tesseract', str(source), 'stdout', '-l', 'nor+eng'])
 
 
 def readable_lines(tsv):
@@ -274,6 +288,8 @@ def process_one():
                 text = recognize(document)
                 if not text.strip(): raise ValueError('Ingen lesbar tekst')
                 candidates, error = suggestions(text), ''
+            except LegacyPDFManualReview as exc:
+                candidates, text, error = document.suggestions, document.ocr_text, str(exc)
             except (OSError, subprocess.SubprocessError, ValueError):
                 candidates, text = {}, ''
                 error = 'Teksten kunne ikke leses. Ta et nytt bilde i jevnt lys eller fyll inn manuelt.'

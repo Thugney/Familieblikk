@@ -4,6 +4,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Asset, BillTemplate, Category, Entry, MonthPlan
+from .identity import LOGIN_ERROR, MAX_PASSWORD_LENGTH
 
 
 class MoneyField(forms.DecimalField):
@@ -52,11 +53,11 @@ class EntryFilterForm(forms.Form):
 
 
 class CodeForm(EmailForm):
-    code = forms.RegexField(r'^\d{6}$', label='Engangskode', widget=forms.TextInput(attrs={'inputmode': 'numeric', 'autocomplete': 'one-time-code', 'maxlength': 6}))
+    code = forms.RegexField(r'^[0-9]{6}$', max_length=6, label='Engangskode', widget=forms.TextInput(attrs={'inputmode': 'numeric', 'autocomplete': 'one-time-code', 'maxlength': 6}))
 
 
 class PasswordLoginForm(EmailForm):
-    password = forms.CharField(label='Passord', strip=False, widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'}))
+    password = forms.CharField(label='Passord', max_length=MAX_PASSWORD_LENGTH, error_messages={'max_length': LOGIN_ERROR}, strip=False, widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'}))
 
 
 class FinancialPrivacyForm(EmailForm):
@@ -77,8 +78,8 @@ class FinancialPrivacyForm(EmailForm):
 
 class RegisterAccountForm(FinancialPrivacyForm):
     role = forms.ChoiceField(label='Rolle i familien', choices=[('member', 'Medlem'), ('admin', 'Administrator')])
-    password1 = forms.CharField(label='Startpassord (minst 12 tegn)', strip=False, widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}))
-    password2 = forms.CharField(label='Bekreft startpassord', strip=False, widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}))
+    password1 = forms.CharField(label='Startpassord (minst 12 tegn)', max_length=MAX_PASSWORD_LENGTH, strip=False, widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}))
+    password2 = forms.CharField(label='Bekreft startpassord', max_length=MAX_PASSWORD_LENGTH, strip=False, widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}))
     confirm = forms.BooleanField(label='Jeg bekrefter registreringen og deler startpassordet privat med den nye brukeren. Ingen e-post sendes.')
     def clean(self):
         data = super().clean()

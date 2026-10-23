@@ -47,6 +47,29 @@ jobs:
           PY
       - run: node --test tests/ui-refresh-behavior.test.cjs budget/tests/financial-area.test.cjs budget/tests/camera-scan.test.cjs budget/tests/shopping-refresh.test.cjs budget/tests/document-draft.test.cjs budget/tests/sw.test.cjs budget/tests/category-search.test.cjs budget/tests/calendar-draft.test.cjs tests/spending-behavior.test.cjs tests/host-network.test.cjs tests/push-behavior.test.cjs tests/loader-behavior.test.cjs
       - run: pip install --require-hashes -r requirements.lock
+      - name: Check locked dependencies against OSV and PyPI
+        run: python scripts/audit-dependencies.py
+      - name: Test dependency security gate
+        run: python tests/test-dependency-audit.py
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
       - run: python manage.py test budget --verbosity 2
+  production-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image with current Debian fixes
+        run: docker build --pull --no-cache --tag familieblikk:ci-security .
+      - name: Verify patched native packages and non-root runtime
+        run: |
+          docker run --rm -i --network none familieblikk:ci-security python - <<'PY'
+          import os, subprocess
+          assert os.getuid() == 10001, 'Application must run as its unprivileged user'
+          for package, minimum in [('libbrotli1', '1.1.0-2+deb13u1'), ('liblzma5', '5.8.1-1+deb13u2')]:
+              version = subprocess.check_output(['dpkg-query', '-W', '-f=${Version}', package], text=True).strip()
+              subprocess.run(['dpkg', '--compare-versions', version, 'ge', minimum], check=True)
+              print(package, version)
+          subprocess.run(['python', '-m', 'pip', 'check'], check=True)
+          languages = subprocess.check_output(['tesseract', '--list-langs'], text=True).splitlines()
+          assert 'nor' in languages and 'eng' in languages, 'Existing OCR languages must remain available'
+          PY

@@ -3,6 +3,7 @@ import re
 import uuid
 from datetime import date
 from django.core.exceptions import ValidationError
+from .work_limits import validate_period
 
 MAX_ORE = 9_000_000_000_000
 
@@ -14,7 +15,7 @@ def month_value(value):
         parsed = date.fromisoformat(value + '-01')
         if not 1901 <= parsed.year <= 2198:
             raise ValueError
-        return parsed
+        return validate_period(parsed)
     except ValueError:
         raise ValidationError('Velg en gyldig måned.')
 

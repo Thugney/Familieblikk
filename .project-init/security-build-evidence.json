@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-23T23:42:11.436006+00:00",
+  "baseline_commit": "a6b29b6c0e96d0e2fc1fb38ac0bf51865a661293",
+  "branch": "codex/security-hardening",
+  "verification_status": "kontroller_bestatt_med_dokumenterte_begrensninger",
+  "image_config_sha256": "3dad340dda6f325e88a751650aac52723770d413a2cfd6ae8de7102568fa0300",
+  "application_files_byte_identical": 161,
+  "application_manifest_sha256": "db97e82eb513838aa75bce53a9869b7d54ed2132f853079bb1f014440778f894",
+  "tests": {
+    "django_linux_postgresql": 524,
+    "javascript_compose": 65,
+    "dependency_gate": 8,
+    "failures": 0
+  },
+  "django_system_check": "passed",
+  "migration_drift": "none",
+  "new_migrations": 0,
+  "dependencies": {
+    "locked_python_versions": 27,
+    "sources": [
+      "OSV",
+      "PyPI"
+    ],
+    "known_python_advisories": 0,
+    "debian_source_packages": 125,
+    "remaining_open_or_undetermined_notices": 243,
+    "remaining_available_version_fixes_in_tracker": 0,
+    "verified_fixes": {
+      "libbrotli1": "1.1.0-2+deb13u1",
+      "liblzma5": "5.8.1-1+deb13u2"
+    }
+  },
+  "runtime": {
+    "uid": 10001,
+    "pip_check": "passed",
+    "image_excludes_private_files": true,
+    "native_png_probe": "passed",
+    "nor_eng_ocr_restricted_environment": "passed"
+  },
+  "browser": {
+    "synthetic_database_only": true,
+    "verified": [
+      "passordinnlogging",
+      "budsjettvalg",
+      "dynamisk oversikt",
+      "kalenderdialog",
+      "skanneside",
+      "varselside"
+    ],
+    "observed_console_or_csp_errors_on_verified_pages": 0
+  },
+  "preservation": {
+    "read_only_actual_local_profile": true,
+    "source_records_reconciled": 72,
+    "protected_configuration_and_source_files_unchanged": 14,
+    "before_after_equal": true
+  },
+  "review": {
+    "independent_layers_completed": [
+      "blind-hunter",
+      "edge-case-hunter",
+      "verification-gap"
+    ],
+    "individual_findings_including_overlap": 13,
+    "findings_repaired": 13,
+    "repair_validation": "Maalrettede tester og full endelig kjoring; orkestrator kontrollerte rettelsene.",
+    "additional_final_source_review": "review-tjenesten avviste ekstrakjoringen; ingen sluttgodkjenning pastas"
+  },
+  "limitations": [
+    "Cloudflare-dashboard krevde innlogging; ingen regler ble aktivert.",
+    "243 aapne/ubestemte Debian-kildepakkevarsler; ingen null-saarbarhetsgaranti.",
+    "Fysisk mobilkamera, ekte Web Push og installert mobil-PWA gjenstaar paa brukerens enheter.",
+    "Ingen NAS-utrulling eller NAS-avstemming ble utfort."
+  ],
+  "logs_sha256": {
+    "work/security-full-tests-final.log": "d79cbb973de75ce5b0cf38eefa124789b40c63188248e6175d1a0f0a2d755c66",
+    "work/security-node-tests.log": "8ea912fd6cf0db88461cf87da65f511c22908794114019e226e3c77806d239d4",
+    "work/security-build-final.log": "95f4c3dcaa2b463f73f55334e61650ae41f340ed9f3349ac2e6ca339401c7ac0",
+    "work/security-os-final.json": "cd2869a8a3757e1cd722a1067def28fedba717f6fbfa63b40ab71eaacec5e62f",
+    "work/security-dependencies.json": "547436893a9e72de018a49cb64013907fa619e6978064b005be800247fefaee9"
+  }
+}

@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from .financial_areas import current_area
 from .models import Asset, BillOccurrence, BillTemplate, Entry, MonthPlan
+from .work_limits import month_steps, validate_financial_work
 
 
 def replay_fund(asset, plans, bills, entries):
@@ -74,6 +75,7 @@ def month_basis(household, month, today=None):
     from .correction_services import series_state
     if current_area().household_id != household.pk:
         raise PermissionDenied('Budsjettet tilhorer en annen familie.')
+    validate_financial_work(household, month)
     today = today or timezone.localdate()
     start, end, current_month = month_start(month), month_end(month), month_start(today)
     cutoff = min(today, end)
@@ -139,6 +141,7 @@ def month_basis(household, month, today=None):
         group = groups[(None, asset.pk)]
         allocations = []
         cursor = min((row.month for row in group), default=start)
+        month_steps(cursor, start)
         while cursor <= start:
             amount = _effective_amount(group, cursor, current_month, asset.archived)
             if amount is not None:

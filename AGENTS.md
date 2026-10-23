@@ -1,5 +1,15 @@
 # Familieblikk — planning graph
 
+## Sikkerhetsherding — autorisert 2026-10-24
+
+Robel bestilte angriperorientert sikkerhetskontroll, reparasjon av bekreftede svakheter, avhengighetskontroll og commit/push for egen senere pull/build/test. Dette autoriserer sikkerhetsrettelser og publisering på `codex/security-hardening`, ikke NAS-utrulling eller nye avhengigheter. Native spesifikasjon: `_bmad-output/implementation-artifacts/spec-security-hardening.md`. Bevar `.env`, prosjektnavn, databasevolumer, privat import og eksisterende nøkler. Ingen destruktive tester mot faktisk familieprofil.
+
+- gatherer-security: lesende angrepsflatekontroll; output `work/security-source-findings.json`.
+- producer-security: implementer native spesifikasjon med isolerte tester; orkestrator samler `work/security-release-evidence.json`.
+- verifier-security: uavhengig kilde-/test-/bevaringskontroll; output `work/security-review.json`.
+
+Kilde + native spesifikasjon -> rettelser -> deterministiske tester/avstemming -> uavhengig review -> allerede brukerautorisert commit/push. Cloudflare-tiltak rapporteres som anbefalt inntil faktisk kontoendring er bekreftet.
+
 ## Camera and shopping publication — authorized 2026-10-22
 
 Robel explicitly requested: "commit and push then i will pull build and then test and then give my feedback on later on". Commit and push the verified camera/shopping feature branch. This supersedes earlier publication restrictions for stages 2 and 3 only. Preserve private configuration/data; no NAS deployment or separate-budget implementation is authorized. OCR limitations remain disclosed for user testing.

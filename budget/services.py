@@ -8,6 +8,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from .models import Asset, Audit, BillOccurrence, BillTemplate, Entry, FundTopUp, Membership, MonthPlan
 from . import access
+from .work_limits import financial_work_operation, month_steps, reserve_work, validate_period, validate_financial_work
 
 
 class Conflict(ValidationError):
@@ -38,6 +39,7 @@ def total(rows): return rows.aggregate(n=Sum('amount_ore'))['n'] or 0
 
 
 @transaction.atomic
+@financial_work_operation
 def save_row(actor, row, expected_version=None, admin=False, command=None):
     member = access.lock_member(actor)
     if not row._state.adding and row.household_id != member.household_id:
@@ -62,6 +64,12 @@ def save_row(actor, row, expected_version=None, admin=False, command=None):
         row.version = current.version + 1
     access.lock_relations(member, row)
     access.require_write_row(member, row)
+    # Existing history remains editable when no anchor is introduced or moved.
+    # Any replay caused by the change has its own work limit at execution time.
+    for field in ('month', 'first_due', 'opening_date'):
+        value = getattr(row, field, None)
+        if value is not None and (current is None or value != getattr(current, field, None)):
+            validate_period(value)
     if current:
         if isinstance(row, Asset):
             if current.kind == 'fund':
@@ -232,11 +240,17 @@ def plan_amount(anchor, month):
     return anchor.amount_ore
 
 
+@transaction.atomic
+@financial_work_operation
 def refresh_future_plans(household):
     from .financial_areas import current_area
     if current_area().household_id != household.pk:
         raise PermissionDenied('Budsjettet tilhorer en annen familie.')
-    for plan in MonthPlan.objects.filter(household=household, derived=True, month__gte=month_start(timezone.localdate())):
+    plans = list(MonthPlan.objects.filter(household=household, derived=True, month__gte=month_start(timezone.localdate())))
+    # This loop includes every retained future copy, regardless of the month
+    # selected on the page. Charge it once before the first per-row query/write.
+    reserve_work(len(plans))
+    for plan in plans:
         anchors = MonthPlan.objects.filter(household=household, derived=False, month__lte=plan.month, asset_id=plan.asset_id, category_id=plan.category_id).order_by('-month')
         anchor = anchors.first()
         if anchor:
@@ -249,6 +263,8 @@ def refresh_future_plans(household):
 
 def materialize_template(template, month, cutoff=None):
     from .correction_services import series_state
+    validate_period(month)
+    month_steps(template.first_due, month, recurring=template.monthly)
     cursor = month_start(template.first_due)
     while cursor <= month:
         due = cursor.replace(day=min(template.first_due.day, calendar.monthrange(cursor.year, cursor.month)[1]))
@@ -262,12 +278,14 @@ def materialize_template(template, month, cutoff=None):
 
 
 @transaction.atomic
+@financial_work_operation
 def prepare_month(household, month):
     from .financial_areas import current_area
     if current_area().household_id != household.pk:
         raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     type(household).objects.select_for_update().get(pk=household.pk)
     month = month_start(month)
+    validate_financial_work(household, month)
     for asset in household.asset_set.filter(kind='fund'):
         if not MonthPlan.objects.filter(asset=asset, derived=False).exists() and asset.target_ore:
             effective = month_start(asset.opening_date)
@@ -450,6 +468,7 @@ def debt_projection(assets, strategy='avalanche', extra_ore=0):
 
 
 @transaction.atomic
+@financial_work_operation
 def allocate_debt_plan(actor, month, strategy, extra_ore):
     access.lock_member(actor)
     member = authorize(actor, admin=True)
@@ -496,10 +515,14 @@ def estimated_debt_balance(asset, as_of):
     """
     if asset.annual_rate is None or asset.opening_date > as_of:
         return None
+    validate_period(as_of)
+    cursor = next_month(month_start(asset.opening_date)) if asset.opening_date.year < 9999 or asset.opening_date.month < 12 else None
+    # Interest replay starts after the opening month and uses the real as_of,
+    # which can differ from the dashboard's selected historical month.
+    reserve_work(month_steps(cursor, as_of) if cursor else 0)
     events = []
     for row in Entry.objects.filter(active=True, household=asset.household, effective_date__range=(asset.opening_date, as_of)).filter(Q(asset=asset, kind='debt') | Q(original__asset=asset, original__kind='debt', kind='refund')):
         events.append((row.effective_date, 1, row.sequence, -row.amount_ore if row.kind == 'debt' else row.amount_ore))
-    cursor = next_month(month_start(asset.opening_date)) if asset.opening_date.year < 9999 or asset.opening_date.month < 12 else None
     while cursor and cursor <= as_of:
         anniversary = cursor.replace(day=min(asset.opening_date.day, month_end(cursor).day))
         if anniversary <= as_of: events.append((anniversary, 0, 0, None))

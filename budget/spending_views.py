@@ -2,7 +2,7 @@ import json
 from functools import wraps
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
@@ -69,7 +69,7 @@ def shell_context(request, initial_tab='spending'):
     try:
         selected = month_value(request.GET.get('month') or service.month_key(timezone.localdate()))
     except ValidationError:
-        selected = timezone.localdate().replace(day=1)
+        raise Http404('Ugyldig måned') from None
     return {'member': member, 'nav': NAV, 'page': 'arsoversikt' if initial_tab == 'annual' else 'budsjett',
             'title': 'Året i bilder' if initial_tab == 'annual' else 'Forbruk og plan', 'month': selected,
             'spending_boot': {'initial_tab': initial_tab, 'urls': service.URLS, 'month': service.month_key(selected), 'can_save': getattr(request, 'financial_can_write', False),

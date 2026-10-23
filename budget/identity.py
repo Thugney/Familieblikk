@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import secrets
+import time
 from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model, login
@@ -10,19 +11,48 @@ from django.db import connection, transaction
 from django.utils import timezone
 from .models import Audit, Household, Invitation, LoginCode, LoginRequest, Membership, PasswordAttempt
 
+MAX_PASSWORD_LENGTH = 1024
+LOGIN_ERROR = 'Innloggingen kunne ikke bekreftes. Kontroller opplysningene eller prøv igjen senere.'
+AUTH_LOCK_WAIT_SECONDS = 1.0
+PASSWORD_WORK_EMAIL_LIMIT = 20
+PASSWORD_WORK_IP_LIMIT = 120
+
 
 def digest(value):
     return hmac.new(settings.SECRET_KEY.encode(), value.encode(), hashlib.sha256).hexdigest()
 
 
+def lock_auth_keys(keys):
+    """Keep quota checks atomic without letting contention occupy a worker forever.
+
+    Try-locks leave the transaction usable on rejection. All acquired locks are
+    transaction-scoped and are released by the caller's atomic rollback.
+    """
+    deadline = time.monotonic() + AUTH_LOCK_WAIT_SECONDS
+    with connection.cursor() as cursor:
+        for key in keys:
+            while True:
+                cursor.execute('SELECT pg_try_advisory_xact_lock(%s)', [key])
+                if cursor.fetchone()[0]:
+                    break
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise ValidationError(LOGIN_ERROR)
+                time.sleep(min(0.025, remaining))
+
+
 def lock_identity_email(email):
     key = int(hashlib.sha256(('identity-email:' + email.strip().lower()).encode()).hexdigest()[:15], 16)
-    with connection.cursor() as cursor: cursor.execute('SELECT pg_advisory_xact_lock(%s)', [key])
+    lock_auth_keys([key])
 
 
 @transaction.atomic
 def send_code(email, ip):
     email = email.strip().lower()
+    # Serialize even the first request, when there is no LoginCode row to lock.
+    # IP first, then the shared identity-email lock: all senders use this order.
+    lock_auth_keys([int(digest('code-ip:' + ip)[:15], 16)])
+    lock_identity_email(email)
     now = timezone.now()
     old = LoginCode.objects.select_for_update().filter(email=email).first()
     ip_hash = digest(ip)
@@ -37,6 +67,8 @@ def send_code(email, ip):
 
 def verify_code(request, email, code):
     # Feilforsøk må lagres også når koden avvises.
+    if not isinstance(code, str) or len(code) != 6 or not code.isascii() or not code.isdigit():
+        raise ValidationError('Koden er feil, utløpt eller allerede brukt. Be om en ny kode.')
     email = email.strip().lower()
     user = None
     with transaction.atomic():
@@ -69,25 +101,36 @@ def binding_digest(binding):
 
 def password_login(request, email, password, ip):
     from django.contrib.auth.hashers import make_password
+    if not isinstance(password, str) or len(password) > MAX_PASSWORD_LENGTH:
+        raise ValidationError(LOGIN_ERROR)
     email = email.strip().lower()
     email_key, ip_key = digest('password-email:' + email), digest('password-ip:' + ip)
+    work_email_key, work_ip_key = digest('password-work-email:' + email), digest('password-work-ip:' + ip)
     user = None
     with transaction.atomic():
-        with connection.cursor() as cursor:
-            for key in sorted([email_key, ip_key]): cursor.execute('SELECT pg_advisory_xact_lock(%s)', [int(key[:15], 16)])
+        lock_auth_keys([int(key[:15], 16) for key in sorted([email_key, ip_key])])
         since = timezone.now() - timedelta(minutes=15)
         blocked = PasswordAttempt.objects.filter(email_digest=email_key, attempted_at__gte=since).count() >= 5 or PasswordAttempt.objects.filter(ip_digest=ip_key, attempted_at__gte=since).count() >= 30
+        if blocked:
+            raise ValidationError(LOGIN_ERROR)
+        # A separate namespace counts every expensive hash, including valid
+        # passwords. Existing failure thresholds remain unchanged; the wider IP
+        # work budget accommodates a household sharing the tunnel's socket IP.
+        work_blocked = PasswordAttempt.objects.filter(email_digest=work_email_key, attempted_at__gte=since).count() >= PASSWORD_WORK_EMAIL_LIMIT or PasswordAttempt.objects.filter(ip_digest=work_ip_key, attempted_at__gte=since).count() >= PASSWORD_WORK_IP_LIMIT
+        if work_blocked:
+            raise ValidationError(LOGIN_ERROR)
+        PasswordAttempt.objects.create(email_digest=work_email_key, ip_digest=work_ip_key, attempted_at=timezone.now())
         member = Membership.objects.select_related('user').filter(user__email__iexact=email, identity_method__in=['preregistered_owner', 'preregistered_admin', 'preregistered_member'], provisioned_at__isnull=False).exclude(provisioning_digest='').first() if settings.PREREGISTERED_LOGIN_ENABLED else None
         if member and member.user.is_active:
             valid = member.user.check_password(password)
         else:
             make_password(password)
             valid = False
-        if valid and not blocked:
+        if valid:
             user = member.user
-        elif not blocked:
+        else:
             PasswordAttempt.objects.create(email_digest=email_key, ip_digest=ip_key, attempted_at=timezone.now())
-    if user is None: raise ValidationError('Innloggingen kunne ikke bekreftes. Kontroller opplysningene eller prøv igjen senere.')
+    if user is None: raise ValidationError(LOGIN_ERROR)
     for key in ('verified_email', 'verified_at'): request.session.pop(key, None)
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
     request.session['identity_method'] = member.identity_method
@@ -111,6 +154,7 @@ def provision_owner(binding, password, family_name):
     if binding.get('household_id'): raise ValidationError('Eierbindingen peker allerede til en familie. Ingen ny familie opprettes.')
     user = get_user_model()(username='owner_' + hashlib.sha256(email.encode()).hexdigest(), email=email)
     validate_password(password, user)
+    if len(password) > MAX_PASSWORD_LENGTH: raise ValidationError(LOGIN_ERROR)
     user.set_password(password)
     user.save()
     house = Household.objects.create(name=family_name)
@@ -141,6 +185,7 @@ def register_family_account(actor, email, password, *, family_name=None, role='m
         raise ValidationError('Adressen kan ikke registreres som ny konto. Eksisterende kontoer flyttes eller nullstilles ikke.')
     user = get_user_model()(username='registered_' + hashlib.sha256(email.encode()).hexdigest(), email=email)
     validate_password(password, user)
+    if len(password) > MAX_PASSWORD_LENGTH: raise ValidationError(LOGIN_ERROR)
     user.set_password(password)
     user.save()
     household = Household.objects.create(name=family_name) if family_name is not None else member.household
