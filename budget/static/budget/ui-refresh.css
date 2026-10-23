@@ -1465,6 +1465,23 @@ h1, h2, h3, h4, p {
   .dock-wrap {
     display: flex;
   }
+  .dock-item {
+    width: 46px;
+    min-width: 46px;
+    padding: 0;
+    gap: 0;
+  }
+  .dock-item span {
+    display: none;
+  }
+  .dock-item.on {
+    width: auto;
+    padding: 0 14px;
+    gap: 6px;
+  }
+  .dock-item.on span {
+    display: inline;
+  }
 }
 
 @media (max-width: 350px) {
@@ -1472,10 +1489,12 @@ h1, h2, h3, h4, p {
     grid-template-columns: 1fr;
   }
   .dock-item {
-    padding: 0 8px;
-    min-width: 44px;
+    width: 42px;
+    min-width: 42px;
+    padding: 0;
   }
   .dock-item.on {
+    width: auto;
     padding: 0 11px;
   }
 }
