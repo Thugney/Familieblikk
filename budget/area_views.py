@@ -5,6 +5,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
 from . import financial_areas as areas
+from .financial_areas import participant_ids
 from .models import Membership
 from .financial_models import FinancialArea, AreaAccessChange
 
@@ -85,7 +86,7 @@ def index(request):
                 form.add_error(None, error)
     proposals = AreaAccessChange.objects.filter(household=member.household, applied=False)
     if member.role != 'admin':
-        proposals = [proposal for proposal in proposals if proposal.owner_id == member.pk or member.pk in {p['member'] for p in proposal.after if p['role'] in ('reader', 'editor')}]
+        proposals = [proposal for proposal in proposals if proposal.owner_id == member.pk or member.pk in participant_ids(proposal)]
     from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
     from django.urls import resolve, Resolver404
     from .area_requests import financial_url, FINANCIAL_NAMES, OPTIONAL_NAMES, NONFINANCIAL_PAGES, WRITE_FORM_NAMES
@@ -127,7 +128,7 @@ def sharing(request, area_id):
 def proposal(request, proposal_id):
     member = get_object_or_404(Membership, user=request.user)
     change = get_object_or_404(AreaAccessChange, pk=proposal_id, household=member.household)
-    if member.pk != change.owner_id and member.role != 'admin' and member.pk not in {p['member'] for p in change.after if p['role'] in ('reader', 'editor')}:
+    if member.pk != change.owner_id and member.role != 'admin' and member.pk not in participant_ids(change):
         raise PermissionDenied
     error = None
     if request.method == 'POST':
@@ -138,5 +139,12 @@ def proposal(request, proposal_id):
             error = ' '.join(exc.messages)
     people = {m.pk: m.user.get_full_name() or m.user.email for m in Membership.objects.filter(household=member.household).select_related('user')}
     roles = {'owner': 'Eier', 'reader': 'Kun innsyn', 'editor': 'Kan administrere'}
-    participants = [{'name': people.get(p['member'], 'Ikke lenger aktiv'), 'role': roles[p['role']]} for p in change.after]
+    participants = []
+    for entry in change.after or []:
+        if not isinstance(entry, dict):
+            continue
+        participants.append({
+            'name': people.get(entry.get('member'), 'Ikke lenger aktiv'),
+            'role': roles.get(entry.get('role'), 'Ukjent rolle'),
+        })
     return render(request, 'budget/area_proposal.html', context(member, change=change, participants=participants, error=error))

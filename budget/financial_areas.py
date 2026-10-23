@@ -84,6 +84,23 @@ def create_area(member, name='Mitt budsjett', reader_ids=(), editor_ids=(), kind
     return area
 
 
+def participant_ids(change):
+    """Member ids invited as reader/editor in a stored proposal.
+
+    ``after`` is persisted JSON. Treat malformed rows as empty rather than
+    letting a single bad proposal take down the proposal page or confirmation.
+    """
+    ids = set()
+    for item in change.after or []:
+        if not isinstance(item, dict) or item.get('role') not in ('reader', 'editor'):
+            continue
+        try:
+            ids.add(int(item.get('member')))
+        except (TypeError, ValueError):
+            continue
+    return ids
+
+
 def _digest(data):
     return hashlib.sha256(json.dumps(data, sort_keys=True, default=str, separators=(',', ':')).encode()).hexdigest()
 
@@ -143,17 +160,17 @@ def confirm_access_change(member, proposal_id, digest):
         raise ValidationError('Forslaget er endret eller allerede aktivert.')
     if change.owner_confirmation_id == member.pk or change.admin_confirmation_id == member.pk:
         return change
-    participant_ids = {p['member'] for p in change.after if p['role'] in ('reader', 'editor')}
+    invited_ids = participant_ids(change)
     if member.pk == change.owner_id:
         change.owner_confirmation = member
-    elif member.role == 'admin' or member.pk in participant_ids:
+    elif member.role == 'admin' or member.pk in invited_ids:
         change.admin_confirmation = member
     else:
         raise PermissionDenied('Bekreftelsen krever eieren eller en annen deltaker i budsjettet.')
     if change.owner_confirmation_id and change.admin_confirmation_id:
         second = Membership.objects.select_for_update().get(pk=change.admin_confirmation_id)
         owner = Membership.objects.select_for_update().get(pk=change.owner_id)
-        if not (second.role == 'admin' or second.pk in participant_ids) or second.household_id != member.household_id or not second.user.is_active or not owner.user.is_active:
+        if not (second.role == 'admin' or second.pk in invited_ids) or second.household_id != member.household_id or not second.user.is_active or not owner.user.is_active:
             raise PermissionDenied('Rollene er endret. Opprett et nytt forslag.')
         readers = [p['member'] for p in change.after if p['role'] == 'reader']
         editors = [p['member'] for p in change.after if p['role'] == 'editor']

@@ -61,6 +61,21 @@ class FinancialUITests(TestCase):
         self.assertEqual(self.client.get('/budsjetter/').status_code, 200)
         self.assertEqual(self.client.get('/app/kalender/').status_code, 200)
         self.assertEqual(self.client.get('/app/handlelister/').status_code, 200)
+
+    def test_pending_proposal_page_renders_for_reader_and_tolerates_malformed_after(self):
+        from .financial_areas import propose_access_change
+        wife = self.member('wife', 'member')
+        proposal = propose_access_change(self.owner, self.area.pk, [wife.pk])
+        self.client.force_login(wife.user)
+        response = self.client.get('/budsjetter/forslag/%s/' % proposal.pk)
+        self.assertEqual(response.status_code, 200)
+        proposal.after = [{'member': self.owner.pk, 'role': 'owner'},
+                          {'member': wife.pk, 'role': 'reader'},
+                          {'member': 999, 'role': 'admin'}, 'bad']
+        proposal.save()
+        response = self.client.get('/budsjetter/forslag/%s/' % proposal.pk)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Ukjent rolle')
     def test_new_member_requires_choice_and_is_empty(self):
         with self.assertRaises(ValidationError):
             identity.register_family_account(self.other.user, 'new@example.test', 'Fictional-pass-234!')
