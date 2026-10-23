@@ -25,6 +25,18 @@ test('loader clears on back navigation and failures and never masks dirty or can
   h.documentHandlers.click(event);await Promise.resolve();assert.equal(h.loader.hidden,false);
   for(const name of ['pageshow','popstate','error','unhandledrejection','offline','focus']){h.window.FamilieblikkLoader.start();h.handlers[name]();assert.equal(h.loader.hidden,true,name)}
 });
+test('saving an edited form shows progress after its submit handler accepts the save',async()=>{
+  const h=setup();h.documentHandlers.DOMContentLoaded();h.dirty(true);
+  const form={matches:()=>false,target:'',checkValidity:()=>true};
+  const event={type:'submit',defaultPrevented:false,target:form};
+  h.documentHandlers.submit(event);
+  h.dirty(false); // app.js accepts the save and clears the form's dirty flag.
+  await Promise.resolve();assert.equal(h.loader.hidden,false);
+  h.handlers.pageshow();h.dirty(true);
+  const cancelled={...event};h.documentHandlers.submit(cancelled);
+  cancelled.defaultPrevented=true;
+  await Promise.resolve();assert.equal(h.loader.hidden,true);
+});
 test('loader uses only local supplied resources and static reduced-motion fallback',()=>{
   const template=fs.readFileSync('budget/templates/budget/loader.html','utf8'),css=fs.readFileSync('budget/static/budget/loader.css','utf8');
   assert.match(template,/id="app-loader"[^>]+hidden/);assert.match(template,/viewBox="-20 -20 256 256"/);assert.match(template,/loader-logo.png/);assert.match(template,/loader-icon.png/);

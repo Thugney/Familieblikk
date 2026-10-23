@@ -61,6 +61,11 @@ class LegacySharingGraphTests(TransactionTestCase):
         make('ImportRecord', batch=batch, source_id='synthetic-reviewed-category',
              source_kind='categories', raw={'monthly_budget_ore': 120000},
              status='confirmed', target_id=plan.pk)
+        asset_plan = make('MonthPlan', month=day, asset=asset, amount_ore=25000)
+        # Existing import review also allowed choosing "Mål / gjeld / fond".
+        make('ImportRecord', batch=batch, source_id='synthetic-reviewed-asset-plan',
+             source_kind='categories', raw={'monthly_budget_ore': 25000},
+             status='confirmed', target_id=asset_plan.pk)
         make('ImportRecord', batch=batch, source_id='synthetic-category-draft',
              source_kind='categories', raw={'monthly_budget_ore': 120000},
              target_id=category.pk)
@@ -115,7 +120,7 @@ class LegacySharingGraphTests(TransactionTestCase):
         latest = MigrationExecutor(connection).loader.graph.leaf_nodes('budget')
         try:
             house_id, owner_id, second_id, *_ = self.migrated_graphs(
-                ('retry-existing',), [('budget', '0024_notification_targets')])[0]
+                ('retry-existing',), [('budget', '0025_reviewed_category_import_targets')])[0]
             owner = Membership.objects.get(pk=owner_id)
             second = Membership.objects.get(pk=second_id)
             inventory = legacy_inventory(owner)

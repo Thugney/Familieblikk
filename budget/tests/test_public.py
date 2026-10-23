@@ -53,6 +53,23 @@ class PublicContractTests(SimpleTestCase):
                 with patch.object(Path, 'read_bytes', changed):
                     self.assertNotEqual(first, self.client.get('/sw.js').content)
 
+    def test_loader_update_changes_the_asset_urls_in_the_page(self):
+        from unittest.mock import patch
+        from budget.templatetags.budget_tags import loader_static
+        original = Path.read_bytes
+        for name in ('loader.css', 'loader.js'):
+            with self.subTest(name=name):
+                before = loader_static(name)
+                self.assertContains(self.client.get('/passord/'), before)
+                self.assertEqual(self.client.get(before).status_code, 200)
+                def changed(path):
+                    return original(path) + b'new-release' if path.name == name else original(path)
+                with patch.object(Path, 'read_bytes', changed):
+                    after = loader_static(name)
+                    self.assertNotEqual(before, after)
+                    self.assertContains(self.client.get('/passord/'), after)
+                    self.assertNotContains(self.client.get('/passord/'), before)
+
     def test_calendar_and_projection(self):
         self.assertEqual(month_end(date(2028, 2, 1)), date(2028, 2, 29))
         self.assertEqual(next_month(date(2026, 12, 1)), date(2027, 1, 1))

@@ -2,6 +2,19 @@ from decimal import Decimal
 from django import template
 from django.utils.safestring import mark_safe
 register = template.Library()
+
+@register.simple_tag
+def loader_static(name):
+    """A new loader release must not reuse an older browser/CDN asset URL."""
+    from hashlib import sha256
+    from pathlib import Path
+    from django.templatetags.static import static
+    if name not in ('loader.css', 'loader.js'):
+        raise ValueError('Unknown loader asset')
+    path = Path(__file__).resolve().parents[1] / 'static' / 'budget' / name
+    version = sha256(path.read_bytes()).hexdigest()[:16]
+    return static('budget/' + name) + '?v=' + version
+
 @register.inclusion_tag('budget/workflow_links.html')
 def workflow_links(member, row):
     from budget import access

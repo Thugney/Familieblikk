@@ -4,9 +4,9 @@
 .loader-track,.loader-label,.loader-orbit{display:none}
 .loader-lockup{display:flex;align-items:center;gap:3.4%;width:100%}
 .loader-lock-mark{width:17.3%;height:auto;overflow:visible;flex-shrink:0}
-.loader-word{width:79.3%;aspect-ratio:441/195;overflow:hidden;animation:loader-wipe 2.4s cubic-bezier(.65,0,.35,1) infinite;clip-path:inset(0 100% 0 0)}
+.loader-word{width:79.3%;aspect-ratio:441/195;overflow:hidden;animation:loader-wipe 2.4s cubic-bezier(.65,0,.35,1) infinite}
 .loader-word img{display:block;width:126.984%;height:auto;max-width:none;margin-left:-26.984%}
-.loader-piece{transform-box:fill-box;transform-origin:center;opacity:0}
+.loader-piece{transform-box:fill-box;transform-origin:center;opacity:1}
 .loader-a{animation:loader-pa 2.4s cubic-bezier(.2,1.2,.4,1) infinite}.loader-b{animation:loader-pb 2.4s cubic-bezier(.2,1.2,.4,1) infinite}.loader-c{animation:loader-pc 2.4s cubic-bezier(.2,1.2,.4,1) infinite}.loader-d{animation:loader-pd 2.4s cubic-bezier(.2,1.2,.4,1) infinite}
 .loader-mark{width:28px;height:28px;overflow:visible}
 .loader-static-icon{display:none;width:28px;height:28px;object-fit:contain}
@@ -18,9 +18,10 @@
 @keyframes loader-orbit{0%,8%{transform:translate(0,0)}25%,33%{transform:translate(116px,0)}50%,58%{transform:translate(116px,116px)}75%,83%{transform:translate(0,116px)}100%{transform:translate(0,0)}}
 @keyframes loader-breathe{0%,100%{transform:scale(1)}50%{transform:scale(.94)}}
 @keyframes loader-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
-@keyframes loader-pa{0%,3%{opacity:0;transform:scale(.3) rotate(-40deg)}13%{opacity:1;transform:scale(1.06)}17%,86%{opacity:1;transform:scale(1)}94%,100%{opacity:0;transform:scale(.9)}}
-@keyframes loader-pb{0%,8%{opacity:0;transform:scale(.3) rotate(-40deg)}18%{opacity:1;transform:scale(1.06)}22%,86%{opacity:1;transform:scale(1)}94%,100%{opacity:0;transform:scale(.9)}}
-@keyframes loader-pc{0%,13%{opacity:0;transform:scale(.3) rotate(-40deg)}23%{opacity:1;transform:scale(1.06)}27%,86%{opacity:1;transform:scale(1)}94%,100%{opacity:0;transform:scale(.9)}}
-@keyframes loader-pd{0%,18%{opacity:0;transform:scale(.3) rotate(-40deg)}28%{opacity:1;transform:scale(1.14)}33%,58%{transform:scale(1)}64%{transform:scale(1.12)}70%,86%{opacity:1;transform:scale(1)}94%,100%{opacity:0;transform:scale(.9)}}
-@keyframes loader-wipe{0%,20%{clip-path:inset(0 100% 0 0);transform:translateX(-4px);opacity:1}40%,86%{clip-path:inset(0);transform:none;opacity:1}94%,100%{clip-path:inset(0);transform:none;opacity:0}}
+/* Keep the complete mark visible from the first frame, even on a quick save. */
+@keyframes loader-pa{0%,3%,25%,100%{transform:scale(1)}13%{transform:scale(1.10) rotate(-4deg)}}
+@keyframes loader-pb{0%,8%,30%,100%{transform:scale(1)}18%{transform:scale(1.10) rotate(-4deg)}}
+@keyframes loader-pc{0%,13%,35%,100%{transform:scale(1)}23%{transform:scale(1.10) rotate(-4deg)}}
+@keyframes loader-pd{0%,18%,40%,100%{transform:scale(1)}28%{transform:scale(1.14) rotate(-4deg)}}
+@keyframes loader-wipe{0%,40%,100%{opacity:1;transform:none}20%{opacity:.72;transform:translateX(1px)}}
 @media(prefers-reduced-motion:reduce){.loader-piece,.loader-word,.loader-tile,.loader-round{animation:none!important;transform:none;opacity:1;clip-path:none}.loader-mark{display:none}.loader-static-icon{display:block}}

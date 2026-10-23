@@ -129,10 +129,16 @@ class FinancialRecord(models.Model):
                             'savings_goals': Asset, 'annual_funds': Asset, 'recipients': Asset}.get(self.source_kind)
             valid_target = target_model is not None and target_model.objects.filter(pk=self.target_id).exists()
             if self.source_kind == 'categories' and self.status == 'confirmed':
+                # The review form supports category OR goal/debt/fund plans.
+                # Both the plan and its chosen target must remain in this area.
                 valid_target = valid_target or MonthPlan.objects.filter(
                     pk=self.target_id, household_id=self.household_id,
-                    category__financial_area_id=area.pk,
-                    category__household_id=self.household_id).exists()
+                ).filter(
+                    models.Q(asset__isnull=True, category__financial_area_id=area.pk,
+                             category__household_id=self.household_id) |
+                    models.Q(category__isnull=True, asset__financial_area_id=area.pk,
+                             asset__household_id=self.household_id)
+                ).exists()
             if not valid_target:
                 raise ValidationError('Importmålet må tilhøre samme budsjett og riktig type.')
         if self._meta.model_name == 'correctionevent':

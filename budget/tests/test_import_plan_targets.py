@@ -39,6 +39,10 @@ class ImportPlanTargetTests(TransactionTestCase):
             category = Category.objects.create(household=self.house, created_by=self.user, name='Other category')
             self.other_plan = MonthPlan.objects.create(household=self.house, created_by=self.user,
                 category=category, month=date(2026, 9, 1), amount_ore=10000)
+            asset = Asset.objects.create(household=self.house, created_by=self.user,
+                kind='debt', name='Other debt', opening_date=date(2026, 9, 1))
+            self.other_asset_plan = MonthPlan.objects.create(household=self.house, created_by=self.user,
+                asset=asset, month=date(2026, 9, 1), amount_ore=10000)
         foreign_user = get_user_model().objects.create_user(username='foreign-import-owner')
         foreign_house = Household.objects.create(name='Other synthetic family')
         foreign_member = Membership.objects.create(user=foreign_user, household=foreign_house, role='admin')
@@ -47,6 +51,10 @@ class ImportPlanTargetTests(TransactionTestCase):
             category = Category.objects.create(household=foreign_house, created_by=foreign_user, name='Foreign category')
             self.foreign_plan = MonthPlan.objects.create(household=foreign_house, created_by=foreign_user,
                 category=category, month=date(2026, 9, 1), amount_ore=10000)
+            asset = Asset.objects.create(household=foreign_house, created_by=foreign_user,
+                kind='fund', name='Foreign fund', opening_date=date(2026, 9, 1))
+            self.foreign_asset_plan = MonthPlan.objects.create(household=foreign_house, created_by=foreign_user,
+                asset=asset, month=date(2026, 9, 1), amount_ore=10000)
 
     def test_category_review_posts_plan_and_repeated_submit_preserves_it(self):
         self.client.force_login(self.user)
@@ -76,9 +84,11 @@ class ImportPlanTargetTests(TransactionTestCase):
         cases = [
             ('foreign-budget', self.other_plan.pk, 'confirmed', 'categories'),
             ('foreign-family', self.foreign_plan.pk, 'confirmed', 'categories'),
+            ('foreign-budget-asset-plan', self.other_asset_plan.pk, 'confirmed', 'categories'),
+            ('foreign-family-asset-plan', self.foreign_asset_plan.pk, 'confirmed', 'categories'),
             ('missing', uuid.uuid4(), 'confirmed', 'categories'),
-            ('asset-plan', self.asset_plan.pk, 'confirmed', 'categories'),
             ('unreviewed-plan', self.plan.pk, 'needs_review', 'categories'),
+            ('unreviewed-asset-plan', self.asset_plan.pk, 'needs_review', 'categories'),
             ('transaction-plan', self.plan.pk, 'confirmed', 'transactions'),
         ]
         for label, target, status, kind in cases:
@@ -95,3 +105,30 @@ class ImportPlanTargetTests(TransactionTestCase):
                 self.record.refresh_from_db(from_queryset=ImportRecord.all_objects.all())
                 self.assertEqual(self.record.target_id, self.category.pk)
                 self.assertEqual(self.record.status, 'needs_review')
+
+    def test_category_import_review_can_choose_an_asset_plan(self):
+        # PlanForm explicitly offers "Mål / gjeld / fond" as an alternative
+        # to Category. source_kind describes the imported sheet, not that
+        # reviewed choice's destination model.
+        self.client.force_login(self.user)
+        session = self.client.session
+        session['verified_email'] = self.user.email
+        session.save()
+        url = '/import/avklar/%s/?area=%s' % (self.record.pk, self.area.pk)
+        payload = {'month': '2026-10-01', 'category': '',
+                   'asset': str(self.asset_plan.asset_id), 'amount': '1200', 'version': 0}
+        original_raw = self.record.raw.copy()
+        with patch('budget.importing.load_private_source', return_value=({}, {'owner_email': self.user.email})):
+            response = self.client.post(url, payload)
+            self.assertEqual(response.status_code, 302)
+            self.record.refresh_from_db(from_queryset=ImportRecord.all_objects.all())
+            target = self.record.target_id
+            self.assertEqual(self.record.status, 'confirmed')
+            self.assertEqual(self.record.raw, original_raw)
+            with area_scope(self.member, self.area.pk):
+                plan = MonthPlan.objects.get(pk=target)
+                self.assertIsNone(plan.category_id)
+                self.assertEqual((plan.asset_id, plan.amount_ore), (self.asset_plan.asset_id, 120000))
+            self.assertEqual(self.client.post(url, payload).status_code, 302)
+            self.record.refresh_from_db(from_queryset=ImportRecord.all_objects.all())
+            self.assertEqual(self.record.target_id, target)
