@@ -97,13 +97,12 @@ def participant_ids(change):
 def participant_roles(change):
     """Return ``(reader_ids, editor_ids)`` from a stored proposal, skipping malformed rows."""
     readers, editors = [], []
-    for item in change.after or []:
+    for item in change.after if isinstance(change.after, list) else []:
         if not isinstance(item, dict):
             continue
         role = item.get('role')
-        try:
-            member_id = int(item.get('member'))
-        except (TypeError, ValueError):
+        member_id = item.get('member')
+        if type(member_id) is not int or not 0 < member_id < 2**63:
             continue
         if role == 'reader':
             readers.append(member_id)
@@ -114,6 +113,65 @@ def participant_roles(change):
 
 def _digest(data):
     return hashlib.sha256(json.dumps(data, sort_keys=True, default=str, separators=(',', ':')).encode()).hexdigest()
+
+
+def proposal_problem(change):
+    """Validate the exact reviewed proposal, without changing grants or approvals."""
+    if change.applied:
+        return ''
+    try:
+        if change.kind not in ('legacy', 'sharing'):
+            raise ValidationError('Ukjent forslagstype. Opprett et nytt forslag.')
+        if not isinstance(change.after, list) or any(
+            not isinstance(row, dict) or set(row) != {'member', 'role'} or
+            type(row['member']) is not int or not 0 < row['member'] < 2**63 or
+            row['role'] not in ('owner', 'reader', 'editor') for row in change.after
+        ):
+            raise ValidationError('Deltakerlisten er ugyldig. Opprett et nytt forslag og kontroller tilgangen på nytt.')
+        readers, editors = participant_roles(change)
+        owner = change.owner
+        kind = 'shared' if change.kind == 'legacy' else change.area.kind
+        if owner.household_id != change.household_id:
+            raise ValidationError('Eieren tilhører ikke lenger familien. Opprett et nytt forslag.')
+        participants = _participants(owner, readers, editors, kind)
+        if change.after != participants:
+            raise ValidationError('Deltakerlisten er ugyldig. Opprett et nytt forslag og kontroller tilgangen på nytt.')
+        if change.kind == 'legacy':
+            payload = {'inventory': change.inventory, 'after': change.after, 'owner': owner.pk}
+            current = legacy_inventory(owner)
+            if not any(current['groups'].values()) or current != change.inventory:
+                raise ValidationError('Eksisterende budsjett er endret eller allerede fordelt. Gå til Dine budsjetter for å se gjeldende oppsett.')
+        else:
+            area = change.area
+            payload = {'area': str(area.pk), 'version': change.expected_version, 'before': change.before, 'after': change.after}
+            before = list(area.grants.order_by('member_id').values('member_id', 'role'))
+            if area.household_id != change.household_id or area.status != 'active' or area.owner_id != owner.pk or area.access_version != change.expected_version or before != change.before:
+                raise ValidationError('Tilgangen er endret. Opprett et nytt forslag fra gjeldende deling.')
+        if _digest(payload) != change.digest:
+            raise ValidationError('Forslaget stemmer ikke med innholdet som ble sendt. Opprett et nytt forslag.')
+        if change.owner_confirmation_id not in (None, owner.pk):
+            raise ValidationError('Eierbekreftelsen er ugyldig. Opprett et nytt forslag.')
+        if change.admin_confirmation_id:
+            second = change.admin_confirmation
+            if second.pk == owner.pk or second.household_id != change.household_id or not second.user.is_active or not (second.role == 'admin' or second.pk in participant_ids(change)):
+                raise ValidationError('Den andre bekrefteren har ikke lenger riktig tilgang. Opprett et nytt forslag.')
+    except ValidationError as error:
+        return ' '.join(error.messages)
+    except (AttributeError, TypeError, ValueError):
+        return 'Forslaget er ugyldig. Opprett et nytt forslag og kontroller tilgangen på nytt.'
+    return ''
+
+
+def _pending_proposal(**values):
+    # The household lock in both callers serializes retries/double submissions.
+    existing = list(AreaAccessChange.objects.filter(
+        household_id=values['household_id'], digest=values['digest'], applied=False,
+    ).order_by('pk'))
+    existing.sort(key=lambda proposal: bool(proposal.owner_confirmation_id) + bool(proposal.admin_confirmation_id), reverse=True)
+    for proposal in existing:
+        if not proposal_problem(proposal):
+            return proposal
+    return AreaAccessChange.objects.create(**values)
 
 
 def financial_models():
@@ -128,6 +186,12 @@ def legacy_inventory(member):
         if m._meta.model_name == 'audit':
             query = query.exclude(operation__in=m.METADATA_OPERATIONS)
         rows[m._meta.model_name] = list(query.order_by('pk').values())
+    from .models import SeriesRevision
+    revisions = list(SeriesRevision.objects.filter(
+        template__household_id=member.household_id, template__financial_area__isnull=True,
+    ).order_by('pk').values())
+    if revisions:
+        rows['seriesrevision'] = revisions
     return {'groups': {name: len(values) for name, values in rows.items()}, 'fingerprint': _digest(rows)}
 
 
@@ -141,8 +205,13 @@ def propose_access_change(member, area_id, reader_ids, editor_ids=()):
     after = _participants(area.owner, reader_ids, editor_ids, area.kind)
     before = list(area.grants.order_by('member_id').values('member_id', 'role'))
     payload = {'area': str(area.pk), 'version': area.access_version, 'before': before, 'after': after}
-    return AreaAccessChange.objects.create(household=area.household, area=area, owner=area.owner,
+    if area.status != 'active':
+        raise ValidationError('Budsjettet er ikke aktivt.')
+    proposal = _pending_proposal(household_id=area.household_id, area=area, owner=area.owner,
         expected_version=area.access_version, before=before, after=after, digest=_digest(payload))
+    from .notification_services import record_budget_proposal
+    record_budget_proposal(member, proposal)
+    return proposal
 
 
 @transaction.atomic
@@ -153,12 +222,17 @@ def propose_legacy_setup(member, owner_id, reader_ids, editor_ids, fingerprint):
         raise PermissionDenied('Bare familieadministrator kan foreslå oppsett.')
     owner = Membership.objects.get(pk=owner_id, household_id=member.household_id, user__is_active=True)
     inventory = legacy_inventory(member)
+    if not any(inventory['groups'].values()):
+        raise ValidationError('Det finnes ingen eksisterende poster som venter på oppsett.')
     if inventory['fingerprint'] != fingerprint:
         raise ValidationError('Datagrunnlaget er endret. Se gjennom oppsettet på nytt.')
     after = _participants(owner, reader_ids, editor_ids, 'shared')
     payload = {'inventory': inventory, 'after': after, 'owner': owner.pk}
-    return AreaAccessChange.objects.create(household_id=member.household_id, owner=owner, kind='legacy',
+    proposal = _pending_proposal(household_id=member.household_id, owner=owner, kind='legacy',
         inventory=inventory, after=after, digest=_digest(payload))
+    from .notification_services import record_budget_proposal
+    record_budget_proposal(member, proposal)
+    return proposal
 
 
 @transaction.atomic
@@ -169,6 +243,9 @@ def confirm_access_change(member, proposal_id, digest):
     change = AreaAccessChange.objects.select_for_update().get(pk=proposal_id, household_id=member.household_id)
     if digest != change.digest or change.applied:
         raise ValidationError('Forslaget er endret eller allerede aktivert.')
+    problem = proposal_problem(change)
+    if problem:
+        raise ValidationError(problem)
     if change.owner_confirmation_id == member.pk or change.admin_confirmation_id == member.pk:
         return change
     invited_ids = participant_ids(change)
@@ -208,6 +285,8 @@ def confirm_access_change(member, proposal_id, digest):
             area.save(update_fields=['access_version'])
         change.applied = True
     change.save()
+    from .notification_services import record_budget_confirmation
+    record_budget_confirmation(member, change)
     return change
 
 

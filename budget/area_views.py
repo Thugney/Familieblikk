@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Q
+from django.db import IntegrityError
 from . import financial_areas as areas
 from .financial_areas import participant_ids
 from .models import Membership
@@ -84,9 +84,17 @@ def index(request):
                 return redirect('financial_proposal', proposal_id=proposal.pk)
             except (ValidationError, ValueError) as error:
                 form.add_error(None, error)
-    proposals = AreaAccessChange.objects.filter(household=member.household, applied=False)
+    proposals = list(AreaAccessChange.objects.filter(household=member.household, applied=False).select_related('owner__user', 'admin_confirmation__user', 'area'))
     if member.role != 'admin':
         proposals = [proposal for proposal in proposals if proposal.owner_id == member.pk or member.pk in participant_ids(proposal)]
+    proposals.sort(key=lambda proposal: bool(proposal.owner_confirmation_id) + bool(proposal.admin_confirmation_id), reverse=True)
+    unique = {}
+    for proposal in proposals:
+        proposal.problem = areas.proposal_problem(proposal)
+        proposal.confirmed_by_me = member.pk in (proposal.owner_confirmation_id, proposal.admin_confirmation_id)
+        key = (proposal.digest, bool(proposal.problem))
+        unique.setdefault(key, proposal)
+    proposals = list(unique.values())
     from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
     from django.urls import resolve, Resolver404
     from .area_requests import financial_url, FINANCIAL_NAMES, OPTIONAL_NAMES, NONFINANCIAL_PAGES, WRITE_FORM_NAMES
@@ -135,16 +143,31 @@ def proposal(request, proposal_id):
         try:
             change = areas.confirm_access_change(member, change.pk, request.POST.get('digest'))
             messages.success(request, 'Forslaget er aktivert.' if change.applied else 'Din bekreftelse er registrert. Den andre personen må også bekrefte.')
+            return redirect('financial_proposal', proposal_id=change.pk)
         except ValidationError as exc:
             error = ' '.join(exc.messages)
+            # A failed atomic confirmation rolls back; discard in-memory flags too.
+            change.refresh_from_db()
+        except IntegrityError:
+            error = 'Oppsettet kunne ikke aktiveres fordi eksisterende poster har en ugyldig kobling. Ingen tilgang eller økonomiposter er endret. Kontakt administrator for kontroll av oppsettet.'
+            change.refresh_from_db()
     people = {m.pk: m.user.get_full_name() or m.user.email for m in Membership.objects.filter(household=member.household).select_related('user')}
     roles = {'owner': 'Eier', 'reader': 'Kun innsyn', 'editor': 'Kan administrere'}
     participants = []
-    for entry in change.after or []:
+    for entry in change.after if isinstance(change.after, list) else []:
         if not isinstance(entry, dict):
             continue
+        member_id, role = entry.get('member'), entry.get('role')
         participants.append({
-            'name': people.get(entry.get('member'), 'Ikke lenger aktiv'),
-            'role': roles.get(entry.get('role'), 'Ukjent rolle'),
+            'name': people.get(member_id, 'Ikke lenger aktiv') if type(member_id) is int else 'Ugyldig deltaker',
+            'role': roles.get(role, 'Ukjent rolle') if isinstance(role, str) else 'Ukjent rolle',
         })
-    return render(request, 'budget/area_proposal.html', context(member, change=change, participants=participants, error=error))
+    problem = areas.proposal_problem(change)
+    confirmed = member.pk in (change.owner_confirmation_id, change.admin_confirmation_id)
+    may_propose = member.pk == change.owner_id or member.role == 'admin'
+    open_url = None
+    if change.applied and change.area_id and areas.allowed_areas(member).filter(pk=change.area_id).exists():
+        from .area_requests import financial_url
+        open_url = financial_url('/app/oversikt/', change.area_id)
+    return render(request, 'budget/area_proposal.html', context(member, change=change, participants=participants,
+        error=error, problem=problem, confirmed=confirmed, may_propose=may_propose, open_url=open_url))

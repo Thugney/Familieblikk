@@ -101,7 +101,7 @@ test('initial healthy active device panel stays hidden throughout asynchronous s
   const htmlSkeleton=template.replace(/{%[\s\S]*?%}/g,'');
   assert.match(htmlSkeleton,/<section[^>]*hidden[^>]*data-push-config/);assert.match(htmlSkeleton,/<\/section>\s*<noscript>/);
 });
-test('calendar-restricted family settings allow own-device disable without activation, tests or notification reads',async()=>{
+test('restricted device settings allow own-device disable without activation, tests or notification reads',async()=>{
   for(const browserSubscription of [false,true]){
     const h=setup({calendarRestricted:true,pushPage:'familie',permission:'granted',browserSubscription,unread:999});
     await flush();
@@ -113,7 +113,7 @@ test('calendar-restricted family settings allow own-device disable without activ
     assert.deepEqual(h.requests,[]);
     assert.ok(!h.calls.includes('permission'));
     assert.equal(h.controls['notification-badge'].textContent,'');
-    assert.match(h.controls.status.textContent,browserSubscription?/Kalendertilgang er slått av/:/Ingen nettleserabonnement/);
+    assert.match(h.controls.status.textContent,browserSubscription?/Enhetsvarsler er begrenset/:/Ingen nettleserabonnement/);
     h.navigator.onLine=false;h.handlers.offline();assert.equal(h.controls.disable.disabled,true);
     h.navigator.onLine=true;await h.handlers.online();
     h.document.visibilityState='hidden';h.handlers.visibilitychange();
@@ -227,6 +227,18 @@ function swSetup(){
 test('serviceworker push handler displays a generic payload and retains its stable tag',async()=>{
   const h=swSetup();await h.dispatch('push',{data:{json:()=>({body:'En ny kalenderavtale er lagt til.',url:'/push/open/12345678-1234-1234-1234-123456789abc/',tag:'job-id',private_title:'PRIVATE'})}});
   assert.equal(h.shown[0][0],'Familieblikk');assert.equal(h.shown[0][1].tag,'job-id');assert.equal(h.shown[0][1].data.url,'https://blikk.example.test/push/open/12345678-1234-1234-1234-123456789abc/');assert.doesNotMatch(JSON.stringify(h.shown),/PRIVATE/);
+});
+test('sharing approvals, activated sharing and shopping each display their own generic push text',async()=>{
+  for(const body of ['Et forslag til budsjettdeling venter på din bekreftelse.','En bekreftet budsjettdeling er aktivert.','En felles handleliste er oppdatert.']){
+    const h=swSetup();
+    await h.dispatch('push',{data:{json:()=>({body,url:'/push/open/12345678-1234-1234-1234-123456789abc/',tag:'shared-job',amount:123456,private_name:'PRIVATE'})}});
+    assert.equal(h.shown[0][1].body,body);
+    assert.equal(h.shown[0][1].tag,'shared-job');
+    assert.doesNotMatch(JSON.stringify(h.shown),/PRIVATE|123456,/);
+  }
+  const h=swSetup();await h.dispatch('push',{data:{json:()=>({body:'Unrecognized sensitive payload'})}});
+  assert.equal(h.shown[0][1].body,'Ny aktivitet i Familieblikk.');
+  assert.equal(h.shown[0][1].tag,'familieblikk-notification');
 });
 test('service worker strips unexpected private text and rejects external click targets',async()=>{
   for(const payload of [null,{body:'PRIVATE TITLE',url:'https://evil.example.test/'},{url:'//evil.example.test/'},{url:'/utlogging/'}]){

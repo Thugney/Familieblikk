@@ -73,7 +73,7 @@
       <div class="header-actions">
         {% if page == 'kalender' and member|allows_module:'calendar' %}<button type="button" class="chip-btn cta-light header-quick-add" data-calendar-quick-create hidden>+ Ny familieavtale</button>{% elif request.financial_can_write %}<a class="chip-btn cta-light header-quick-add" href="{% url 'create' 'entry' %}?month={{ navigation_month }}&amp;return_to={{ page|default:'oversikt' }}">+ Ny post</a>{% elif not request.financial_area %}<a class="chip-btn cta-light header-quick-add" href="{% url 'financial_areas' %}">Velg budsjett for ny post</a>{% endif %}
         <form class="header-month-form" method="get">{% month_navigation_context as navigation_context %}{% for key,value in navigation_context.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}<label class="sr-only" for="month">Velg måned</label><input id="month" name="month" type="month" value="{{ navigation_month }}"><button class="chip-btn">Vis</button></form>
-        {% if member|allows_module:'calendar' %}{% unread_notifications member as unread %}<a class="icon-btn" id="notification-bell" href="{% url 'page' 'varsler' %}?month={{ navigation_month }}" aria-label="Varsler, {% if unread %}{{ unread }} uleste{% else %}ingen uleste{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 17V11a6 6 0 1112 0v6l1.5 2h-15zM10 21h4"/></svg>{% if unread %}<span class="notif-dot" aria-hidden="true"></span>{% endif %}</a>{% endif %}
+        {% unread_notifications member as unread %}<a class="icon-btn" id="notification-bell" href="{% url 'page' 'varsler' %}?month={{ navigation_month }}" aria-label="Varsler, {% if unread %}{{ unread }} uleste{% else %}ingen uleste{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 17V11a6 6 0 1112 0v6l1.5 2h-15zM10 21h4"/></svg>{% if unread %}<span class="notif-dot" aria-hidden="true"></span>{% endif %}</a>
       </div>
     </header>
 
@@ -84,7 +84,7 @@
 
     <div class="sheet">
       <div class="messages" aria-live="polite">{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}</div>
-      {% if member|allows_module:'calendar' or page == 'familie' %}<details class="push-disclosure"{% if page == 'varsler' %} open{% endif %}><summary>Kalendervarsler på denne enheten</summary>{% include 'budget/push_preferences.html' %}{% if member|allows_module:'calendar' %}<p><a href="{% url 'page' 'varsler' %}">Se varsler og enhetsinnstillinger</a></p>{% endif %}</details>{% endif %}
+      <details class="push-disclosure"{% if page == 'varsler' %} open{% endif %}><summary>Varsler på denne enheten</summary>{% include 'budget/push_preferences.html' %}<p><a href="{% url 'page' 'varsler' %}">Se varsler og enhetsinnstillinger</a></p></details>
 {% else %}
 <div class="auth-shell">
 {% endif %}

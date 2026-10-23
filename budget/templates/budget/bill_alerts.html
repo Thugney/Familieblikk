@@ -1,0 +1,4 @@
+<section class="panel" aria-labelledby="bill-alerts-title"><h2 id="bill-alerts-title">Regningsvarsler</h2>
+<p>Forfalte og kommende ubetalte regninger til og med valgt måned vises for budsjettene du har tilgang til.</p>
+{% for alert in bill_alerts %}<article class="notification-row"><div><h3>{{ alert.name }}</h3><p>{{ alert.overdue }} forfalte · {{ alert.pending }} ubetalte totalt</p><a href="{{ alert.url }}">Se regninger i {{ alert.name }}</a></div></article>{% empty %}<p>Ingen tilgjengelige budsjetter. <a href="{% url 'financial_areas' %}">Se Dine budsjetter</a>.</p>{% endfor %}
+</section>

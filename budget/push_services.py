@@ -32,10 +32,12 @@ from pywebpush import WebPushException, webpush
 
 from .models import CalendarNotification, Household, Membership, PushDelivery, PushKey, PushSubscription
 from . import access
+from .notification_services import TEXT, can_view_notification
 
 MAX_ATTEMPTS = 8
 MAX_AGE = timedelta(hours=24)
 GENERIC_TEXT = {'created': 'En ny kalenderavtale er lagt til.', 'yes': 'Et familiemedlem har godtatt en avtale.', 'no': 'Et familiemedlem har avslått en avtale.', 'test': 'Testvarsel fra Familieblikk.'}
+GENERIC_TEXT.update(TEXT)
 
 
 def _b64(data):
@@ -118,7 +120,7 @@ def valid_binding(subscription, secret=None):
     user = get_user_model().objects.filter(pk=subscription.user_id, is_active=True).first()
     if not user: return False
     member = Membership.objects.filter(user_id=user.pk, household_id=subscription.household_id).first()
-    if not member or not access.allows(member, 'calendar'): return False
+    if not member: return False
     session = Session.objects.filter(session_key=secret['session_key'], expire_date__gt=timezone.now()).first()
     if not session: return False
     data = session.get_decoded()
@@ -127,7 +129,7 @@ def valid_binding(subscription, secret=None):
 
 @transaction.atomic
 def subscribe(request, data):
-    member = access.require(access.lock_member(request.user), {'calendar'})
+    member = access.lock_member(request.user)
     Household.objects.select_for_update().get(pk=member.household_id)
     info = validate_subscription(data)
     if not request.session.session_key: raise PermissionDenied('Logg inn på nytt før du aktiverer varsler.')
@@ -180,7 +182,7 @@ def record_calendar_action(actor, member, event, action_key, kind, original, pay
 
 @transaction.atomic
 def queue_test(request, subscription_id):
-    member = access.require(access.lock_member(request.user), {'calendar'})
+    member = access.lock_member(request.user)
     sub = PushSubscription.objects.select_for_update().filter(pk=subscription_id, user=request.user, household=member.household, session_digest=digest(request.session.session_key or ''), active=True).first()
     if not sub or not valid_binding(sub): raise ValidationError('Aktiver varsler på denne enheten først.')
     if sub.last_test_at and sub.last_test_at > timezone.now() - timedelta(seconds=60): raise ValidationError('Vent ett minutt mellom testvarsler.')
@@ -251,7 +253,7 @@ def deliver_claim(delivery_id, token, sender=None):
     if notice and (notice.recipient_id != sub.user_id or notice.household_id != sub.household_id):
         # A delayed insert can refer to this endpoint's former identity.
         row.state, row.last_error = 'cancelled', 'binding_changed'
-    elif recipient_member and not access.allows(recipient_member, 'calendar'):
+    elif notice and not can_view_notification(recipient_member, notice):
         row.state, row.last_error = 'cancelled', 'access_revoked'
     elif row.created_at < now - MAX_AGE or row.attempts >= MAX_ATTEMPTS:
         row.state, row.last_error = 'failed', 'expired'

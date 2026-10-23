@@ -480,8 +480,9 @@ def save_plan(actor, payload):
     Household.objects.select_for_update().get(pk=member.household_id)
     locked_household_id = member.household_id
     member.refresh_from_db()
-    if member.role != 'admin' or member.household_id != locked_household_id:
-        raise PermissionDenied('Bare en administrator kan bekrefte familiens månedsplan.')
+    if member.household_id != locked_household_id:
+        raise PermissionDenied('Medlemskapet er endret. Last inn budsjettet på nytt.')
+    current_area(member, write=True)
     if payload['confirm'] is not True:
         raise ValidationError('Bekreft månedsplanen eksplisitt før lagring.')
     key = uuid_value(payload['key'])

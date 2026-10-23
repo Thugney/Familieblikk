@@ -338,11 +338,11 @@ class MemberAccessTests(TestCase):
     def test_pages_blocked_but_home_account_password_and_logout_remain(self):
         self.revoke(*access.MODULES)
         for page in access.PAGES:
-            with self.subTest(page=page): self.assertEqual(self.client.get(f'/app/{page}/').status_code, 403)
+            with self.subTest(page=page): self.assertEqual(self.client.get(f'/app/{page}/').status_code, 200 if page == 'varsler' else 403)
         home = self.client.get('/app/oversikt/')
         self.assertContains(home, 'Din startside')
         self.assertNotContains(home, 'Igjen å bruke')
-        self.assertNotContains(home, 'notification-bell')
+        self.assertContains(home, 'notification-bell')
         for page in ['familie', 'mer']:
             response = self.client.get(f'/app/{page}/')
             self.assertEqual(response.status_code, 200)
@@ -456,9 +456,10 @@ class MemberAccessTests(TestCase):
         result = cal.mutate(self.user, 'create', key, payload=self.payload())
         event = CalendarEvent.objects.get(pk=result['id'])
         self.revoke('calendar')
-        for url in ['/app/kalender/', '/app/kalender/data/?start='+self.day.isoformat()+'&end='+self.day.isoformat(),
-                    '/push/summary/', '/push/config/', '/app/varsler/']:
+        for url in ['/app/kalender/', '/app/kalender/data/?start='+self.day.isoformat()+'&end='+self.day.isoformat()]:
             with self.subTest(url=url): self.assertEqual(self.client.get(url).status_code, 403)
+        for url in ['/push/summary/', '/push/config/', '/app/varsler/']:
+            with self.subTest(url=url): self.assertEqual(self.client.get(url).status_code, 200)
         with self.assertRaises(PermissionDenied): cal.mutate(self.user, 'create', key, payload=self.payload())
         with self.assertRaises(PermissionDenied): cal.listing(self.user, self.month, self.day)
         with self.assertRaises(ValidationError):
@@ -476,7 +477,7 @@ class MemberAccessTests(TestCase):
         self.revoke('bills')
         response = self.client.get('/app/varsler/')
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Kalendervarsler')
+        self.assertContains(response, 'Dine varsler')
         self.assertContains(response, notice.detail)
         self.assertContains(response, f'/push/open/{notice.pk}/')
         self.assertNotContains(response, 'Regningsvarsler')
@@ -523,7 +524,7 @@ class MemberAccessTests(TestCase):
         self.assertEqual(self.client.get(f'/push/open/{notice.pk}/').status_code, 403)
         self.assertEqual(self.client.post(f'/push/read/{notice.pk}/').status_code, 403)
         request = SimpleNamespace(user=self.user, session=session)
-        with self.assertRaises(PermissionDenied): push.queue_test(request, sub.pk)
+        self.assertIsNotNone(push.queue_test(request, sub.pk).pk)
         response = self.client.post('/push/device/', json.dumps({'action': 'disable', 'endpoint': 'https://fcm.googleapis.com/fcm/send/synthetic-only'}), content_type='application/json')
         self.assertEqual(response.status_code, 200)
 
@@ -791,6 +792,10 @@ class MemberAccessTests(TestCase):
 class AccessLockTests(TransactionTestCase):
     def setUp(self): family_fixture(self)
 
+    def calendar_notice(self):
+        return CalendarNotification.objects.create(household=self.house, recipient=self.user,
+            original_date=timezone.localdate(), kind='created', action_key=uuid.uuid4(), detail='Synthetic calendar activity')
+
     def run_waiting_after_revocation(self, module, action):
         """Observe the actual HH lock query before releasing staged revocation."""
         waiting, finished = threading.Event(), threading.Event()
@@ -828,7 +833,7 @@ class AccessLockTests(TransactionTestCase):
         sub = PushSubscription.objects.create(household=self.house, user=self.user,
             endpoint_digest='synthetic-waiting-delivery', session_digest=push.digest(session.session_key), active=True,
             secret_ciphertext=push.encrypt({'session_key': session.session_key, 'subscription': {}}))
-        job = PushDelivery.objects.create(subscription=sub)
+        job = PushDelivery.objects.create(subscription=sub, notification=self.calendar_notice())
         claim = push.claim_delivery()
         self.assertEqual(claim[0], job.pk)
         calls = []
@@ -914,7 +919,7 @@ class AccessLockTests(TransactionTestCase):
             session_digest=push.digest(session.session_key), active=True,
             secret_ciphertext=push.encrypt({'session_key': session.session_key, 'subscription': {}}))
         push.ensure_key()
-        job = PushDelivery.objects.create(subscription=sub)
+        job = PushDelivery.objects.create(subscription=sub, notification=self.calendar_notice())
         claim = push.claim_delivery()
         sending, release, revoking, revoked = (threading.Event() for _ in range(4))
         outcomes, errors = [], []
@@ -947,5 +952,5 @@ class AccessLockTests(TransactionTestCase):
         self.assertEqual(errors, [])
         self.assertEqual(outcomes, ['sent'])
         self.assertTrue(revoked.is_set())
-        PushDelivery.objects.create(subscription=sub)
+        PushDelivery.objects.create(subscription=sub, notification=self.calendar_notice())
         self.assertEqual(push.deliver_claim(*push.claim_delivery(), sender=lambda *_: self.fail('Revoked send')), 'cancelled')

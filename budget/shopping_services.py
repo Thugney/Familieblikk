@@ -63,6 +63,9 @@ def save_item(actor, list_id, expected_version, key, item_id=None, **fields):
     listing.save(update_fields=['version', 'updated_at'])
     Audit.objects.create(household=member.household, actor=actor, object_id=row.pk, operation='handlelistevare', changes={'before': before, 'after': canonical(fields)})
     remember(member, actor, key, 'shopping_item', payload, row)
+    from .notification_services import record_shopping_change
+    if any(before[name] != str(value) for name, value in fields.items()):
+        record_shopping_change(member, listing, key)
     return row
 
 

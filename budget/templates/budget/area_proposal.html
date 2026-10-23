@@ -1,1 +1,26 @@
-{% extends 'budget/base.html' %}{% block content %}<section class="work-surface form-surface"><h1>Bekreft budsjett og deling</h1><p>Kontroller hvem som skal kunne se eller administrere økonomien. Eieren og én annen person i familien må bekrefte samme forslag.</p>{% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}<ul>{% for person in participants %}<li>{{ person.name }} – {{ person.role }}</li>{% endfor %}</ul>{% if change.kind == 'legacy' %}<p>Dette gjelder alle eksisterende økonomiposter i denne familien. Dataene flyttes ikke til en annen familie.</p>{% endif %}<p>Eier: {% if change.owner_confirmation_id %}bekreftet{% else %}venter{% endif %}. Annen bekreftelse: {% if change.admin_confirmation_id %}bekreftet{% else %}venter{% endif %}.</p>{% if change.applied %}<p class="notice">Forslaget er aktivert.</p>{% else %}<form method="post">{% csrf_token %}<input type="hidden" name="digest" value="{{ change.digest }}"><button class="primary">Jeg bekrefter dette forslaget</button></form>{% endif %}<p><a href="{% url 'financial_areas' %}">Til dine budsjetter</a></p></section>{% endblock %}
+{% extends 'budget/base.html' %}
+{% block content %}
+<section class="work-surface form-surface">
+  <h1>Bekreft budsjett og deling</h1>
+  <p>{% if change.kind == 'legacy' %}Oppsett av eksisterende budsjett{% else %}{{ change.area.name }}{% endif %}</p>
+  <p>Kontroller hvem som skal kunne se eller administrere økonomien. Eieren og én annen person må bekrefte det samme forslaget. Den andre må være en navngitt deltaker eller familieadministrator.</p>
+  {% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+  <ul>{% for person in participants %}<li>{{ person.name }} – {{ person.role }}</li>{% endfor %}</ul>
+  {% if change.kind == 'legacy' %}<p>Dette gjelder alle eksisterende økonomiposter i denne familien. Dataene flyttes ikke til en annen familie.</p>{% endif %}
+  <p>Eier ({{ change.owner.user.get_full_name|default:change.owner.user.email }}): {% if change.owner_confirmation_id %}bekreftet{% else %}venter{% endif %}.</p>
+  <p>Annen bekreftelse: {% if change.admin_confirmation_id %}bekreftet av {{ change.admin_confirmation.user.get_full_name|default:change.admin_confirmation.user.email }}{% else %}venter{% endif %}.</p>
+  {% if change.applied %}
+    <p class="notice" role="status">Forslaget er aktivert.</p>
+    {% if open_url %}<a class="button primary" href="{{ open_url }}">Åpne budsjettet</a>{% endif %}
+  {% elif problem %}
+    <p class="notice error" role="alert">{{ problem }}</p>
+    {% if may_propose and change.kind == 'sharing' and change.area_id %}<a class="button primary" href="{% url 'financial_sharing' change.area_id %}">Gjennomgå nytt forslag</a>{% else %}<p>Familieadministratoren kan gjennomgå et nytt oppsett under Dine budsjetter.</p>{% endif %}
+  {% elif confirmed %}
+    <p class="notice" role="status">Du har bekreftet. Venter på {% if change.owner_confirmation_id %}den andre personen{% else %}budsjetteieren{% endif %}. Be vedkommende åpne dette samme forslaget under Dine budsjetter.</p>
+    <a class="button" href="{% url 'financial_proposal' change.pk %}">Oppdater status</a>
+  {% else %}
+    <form method="post">{% csrf_token %}<input type="hidden" name="digest" value="{{ change.digest }}"><button type="submit" class="primary">Jeg bekrefter dette forslaget</button></form>
+  {% endif %}
+  <p><a href="{% url 'financial_areas' %}">Til dine budsjetter</a></p>
+</section>
+{% endblock %}

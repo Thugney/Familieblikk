@@ -29,9 +29,9 @@ self.addEventListener('push', event => event.waitUntil((async () => {
   let data;
   try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
   if (!data || typeof data !== 'object') data = {};
-  const bodies = new Set(['En ny kalenderavtale er lagt til.', 'Et familiemedlem har godtatt en avtale.', 'Et familiemedlem har avslått en avtale.', 'Testvarsel fra Familieblikk.']);
+  const bodies = new Set(['En ny kalenderavtale er lagt til.', 'Et familiemedlem har godtatt en avtale.', 'Et familiemedlem har avslått en avtale.', 'Testvarsel fra Familieblikk.', 'Et forslag til budsjettdeling venter på din bekreftelse.', 'En bekreftet budsjettdeling er aktivert.', 'En felles handleliste er oppdatert.']);
   const url = safePushUrl(data.url);
-  await self.registration.showNotification('Familieblikk', {body:bodies.has(data.body) ? data.body : 'Ny aktivitet i familiekalenderen.', icon:'/static/budget/icon.svg', badge:'/static/budget/icon.svg', tag:typeof data.tag === 'string' ? data.tag.slice(0, 80) : 'familieblikk-calendar', data:{url}});
+  await self.registration.showNotification('Familieblikk', {body:bodies.has(data.body) ? data.body : 'Ny aktivitet i Familieblikk.', icon:'/static/budget/icon.svg', badge:'/static/budget/icon.svg', tag:typeof data.tag === 'string' ? data.tag.slice(0, 80) : 'familieblikk-notification', data:{url}});
 })()));
 
 function safePushUrl(value) {

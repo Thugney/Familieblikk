@@ -161,8 +161,9 @@ def page_view(request, page='oversikt'):
         if page == 'familie':
             ctx.update(members=Membership.objects.filter(household=member.household).select_related('user'), invitations=Invitation.objects.filter(household=member.household, accepted=False, revoked=False), invite_form=forms.FinancialPrivacyForm(member=member), email_invitations_enabled=settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend' and bool(settings.EMAIL_HOST))
         if page == 'varsler':
-            from .models import CalendarNotification
-            ctx['calendar_notifications'] = CalendarNotification.objects.filter(household=member.household, recipient=request.user).order_by('-created_at')[:100]
+            from .notification_services import visible_notifications, bill_alerts
+            ctx['calendar_notifications'] = visible_notifications(member, limit=100)
+            ctx['bill_alerts'] = bill_alerts(member, ctx['month'])
         if page == 'tilpass':
             ctx['preference_form'] = forms.PreferenceForm(initial={**request.financial_area.modules, 'version': request.financial_area.access_version})
         return render(request, 'budget/page.html', ctx)
@@ -380,8 +381,8 @@ def page_view(request, page='oversikt'):
     if page == 'familie':
         ctx.update(members=Membership.objects.filter(household=house).select_related('user'), invitations=Invitation.objects.filter(household=house, accepted=False, revoked=False), invite_form=forms.EmailForm(), email_invitations_enabled=settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend' and bool(settings.EMAIL_HOST))
     if page == 'varsler':
-        from .models import CalendarNotification
-        ctx['calendar_notifications'] = CalendarNotification.objects.filter(household=house, recipient=request.user).order_by('-created_at')[:100]
+        from .notification_services import visible_notifications
+        ctx['calendar_notifications'] = visible_notifications(member, limit=100)
     if page == 'arsoversikt':
         # Project existing anchors without materializing future plans or bills.
         year_entries = list(Entry.objects.filter(active=True, household=house, effective_date__year=month.year).select_related('original'))

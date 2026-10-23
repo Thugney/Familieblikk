@@ -33,9 +33,10 @@ def can_matrix(member):
     return can_page(member, 'arsoversikt') and complete_finance(member)
 @register.simple_tag
 def unread_notifications(member):
-    if not allows_module(member, 'calendar'): return 0
-    from budget.models import CalendarNotification
-    return CalendarNotification.objects.filter(recipient_id=member.user_id, household_id=member.household_id, read_at__isnull=True).count()
+    if not getattr(member, 'user_id', None) or not getattr(member, 'household_id', None):
+        return 0
+    from budget.notification_services import visible_notifications
+    return len(visible_notifications(member, unread=True))
 @register.simple_tag
 def overdue_bills(member, month):
     from budget.financial_areas import scope_state

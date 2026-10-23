@@ -22,7 +22,7 @@ PAGES = {'poster': {'budget'}, 'budsjett': {'budget'}, 'kategorier': {'budget'},
          'dokumenter': {'documents'}, 'handlelister': {'shopping'},
          'regninger': {'bills'}, 'sparing': {'savings'}, 'gjeld': {'debt'},
          'arsutgifter': {'fund'}, 'utland': {'remittance'}, 'kalender': {'calendar'},
-         'varsler': {'calendar'}, 'arsoversikt': {'annual', 'budget'}}
+         'varsler': set(), 'arsoversikt': {'annual', 'budget'}}
 PAGE_PREFERENCES = {'gjeld': ('debt', False), 'arsutgifter': ('fund', False),
                     'utland': ('remittance', False), 'arsoversikt': ('annual_navigation', True)}
 

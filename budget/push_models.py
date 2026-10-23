@@ -31,6 +31,9 @@ class CalendarNotification(models.Model):
     household = models.ForeignKey('Household', on_delete=models.CASCADE)
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     event = models.ForeignKey('CalendarEvent', null=True, on_delete=models.SET_NULL)
+    # Keep the established table/model name so existing calendar history survives.
+    proposal = models.ForeignKey('AreaAccessChange', null=True, blank=True, on_delete=models.SET_NULL)
+    shopping_list = models.ForeignKey('ShoppingList', null=True, blank=True, on_delete=models.SET_NULL)
     original_date = models.DateField()
     kind = models.CharField(max_length=16)
     # Details stay behind normal authenticated tenant access; never in push payloads.

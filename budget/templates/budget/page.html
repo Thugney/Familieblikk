@@ -34,7 +34,7 @@
     {% include 'budget/category_list.html' %}
   {% elif page == 'regninger' or page == 'varsler' %}
     {% if page == 'varsler' %}{% include 'budget/notifications.html' %}{% endif %}
-    {% if member|allows_module:'bills' %}{% if page == 'varsler' %}<h2>Regningsvarsler</h2>{% endif %}{% if restricted_bills_selection %}<div class="access-banner readonly">Utvalg: bare regninger fra tillatte moduler vises. Skjulte opplysninger og summer er utelatt.</div>{% endif %}<p class="sheet-note">Betaling registrerer oppgjøret i budsjettet. Appen betaler ingen regning.</p>{% include 'budget/bill_list.html' %}{% endif %}
+    {% if member|allows_module:'bills' %}{% if page == 'varsler' %}{% include 'budget/bill_alerts.html' %}{% else %}{% if restricted_bills_selection %}<div class="access-banner readonly">Utvalg: bare regninger fra tillatte moduler vises. Skjulte opplysninger og summer er utelatt.</div>{% endif %}<p class="sheet-note">Betaling registrerer oppgjøret i budsjettet. Appen betaler ingen regning.</p>{% include 'budget/bill_list.html' %}{% endif %}{% endif %}
   {% elif page == 'sparing' %}
     <div class="sparing-cards">
       {% for item in assets %}

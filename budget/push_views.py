@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
@@ -14,9 +14,10 @@ from django.views.decorators.cache import never_cache
 from . import push_services as push
 from .models import CalendarNotification, Membership, PushDelivery, PushSubscription
 from . import access
+from .notification_services import can_view_notification, visible_notifications, notification_destination
 
 
-def member_for(request, calendar=True):
+def member_for(request, calendar=False):
     try:
         member = Membership.objects.get(user=request.user)
         return access.require(member, {'calendar'}) if calendar else member
@@ -47,7 +48,7 @@ def device(request):
     try:
         data = request_data(request)
         action = data.get('action')
-        member = member_for(request, calendar=action != 'disable')
+        member = member_for(request)
         if action == 'subscribe' and set(data) == {'action', 'subscription'}:
             sub = push.subscribe(request, data['subscription'])
             return JsonResponse({'id': str(sub.pk), 'state': sub.state})
@@ -97,8 +98,7 @@ def receipt(request):
 @require_GET
 def summary(request):
     member = member_for(request)
-    return JsonResponse({'unread': CalendarNotification.objects.filter(
-        recipient=request.user, household=member.household, read_at__isnull=True).count()})
+    return JsonResponse({'unread': len(visible_notifications(member, unread=True))})
 
 
 @login_required
@@ -108,6 +108,10 @@ def mark_read(request, notification_id):
     month = selected_month(request)
     member = member_for(request)
     notice = get_object_or_404(CalendarNotification, pk=notification_id, recipient=request.user, household=member.household)
+    if notice.kind in ('created', 'yes', 'no'):
+        access.require(member, {'calendar'})
+    if not can_view_notification(member, notice):
+        raise Http404('Varselet er ikke lenger tilgjengelig.')
     if not notice.read_at:
         notice.read_at = timezone.now(); notice.save(update_fields=['read_at'])
     return redirect(module_url('varsler', month)) if 'month' in request.GET else redirect('page', page='varsler')
@@ -118,6 +122,13 @@ def mark_read(request, notification_id):
 def open_notification(request, notification_id):
     member = member_for(request)
     notice = get_object_or_404(CalendarNotification, pk=notification_id, recipient=request.user, household=member.household)
+    if notice.kind in ('created', 'yes', 'no'):
+        access.require(member, {'calendar'})
+    if not can_view_notification(member, notice):
+        raise Http404('Varselet er ikke lenger tilgjengelig.')
+    destination = notification_destination(member, notice)
+    if destination:
+        return redirect(destination)
     # Normal calendar listing still applies its membership/tenant checks.
     day = notice.original_date
     resolved = False

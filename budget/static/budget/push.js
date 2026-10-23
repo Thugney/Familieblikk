@@ -92,7 +92,7 @@
   }
   async function refresh() {
     const generation = deviceGeneration;
-    if (!supported) { controls(false); enable.hidden = true; message(ios && !installed ? 'På iPhone må du først legge Familieblikk til på Hjem-skjerm og åpne appen derfra.' : 'Denne nettleseren støtter ikke enhetsvarsler her. Bruk kalenderoversikten nedenfor. Varsler krever HTTPS eller localhost.'); return; }
+    if (!supported) { controls(false); enable.hidden = true; message(ios && !installed ? 'På iPhone må du først legge Familieblikk til på Hjem-skjerm og åpne appen derfra.' : 'Denne nettleseren støtter ikke enhetsvarsler her. Bruk varslingsoversikten i appen. Varsler krever HTTPS eller localhost.'); return; }
     if (ios && !installed) { controls(false); enable.hidden = true; message('Legg først Familieblikk til på Hjem-skjerm via Del-menyen. Åpne appen derfra for å aktivere varsler.'); return; }
     if (!navigator.onLine) { controls(Boolean(deviceId)); message('Du er frakoblet. Status kontrolleres når du er på nett igjen.'); return; }
     if (Notification.permission === 'denied') { controls(false); enable.hidden = true; message('Varsler er avslått i nettleseren. Endre tillatelsen i nettleserens innstillinger hvis du vil aktivere dem.'); return; }
@@ -104,7 +104,7 @@
       if (restricted) {
         registration = candidateRegistration; subscription = candidateSubscription;
         deviceId = null; controls(false);
-        message(candidateSubscription ? 'Kalendertilgang er slått av. Du kan avregistrere denne enheten.' : 'Ingen nettleserabonnement på denne enheten.');
+        message(candidateSubscription ? 'Enhetsvarsler er begrenset. Du kan avregistrere denne enheten.' : 'Ingen nettleserabonnement på denne enheten.');
         return;
       }
       if (!candidateSubscription) { registration = candidateRegistration; subscription = null; deviceId = null; bindingState = 'disabled'; controls(false); message('Varsler er ikke aktivert på denne enheten.'); return; }
@@ -150,7 +150,7 @@
       clearTimeout(receiptTimer); receiptGeneration++; lastDelivery = null; testStatus.hidden = true;
       deviceId = null;
       try { await bounded(subscription.unsubscribe()); } catch { /* Server has stopped delivery. */ }
-      subscription = null; message('Deaktivert på denne enheten. Kalenderoversikten beholdes.');
+      subscription = null; message('Deaktivert på denne enheten. Varslene i appen beholdes.');
     } catch (error) { message(error.message); }
     finally { busy = false; controls(Boolean(deviceId)); }
   });
