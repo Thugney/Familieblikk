@@ -10,30 +10,24 @@
   </div>
   <div class="c bento-third">
     <div class="bento-income-row"><div><p class="l">Inntekt {{ month|date:'F' }}</p><strong>{{ totals.income|nok }} <span class="s act">Faktisk</span></strong></div><div><p class="l">Forventet (ikke i fri bruk)</p><strong>{{ totals.expected|nok }} <span class="s exp">Forventet</span></strong></div></div>
-    <div class="bento-income-row"><div><p class="l">Planlagt sparing denne mnd</p><strong>{{ totals.planned_savings|nok }}</strong></div><a class="btn-sec" href="{% url 'page' 'sparing' %}?month={{ month|date:'Y-m' }}">Sparing →</a></div>
+    <div class="bento-income-row"><div><p class="l">Planlagt sparing denne mnd</p><strong>{{ totals.planned_savings|nok }} (reservert én gang)</strong></div><a class="btn-sec" href="{% url 'page' 'sparing' %}?month={{ month|date:'Y-m' }}">Sparing →</a></div>
   </div>
 </div>
 
 <div class="sheet-split">
   <section>
     <div class="attention-head">
-      <div><p class="section-eyebrow">Trenger oppmerksomhet &amp; poster</p><h2>Kommende og forfalte regninger</h2></div>
+      <div><p class="section-eyebrow">Trenger oppmerksomhet &amp; poster</p></div>
       <div class="pills" role="group" aria-label="Filtrer oversikten"><a class="pill{% if overview_filter == 'alle' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;overview=alle">Alle</a><a class="pill{% if overview_filter == 'obs' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;overview=obs">Obs</a><a class="pill{% if overview_filter == 'faste' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;overview=faste">Faste</a><a class="pill{% if overview_filter == 'siste' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;overview=siste">Siste</a></div>
     </div>
-    {% if overview_bills %}{% include 'budget/bill_list.html' with bills=overview_bills %}{% else %}<p class="sheet-note">Ingen regninger i dette utvalget.</p>{% endif %}
-    <a class="btn-sec" href="{% url 'page' 'regninger' %}?month={{ month|date:'Y-m' }}">Se alle regninger</a>
-    <p class="sheet-note">Registrert betaling føres kun i Familieblikk. Appen betaler ingen regning.</p>
-    {% if overview_entries %}<div class="attention-posts"><div class="attention-head"><span class="section-eyebrow">Siste poster</span><a href="{% url 'page' 'poster' %}?month={{ month|date:'Y-m' }}">Se alle poster</a></div>{% include 'budget/entry_list.html' with entries=overview_entries page='oversikt' %}</div>{% endif %}
+    <div class="c overview-items">
+      {% if overview_bills %}{% include 'budget/bill_list.html' with bills=overview_bills %}{% endif %}
+      {% if overview_entries %}{% include 'budget/entry_list.html' with entries=overview_entries page='oversikt' %}{% endif %}
+      {% if not overview_bills and not overview_entries %}<p class="sheet-note">Ingen poster eller regninger i dette utvalget.</p>{% endif %}
+    </div>
   </section>
-  {% if request.financial_area.modules.savings_dashboard != False %}
   <section>
-    <p class="section-eyebrow">Planer for fremtiden</p>
-    <h2>Sparemål</h2>
-    {% for item in assets|savings_assets %}<div class="row"><div><strong>{{ item.row.name }}</strong><div class="bar"><i style="width:{{ item.percent }}%"></i></div></div><strong>{{ item.balance|nok }} / {{ item.row.target_ore|nok }}</strong></div>{% empty %}<p>Ingen sparemål ennå. {% if request.financial_can_write %}Du kan opprette det første målet under Sparing.{% else %}Budsjetteieren kan opprette sparemål.{% endif %}</p>{% endfor %}
-    <a class="btn-sec" href="{% url 'page' 'sparing' %}">Se sparing</a>
+    <p class="section-eyebrow">Analyse &amp; planlegging</p>
+    {% include 'budget/spending_workspace.html' %}
   </section>
-  {% endif %}
 </div>
-
-<div class="c overview-spending"><div class="ui-section-intro"><p class="section-eyebrow">Forstå forbruket. Planlegg fremover.</p><h2>{{ request.financial_area.name }}</h2></div>{% include 'budget/spending_workspace.html' %}</div>
-<div class="status-legend" aria-label="Forklaring av statuser"><strong>Statuser</strong><span class="s act">Faktisk</span><span class="s exp">Forventet</span><span class="s res">Reservert</span><span class="s ovd">Forfalt</span><span class="s unk">Ukjent</span></div>

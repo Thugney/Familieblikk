@@ -88,7 +88,7 @@ def debt_navigation_query(context):
 @register.simple_tag(takes_context=True)
 def module_navigation(context, member):
     modules = member.household.modules
-    links = [('regninger', 'Regninger', None), ('gjeld', 'Gjeld & strategi', 'debt'), ('arsutgifter', 'Årsutgifter (Fond)', 'fund'), ('utland', 'Sendt utenlands', 'remittance'), ('arsoversikt', 'Årsoversikt (Matrise)', 'annual_navigation'), ('familie', 'Familie & innstillinger', None), ('tilpass', 'Tilpass appen', None), ('varsler', 'Varsler & Push', None), ('import', 'Mer / Kildeimport', None)]
+    links = [('regninger', 'Regninger & historikk', None), ('gjeld', 'Gjeld & strategi', 'debt'), ('arsutgifter', 'Årsutgifter (Fond)', 'fund'), ('utland', 'Sendt utenlands', 'remittance'), ('arsoversikt', 'Årsoversikt (Matrise)', 'annual_navigation'), ('familie', 'Familie & tilgang', None), ('tilpass', 'Tilpass appen', None), ('varsler', 'Varsler & Web Push', None), ('import', 'Mer / Kildeimport', None)]
     links = [link for link in links if link[0] != 'import' or can_access_private_import(context)]
     from budget.access import visible_page, complete_finance
     return [(key, 'Årsoversikt' if key == 'arsoversikt' and not complete_finance(member) else label)

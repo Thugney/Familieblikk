@@ -150,10 +150,10 @@ class BudgetUsabilityTests(TestCase):
         for path in ['/passord/', '/app/oversikt/', '/registrer/medlem/', f'/endre/category/{self.category.pk}/']:
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200)
-            self.assertTemplateUsed(response, 'budget/brand.html')
             self.assertContains(response, 'width="26" height="26" alt="">Familieblikk')
+        self.assertTemplateUsed(self.client.get('/passord/'), 'budget/brand.html')
         response = self.get()
-        self.assertContains(response, 'class="mobile-brand"')
+        self.assertContains(response, 'class="mobile-brand-mark"')
 
     def test_refund_text_search_matches_original_category_only_for_refunds(self):
         original = self.entry(description='Kjøp')

@@ -22,8 +22,8 @@ from . import access, forms, identity, importing, services
 from .models import Asset, BillOccurrence, BillTemplate, Category, Entry, ImportBatch, ImportRecord, Invitation, Membership, MonthPlan
 
 
-NAV = [('oversikt', 'Oversikt'), ('poster', 'Poster'), ('budsjett', 'Budsjett'), ('sparing', 'Sparing'), ('handlelister', 'Handlelister'), ('kalender', 'Kalender'), ('mer', 'Mer')]
-TITLES = dict(NAV + [('dokumenter', 'Skann kvittering'), ('handlelister', 'Handlelister'), ('kategorier', 'Kategorier og rammer'), ('regninger', 'Regninger'), ('gjeld', 'Gjeld'), ('arsutgifter', 'Årsutgifter'), ('utland', 'Sendt utenlands'), ('arsoversikt', 'Årsoversikt'), ('familie', 'Familie og innstillinger'), ('tilpass', 'Tilpass appen'), ('import', 'Familiens kildeimport'), ('varsler', 'Varsler')])
+NAV = [('oversikt', 'Oversikt'), ('poster', 'Poster'), ('budsjett', 'Budsjett & Plan'), ('sparing', 'Sparing'), ('handlelister', 'Handlelister'), ('kalender', 'Kalender'), ('mer', 'Mer · Moduler')]
+TITLES = dict(NAV + [('dokumenter', 'Skann kvittering'), ('handlelister', 'Handlelister'), ('kategorier', 'Kategorier og rammer'), ('regninger', 'Regninger & historikk'), ('gjeld', 'Gjeld & strategi'), ('arsutgifter', 'Årsutgifter (Fond)'), ('utland', 'Sendt utenlands'), ('arsoversikt', 'Årsoversikt'), ('familie', 'Familie, budsjetter & tilgang'), ('tilpass', 'Tilpass appen'), ('import', 'Familiens kildeimport'), ('varsler', 'Varsler & Web Push')])
 
 
 def source_money(value):
@@ -205,6 +205,7 @@ def page_view(request, page='oversikt'):
     filter_form, page_obj = None, None
     entry_query = ''
     entry_scope_has_rows = False
+    poster_status = 'alle'
     history_kinds = {'sparing': ('deposit', 'withdrawal'), 'gjeld': ('debt',), 'arsutgifter': ('fund',)}
     module_history = not access.allows(member, 'budget') and page in (*history_kinds, 'regninger')
     if page in ('poster', 'utland') or module_history:
@@ -213,6 +214,10 @@ def page_view(request, page='oversikt'):
             entries = entries.filter(Q(kind__in=history_kinds[page]) | Q(kind='refund', original__kind__in=history_kinds[page]))
         if page == 'regninger':
             entries = entries.filter(Q(occurrence__isnull=False) | Q(kind='refund', original__occurrence__isnull=False))
+        if page == 'poster':
+            poster_status = request.GET.get('poster_status', 'alle')
+            if poster_status not in ('alle', 'obs', 'faste', 'siste'):
+                poster_status = 'alle'
         entry_scope_has_rows = entries.exists()
         filter_form = forms.EntryFilterForm(request.GET, household=house, month=month, remittances_only=page == 'utland')
         filter_form.fields['category'].queryset = access.category_choices(member, filter_form.fields['category'].queryset)
@@ -236,11 +241,18 @@ def page_view(request, page='oversikt'):
             if filters['date_from']: entries = entries.filter(effective_date__gte=filters['date_from'])
             if filters['date_to']: entries = entries.filter(effective_date__lte=filters['date_to'])
             if filters.get('status'): entries = entries.filter(kind='income', received=filters['status'] == 'received')
+            if page == 'poster' and poster_status == 'faste':
+                entries = entries.filter(Q(occurrence__isnull=False) | Q(kind='refund', original__occurrence__isnull=False))
+            elif page == 'poster' and poster_status == 'siste':
+                entries = entries.filter(occurrence__isnull=True, kind__in=['expense', 'refund'])
+            elif page == 'poster' and poster_status == 'obs':
+                entries = entries.filter(Q(occurrence__due_date__lt=timezone.localdate()))
         else:
             entries = entries.none()
         page_obj = Paginator(entries, 10).get_page(request.GET.get('page'))
         entries = page_obj.object_list
-        entry_query = urlencode({**{key: request.GET[key] for key in filter_form.fields if request.GET.get(key)}, 'month': month.strftime('%Y-%m')})
+        poster_query = {'poster_status': poster_status} if page == 'poster' and poster_status != 'alle' else {}
+        entry_query = urlencode({**{key: request.GET[key] for key in filter_form.fields if request.GET.get(key)}, **poster_query, 'month': month.strftime('%Y-%m')})
     spent_by_category = dict(month_entries.filter(kind__in=['expense', 'remittance']).values('category_id').annotate(amount=Sum('amount_ore')).values_list('category_id', 'amount'))
     refunds_by_category = dict(month_entries.filter(kind='refund', original__kind__in=['expense', 'remittance']).values('original__category_id').annotate(amount=Sum('amount_ore')).values_list('original__category_id', 'amount'))
     plans_by_category = {plan.category_id: plan for plan in access.safe_rows(member, MonthPlan.objects.filter(household=house, month=month, category__isnull=False))}
@@ -344,7 +356,7 @@ def page_view(request, page='oversikt'):
         item['x'] = trend_x[idx]
         item['y'] = 56 - item['height'] * 48 // 100
         item['label'] = month_abbr[item['month'].month - 1]
-    ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'overview_filter': overview_filter, 'overview_bills': overview_bills, 'overview_entries': overview_entries, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'weekly_bars': weekly_bars, 'weekly_total': weekly_total, 'pace': pace, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
+    ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'overview_filter': overview_filter, 'overview_bills': overview_bills, 'overview_entries': overview_entries, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'weekly_bars': weekly_bars, 'weekly_total': weekly_total, 'pace': pace, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'poster_status': poster_status, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
     if page == 'oversikt':
         ctx['spending_embedded'] = True
         ctx['spending_boot'] = {'initial_tab': 'spending', 'month': month.strftime('%Y-%m'), 'can_save': getattr(request, 'financial_can_write', False), 'urls': {'spending': reverse('spending_data'), 'planning': reverse('planning_data'), 'preview': reverse('planning_preview'), 'save': reverse('planning_save')}}

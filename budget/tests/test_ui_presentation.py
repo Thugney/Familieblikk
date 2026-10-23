@@ -109,10 +109,8 @@ class OverviewPresentationTests(SimpleTestCase):
     def test_attention_is_bounded_and_analytics_precede_priorities(self):
         html = render_to_string('budget/overview_refresh.html', self.context())
         self.assertEqual(html.count('class="row bill-row"'), 3)
-        self.assertIn('Se alle regninger', html)
-        self.assertIn('/app/regninger/?month=2026-10', html)
+        self.assertIn('Analyse &amp; planlegging', html)
         self.assertNotIn('Regning 3', html)
-        self.assertIn('Ingen sparemål ennå.', html)
         self.assertNotIn('Ikke et sparemål', html)
         self.assertIn('class="bento"', html)
         self.assertLess(html.index('class="bento"'), html.index('sheet-split'))

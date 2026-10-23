@@ -94,8 +94,9 @@ def detail(request, list_id):
                       'receipt': trip.receipt if receipt_visible else None,
                       'items': trip.items.filter(household=member.household).values('name', 'quantity', 'purchased'),
                       'can_attach': visible and access.allows(member, 'documents') and not trip.receipt_id})
+    items = row.items.filter(removed=False, trip__isnull=True).order_by('created_at')
     return render(request, 'budget/shopping_detail.html', context(member, listing=row,
-        items=row.items.filter(removed=False, trip__isnull=True).order_by('created_at'),
+        items=items, purchased_count=items.filter(purchased=True).count(), items_total=items.count(),
         removed_items=row.items.filter(removed=True, trip__isnull=True).order_by('created_at'),
         form=form, trips=trips, recovered=recovering))
 

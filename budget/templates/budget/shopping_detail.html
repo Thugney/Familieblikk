@@ -6,8 +6,9 @@
   </div>
   <div class="section-heading">
     <div>
-      <p class="eyebrow">Felles handleliste</p>
+      <p class="eyebrow">Aktiv fellesliste · Alle i familien ser avkryssing i sanntid</p>
       <h1>{{ listing.name }}</h1>
+      <p class="shopping-intro">Del varer og kryss av i butikken. Påvirker ikke budsjettet før handleturen eksplisitt fullføres eller kvittering skannes.</p>
     </div>
     <div class="heading-actions">
       {% if request.financial_can_write %}
@@ -18,13 +19,13 @@
       {% endif %}
     </div>
   </div>
-  <p class="shopping-intro">Kjøptstatus deles med familien. Avkryssing bokfører ingenting før du fullfører handleturen.</p>
   <p id="shopping-updates" class="notice" role="status" hidden>Listen er endret. Utkastet ditt er beholdt. Lagre eller avbryt før du laster listen på nytt.</p>
 
   <div class="shopping-workspace-grid">
     <div class="shopping-items-panel">
       <div class="shopping-panel-head">
-        <h2>Varer på listen ({{ items|length }})</h2>
+        <h2>Varer på listen ({{ items_total }})</h2>
+        <span class="s act">{{ purchased_count }} av {{ items_total }} kjøpt</span>
       </div>
       {% for item in items %}
       <article class="row shopping-item-row {% if item.purchased %}is-purchased{% endif %}">

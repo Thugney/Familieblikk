@@ -760,6 +760,25 @@ h1, h2, h3, h4, p {
   color: var(--green-dark);
 }
 
+.fam-tilgang {
+  min-height: 44px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.fam-tilgang:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
 /* Hero Section (Shown on Oversikt) */
 .hero {
   padding: 12px 24px 20px;
@@ -978,6 +997,15 @@ h1, h2, h3, h4, p {
   border-color: var(--green-pri);
 }
 
+.entry-filters-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* Action Buttons inside White Sheet */
 .btn-pri {
   min-height: 44px;
@@ -1050,6 +1078,31 @@ h1, h2, h3, h4, p {
   font-size: 11px;
   font-weight: 800;
   flex-shrink: 0;
+  background: var(--mint-light);
+  color: var(--green-dark);
+}
+
+.entry-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.entry-body {
+  min-width: 0;
+}
+
+.entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.entry-amount {
+  text-align: right;
 }
 
 .bar {
@@ -1064,6 +1117,91 @@ h1, h2, h3, h4, p {
   display: block;
   height: 100%;
   border-radius: 99px;
+}
+
+.sparing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.sp-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.sp-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: #FFFFFF;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.sp-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-card-target {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.family-access-split {
+  margin-top: 8px;
+}
+
+.family-access-fields {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.family-module-checks {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 12px;
+}
+
+.family-module-checks label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.category-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-card-actions {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
 }
 
 /* Two-column desktop split inside sheet */

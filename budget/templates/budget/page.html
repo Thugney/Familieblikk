@@ -2,16 +2,24 @@
 {% block content %}{% debt_navigation_query as debt_query %}
 <div class="page-body">
   <div class="sheet-head">
+    {% if page == 'poster' %}
+    <div><p class="section-eyebrow">Transaksjoner, regninger &amp; historikk</p><h1>Alle poster · {{ request.financial_area.name }}</h1><p class="l">Viser {% if page_obj %}{{ page_obj.paginator.count }}{% else %}{{ entries|length }}{% endif %} poster i valgt utvalg · Eksport og CSV følger nøyaktig dette området</p></div>
+    <div class="heading-actions"><a class="btn-sec" href="{% url 'correction_export' 'entry' %}">Revisjonshistorikk &amp; CSV</a>{% if request.financial_can_write %}<a class="btn-pri" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to={{ page }}">+ Ny post</a>{% endif %}</div>
+    {% elif page == 'regninger' %}
+    <div><p class="section-eyebrow">Faste og variable regninger</p><h1>{{ title }}</h1></div>
+    <div class="heading-actions"><a class="btn-sec" href="{% url 'correction_export' 'bill' %}">Revisjonshistorikk &amp; CSV</a>{% if request.financial_can_write %}<a class="btn-pri" href="{% url 'create' 'bill' %}?month={{ month|date:'Y-m' }}&amp;return_to=regninger">Korriger regning</a>{% endif %}</div>
+    {% elif page == 'sparing' %}
+    <div><p class="section-eyebrow">Sparemål &amp; buffer · Reserveres én gang</p><h1>Sparemål · {{ request.financial_area.name }}</h1><p class="l">{% if totals.planned_savings %}Fast månedlig sparing ({{ totals.planned_savings|nok }}) er reservert i tilgjengelig beløp · {% endif %}Ekstra innskudd trekkes direkte</p></div>
+    <div class="heading-actions">{% if request.financial_can_write %}<a class="btn-pri" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to=sparing&amp;entry_kind=deposit">+ Ekstra innskudd</a><a class="btn-sec" href="{% url 'create' 'asset' %}?month={{ month|date:'Y-m' }}&amp;asset_kind=savings">Nytt sparemål</a>{% endif %}</div>
+    {% else %}
     <div><p class="section-eyebrow">{{ month|date:'F Y' }}</p><h1>{% if page == "oversikt" %}{{ request.financial_area.name }}{% else %}{{ title }}{% endif %}</h1></div>
     {% if request.financial_can_write %}
-      {% if page == 'oversikt' or page == 'poster' or page == 'utland' %}<div class="heading-actions"><a class="btn-pri" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to={{ page }}{% if page == 'utland' %}&amp;entry_kind=remittance{% endif %}">Ny post</a></div>
-      {% elif page == 'regninger' %}<div class="heading-actions"><a class="btn-pri" href="{% url 'create' 'bill' %}?month={{ month|date:'Y-m' }}&amp;return_to=regninger">Ny regning</a></div>
+      {% if page == 'oversikt' or page == 'utland' %}<div class="heading-actions"><a class="btn-pri" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to={{ page }}{% if page == 'utland' %}&amp;entry_kind=remittance{% endif %}">Ny post</a></div>
       {% elif page == 'sparing' or page == 'gjeld' or page == 'arsutgifter' %}<a class="btn-pri" href="{% url 'create' 'asset' %}?month={{ month|date:'Y-m' }}&amp;asset_kind={% if page == 'gjeld' %}debt{% elif page == 'arsutgifter' %}fund{% else %}savings{% endif %}{% if debt_query %}&amp;{{ debt_query }}{% endif %}">Nytt oppsett</a>
       {% endif %}
     {% endif %}
+    {% endif %}
   </div>
-
-  {% if page == 'poster' or page == 'regninger' %}<p><a class="btn-sec" href="{% if page == 'regninger' %}{% url 'correction_export' 'bill' %}{% else %}{% url 'correction_export' 'entry' %}{% endif %}">Utvalg, historikk og CSV</a></p>{% endif %}
 
   {% if page == 'oversikt' %}
     {% include 'budget/overview_refresh.html' %}
@@ -27,7 +35,24 @@
   {% elif page == 'regninger' or page == 'varsler' %}
     {% if page == 'varsler' %}{% include 'budget/notifications.html' %}{% endif %}
     {% if member|allows_module:'bills' %}{% if page == 'varsler' %}<h2>Regningsvarsler</h2>{% endif %}{% if restricted_bills_selection %}<div class="access-banner readonly">Utvalg: bare regninger fra tillatte moduler vises. Skjulte opplysninger og summer er utelatt.</div>{% endif %}<p class="sheet-note">Betaling registrerer oppgjøret i budsjettet. Appen betaler ingen regning.</p>{% include 'budget/bill_list.html' %}{% endif %}
-  {% elif page == 'sparing' or page == 'gjeld' or page == 'arsutgifter' %}
+  {% elif page == 'sparing' %}
+    <div class="sparing-cards">
+      {% for item in assets %}
+      <div class="c sp-card">
+        <div class="sp-card-icon">{% nav_icon 'sparing' %}</div>
+        <div class="sp-card-body">
+          <div class="sp-card-head"><b>{{ item.row.name }}</b><span class="s {% if item.percent >= 85 %}wait{% else %}res{% endif %}">{{ item.percent }}%</span></div>
+          <div class="l">Satt inn og reservert: <b>{{ item.balance|nok }}</b> · Mål <b>{{ item.row.target_ore|nok }}</b></div>
+          <div class="bar"><i style="width:{{ item.percent }}%;background:#13614A"></i></div>
+          <div class="l sp-card-target">Måldato: {% if item.target_overdue %}Passert{% elif item.remaining == 0 %}Nådd{% elif item.projected_date %}{{ item.projected_date|date:"F Y" }}{% else %}Kan ikke anslås{% endif %}</div>
+          <div class="heading-actions">
+            {% if request.financial_can_write %}<a class="btn-sec" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to=sparing&amp;asset={{ item.row.pk }}&amp;entry_kind=deposit">+ Ekstra innskudd</a><a class="btn-sec" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to=sparing&amp;asset={{ item.row.pk }}&amp;entry_kind=withdrawal">Registrer uttak</a>{% endif %}<a class="btn-sec" href="{% url 'edit' 'asset' item.row.pk %}?month={{ month|date:'Y-m' }}">Rediger</a>
+          </div>
+        </div>
+      </div>
+      {% empty %}<p class="sheet-note">Ingen sparemål ennå. Administrator kan legge til familiens egne opplysninger.</p>{% endfor %}
+    </div>
+  {% elif page == 'gjeld' or page == 'arsutgifter' %}
     {% if page == 'gjeld' %}<form method="get"><input type="hidden" name="month" value="{{ month|date:'Y-m' }}"><label for="strategy">Sammenlign strategi</label><select id="strategy" name="strategy"><option value="avalanche">Avalanche – høyeste rente først</option><option value="snowball" {% if strategy == 'snowball' %}selected{% endif %}>Snowball – laveste saldo først</option></select><label for="extra">Ekstra NOK per måned</label><input id="extra" name="extra" inputmode="decimal" value="{{ extra }}"><button>Beregn anslag</button></form>{% if projection %}<p class="sheet-note">Anslag fra dokumentert referansesaldo; månedlig rente, høyst 360 måneder. Reelle renter og gebyrer kan avvike.</p>{% if projection.error %}<p>{{ projection.error }}</p>{% else %}<p>Estimert ferdig {{ projection.completion|date:"F Y" }} ({{ projection.months }} måneder) · renter {{ projection.interest_ore|nok }} · anslått spart rente {{ projection.saved_interest|nok }}</p>{% endif %}{% endif %}{% endif %}
     {% if page == 'gjeld' and request.financial_can_write %}<details><summary>Lagre familiens gjeldsplan</summary><form method="post" action="{% url 'debt_plan' %}">{% csrf_token %}{{ debt_plan_form.as_p }}<button>Lagre månedsplan</button></form></details>{% endif %}{% if page == 'arsutgifter' %}<p class="sheet-note">Fond er beregnet øremerking, ikke automatisk bankoverføring. Betaling fra fondet føres separat fra vanlig forbruk.</p>{% endif %}
     {% for item in assets %}<article class="asset-row"><div class="sheet-head"><h3>{{ item.row.name }}</h3>{% if request.financial_can_write %}<a class="btn-sec" href="{% url 'edit' 'asset' item.row.pk %}?month={{ month|date:'Y-m' }}{% if debt_query %}&amp;{{ debt_query }}{% endif %}">Rediger</a>{% endif %}</div><p>{{ item.row.get_kind_display }}{% if item.row.archived %} · Arkivert; historikk bevart{% endif %}</p><div class="stat-strip"><div><span>{% if page == 'gjeld' %}Referansesaldo {{ item.row.opening_date }}{% else %}Beholdning{% endif %}</span><strong>{{ item.balance|nok }}</strong></div><div><span>Månedsplan</span><strong>{{ item.plan|nok }}</strong></div><div><span>Mål / årsbeløp</span><strong>{{ item.row.target_ore|nok }}</strong></div></div>{% if page == 'sparing' %}<progress aria-label="{{ item.row.name }}" max="100" value="{{ item.percent }}"></progress><p class="sheet-note">Satt inn denne måneden {{ item.deposits|nok }} · Tatt ut {{ item.withdrawals|nok }}</p><p class="sheet-note">{% if item.target_overdue %}Måldato passert. {% endif %}Forventet ferdig ved månedsplanen: {% if item.remaining == 0 %}Målet er nådd{% elif item.projected_date %}{{ item.projected_date|date:"F Y" }}{% else %}Kan ikke anslås uten sparefart{% endif %}.</p><p class="sheet-note">Gjenstående {{ item.remaining|nok }} · Nødvendig per måned {% if item.needed != None %}{{ item.needed|nok }}{% else %}Kan ikke anslås uten måldato{% endif %}</p>{% endif %}{% if item.composite_hidden %}<p class="sheet-note">Beholdningen krever også regningstilgang. Skjulte betalinger og summer er utelatt. Registrering, refusjon, endring og sletting av fondsbetalinger krever også regningstilgang.</p>{% endif %}<p>{% if restricted_selection %}Tillatte betalinger{% else %}Faktiske betalinger{% endif %} denne måneden {{ item.paid|nok }}</p>{% if page != 'arsutgifter' or member|allows_module:'bills' %}{% if request.financial_can_write %}<a class="btn-sec" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to={{ page }}{% if debt_query %}&amp;{{ debt_query }}{% endif %}&amp;asset={{ item.row.pk }}&amp;entry_kind={% if page == 'sparing' %}deposit{% elif page == 'gjeld' %}debt{% else %}fund{% endif %}">Registrer {% if page == 'sparing' %}innskudd{% else %}betaling{% endif %}</a>{% endif %}{% endif %}{% if page == 'sparing' %} {% if request.financial_can_write %}<a class="btn-sec" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to=sparing&amp;asset={{ item.row.pk }}&amp;entry_kind=withdrawal">Registrer uttak</a>{% endif %}{% endif %}{% if page == "arsutgifter" and member|allows_module:"bills" %}{% if request.financial_can_write %}<a class="btn-sec" href="{% url 'create' 'bill' %}?month={{ month|date:'Y-m' }}&amp;return_to=arsutgifter&amp;asset={{ item.row.pk }}&amp;accounting_class=fund&amp;once=1">Registrer forpliktelse / finansieringsgap</a>{% endif %}{% endif %}</article>{% empty %}<p class="sheet-note">Ingen oppsett ennå. Administrator kan legge til familiens egne opplysninger.</p>{% endfor %}

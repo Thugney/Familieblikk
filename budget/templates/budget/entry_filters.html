@@ -1,1 +1,29 @@
-<form class="entry-filters" method="get" aria-label="Filtrer poster"><input type="hidden" name="month" value="{{ month|date:'Y-m' }}">{{ filter_form.non_field_errors }}<div>{{ filter_form.q.label_tag }}{{ filter_form.q }}{{ filter_form.q.errors }}</div><div>{{ filter_form.kind.label_tag }}{{ filter_form.kind }}{{ filter_form.kind.errors }}</div><details class="advanced-filters" {% if filter_form.advanced_open %}open{% endif %}><summary>Flere filtre</summary><div class="advanced-fields">{% for field in filter_form %}{% if field.name != 'q' and field.name != 'kind' %}<div>{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endif %}{% endfor %}</div></details><div class="filter-actions"><button>Filtrer</button><a href="{% url 'page' page %}?month={{ month|date:'Y-m' }}">Nullstill filtre</a></div></form>
+{% load budget_tags %}
+<form class="entry-filters" method="get" aria-label="Filtrer poster">
+  <input type="hidden" name="month" value="{{ month|date:'Y-m' }}">
+  {{ filter_form.non_field_errors }}
+  <div class="entry-filters-bar">
+    <input type="search" name="q" class="inp" style="max-width:340px;margin-top:0;background:#fff" placeholder="Søk automatisk etter mottaker, kategori eller notat…" value="{{ filter_form.q.value|default:'' }}" aria-label="Søk i poster" maxlength="120">
+    {% if page == 'poster' %}
+    <div class="pills" role="group" aria-label="Filtrer poster">
+      <a class="pill{% if poster_status == 'alle' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=alle">Alle</a>
+      <a class="pill{% if poster_status == 'obs' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=obs">Obs / Forfalt</a>
+      <a class="pill{% if poster_status == 'faste' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=faste">Faste regninger</a>
+      <a class="pill{% if poster_status == 'siste' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=siste">Faktiske kjøp</a>
+    </div>
+    {% else %}
+    <div>{{ filter_form.kind.label_tag }}{{ filter_form.kind }}{{ filter_form.kind.errors }}</div>
+    {% endif %}
+  </div>
+  <details class="advanced-filters" {% if filter_form.advanced_open %}open{% endif %}>
+    <summary>Flere filtre</summary>
+    <div class="advanced-fields">
+      {% for field in filter_form %}
+        {% if field.name != 'q' and field.name != 'kind' %}
+          <div>{{ field.label_tag }}{{ field }}{{ field.errors }}</div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </details>
+  <div class="filter-actions"><button>Filtrer</button><a href="{% url 'page' page %}?month={{ month|date:'Y-m' }}">Nullstill filtre</a></div>
+</form>

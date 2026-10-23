@@ -1,8 +1,26 @@
-<section class="family-permissions"><h2>Hvem kan hva?</h2>
-<div class="row"><span>Se økonomi og kalender i tillatte moduler</span><span class="ui-status reserved">Alle</span></div>
-<div class="row"><span>Legge til og endre egne poster</span><span class="ui-status reserved">Alle</span></div>
-<div class="row"><span>Svare på avtaler for seg selv med kalendertilgang</span><span class="ui-status reserved">Alle</span></div>
-<div class="row"><span>Endre andres poster, kategorier og rammer</span><span class="ui-status actual">Administrator</span></div>
-<div class="row"><span>Endre eller slette en avtale</span><span class="ui-status reserved">Skaper eller administrator</span></div>
-<p>Administrator velger modultilgang per medlem. Konto og startside er alltid tilgjengelige.</p><p>Familiens opplysninger er private og kan ikke ses av andre familier.</p>
-{% load budget_tags %}{% if member|allows_module:"calendar" %}<a class="button secondary" href="{% url 'page' 'varsler' %}">Administrer varsler</a>{% endif %}</section>
+{% load budget_tags %}
+<div class="sheet-split family-access-split">
+  <div class="c">
+    <b>Opprett familiemedlem &amp; velg budsjettdeling</b>
+    <p class="l">Ved opprettelse velges om medlemmets eget budsjett skal være helt privat eller ha navngitt foreldreinnsyn (kun leserett).</p>
+    <div class="family-access-fields">
+      <label class="l">Navn på medlem</label>
+      <input class="inp" value="{{ member.user.get_full_name|default:member.user.email }}" readonly>
+      <label class="l">Innsynsvalg for eget budsjett ved opprettelse</label>
+      <select class="inp">
+        <option>Navngitt foreldreinnsyn: Kun leserett — medlemmet styrer eget budsjett</option>
+        <option>Helt privat budsjettområde (Ingen foreldre- eller admininnsyn)</option>
+      </select>
+    </div>
+  </div>
+  <div class="c">
+    <b>Modultilgang per medlem (Skjuler både sider og tall)</b>
+    <p class="l">Når moduler slås av for et medlem, skjules både menyvalg og alle tilhørende beløp/totaler.</p>
+    <div class="family-module-checks">
+      <label><input type="checkbox" {% if member|allows_module:'savings' %}checked{% endif %} disabled> Sparing (Sparemål)</label>
+      <label><input type="checkbox" {% if member|allows_module:'calendar' %}checked{% endif %} disabled> Familiekalender</label>
+      <label><input type="checkbox" {% if member|allows_module:'budget' %}checked{% endif %} disabled> Oversikt, Poster, Budsjett &amp; Regninger</label>
+    </div>
+  </div>
+</div>
+{% if member|allows_module:"calendar" %}<p><a class="btn-sec" href="{% url 'page' 'varsler' %}">Administrer varsler</a></p>{% endif %}

@@ -78,7 +78,7 @@
     </header>
 
     {% accessible_financial_areas as header_areas %}
-    {% if header_areas %}<div class="fam-bar-wrap"><nav class="fam-bar" aria-label="Dine budsjetter">{% for item in header_areas %}<a class="fam-pill{% if item.is_current %} on{% endif %}" href="{{ item.open_url }}" {% if item.is_current %}aria-current="true"{% endif %}><span class="dot" style="background:{{ item.dot_color }}" aria-hidden="true"></span><span>{{ item.name }}</span>{% if not item.can_write %}<span class="fam-access-tag">Kun innsyn</span>{% endif %}</a>{% endfor %}</nav></div>{% endif %}
+    {% if header_areas %}<div class="fam-bar-wrap"><nav class="fam-bar" aria-label="Dine budsjetter">{% for item in header_areas %}<a class="fam-pill{% if item.is_current %} on{% endif %}" href="{{ item.open_url }}" {% if item.is_current %}aria-current="true"{% endif %}><span class="dot" style="background:{{ item.dot_color }}" aria-hidden="true"></span><span>{{ item.name }}</span><span class="fam-access-tag">{% if not item.can_write %}Kun innsyn{% else %}{{ item.kind_label }}{% endif %}</span></a>{% endfor %}</nav><a class="fam-tilgang" href="{% url 'financial_areas' %}">🔒 Tilgangsregler</a></div>{% endif %}
 
     {% block hero %}{% endblock %}
 
