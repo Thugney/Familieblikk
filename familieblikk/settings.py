@@ -48,7 +48,7 @@ EMAIL_FILE_PATH = os.environ.get('EMAIL_FILE_PATH', str(BASE_DIR / 'work/local-m
 if os.environ.get('DJANGO_TRUST_PROXY') == '1':
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', '1') == '1'
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'familieblikk@localhost')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or os.environ.get('EMAIL_HOST_USER') or 'familieblikk@localhost'
 PRIVATE_IMPORT_ROOT = Path(os.environ.get('PRIVATE_IMPORT_ROOT', str(BASE_DIR / 'private-data/family-budget')))
 PRIVATE_DOCUMENT_ROOT = Path(os.environ.get('PRIVATE_DOCUMENT_ROOT', str(BASE_DIR / 'private-data/documents')))
 PRIVATE_SCAN_ROOT = Path(os.environ.get('PRIVATE_SCAN_ROOT', str(BASE_DIR / 'private-data/scan-spool')))
