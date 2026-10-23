@@ -13,6 +13,7 @@
 <script src="{% static 'budget/app.js' %}" defer></script>
 {% block head_extra %}{% endblock %}
 <link rel="stylesheet" href="{% static 'budget/ui-refresh.css' %}">
+<style>[hidden]{display:none!important}</style>
 <script src="{% static 'budget/ui-refresh.js' %}" defer></script>
 </head>
 <body data-financial-area="{{ request.financial_area.pk }}" data-page="{{ page|default:'form' }}">
