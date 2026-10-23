@@ -85,7 +85,7 @@ def index(request):
                 form.add_error(None, error)
     proposals = AreaAccessChange.objects.filter(household=member.household, applied=False)
     if member.role != 'admin':
-        proposals = proposals.filter(owner=member)
+        proposals = [proposal for proposal in proposals if proposal.owner_id == member.pk or member.pk in {p['member'] for p in proposal.after if p['role'] in ('reader', 'editor')}]
     from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
     from django.urls import resolve, Resolver404
     from .area_requests import financial_url, FINANCIAL_NAMES, OPTIONAL_NAMES, NONFINANCIAL_PAGES, WRITE_FORM_NAMES
@@ -121,13 +121,13 @@ def sharing(request, area_id):
             return redirect('financial_proposal', proposal_id=proposal.pk)
         except ValidationError as error:
             form.add_error(None, error)
-    return render(request, 'budget/form.html', context(member, title='Foreslå endret deling', form=form, explanation='Endringen trer først i kraft når budsjetteieren og en annen familieadministrator har bekreftet samme forslag.', back='/budsjetter/'))
+    return render(request, 'budget/form.html', context(member, title='Foreslå endret deling', form=form, explanation='Endringen trer først i kraft når budsjetteieren og én annen person i familien har bekreftet samme forslag.', back='/budsjetter/'))
 
 @login_required
 def proposal(request, proposal_id):
     member = get_object_or_404(Membership, user=request.user)
     change = get_object_or_404(AreaAccessChange, pk=proposal_id, household=member.household)
-    if member.pk != change.owner_id and member.role != 'admin':
+    if member.pk != change.owner_id and member.role != 'admin' and member.pk not in {p['member'] for p in change.after if p['role'] in ('reader', 'editor')}:
         raise PermissionDenied
     error = None
     if request.method == 'POST':

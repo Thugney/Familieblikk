@@ -135,7 +135,7 @@ def accessible_financial_areas(context):
         grants = FinancialAreaGrant.objects.filter(
             member_id=member.pk, member__user__is_active=True,
             area__household_id=member.household_id, area__status='active'
-        ).select_related('area').order_by('area__created_at', 'area__name')
+        ).select_related('area').order_by('area__name', 'area__id')
         result = []
         for idx, grant in enumerate(grants):
             area = grant.area

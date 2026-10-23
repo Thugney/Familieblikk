@@ -121,6 +121,16 @@ class FinancialAreaTests(TestCase):
         self.assertFalse(result.applied)
         self.assertIsNone(result.admin_confirmation_id)
 
+    def test_admin_owner_can_finish_with_member_reader(self):
+        proposal = propose_access_change(self.other, self.secret.pk, [self.owner.pk])
+        confirm_access_change(self.other, proposal.pk, proposal.digest)
+        proposal.refresh_from_db()
+        self.assertFalse(proposal.applied)
+        result = confirm_access_change(self.owner, proposal.pk, proposal.digest)
+        result.refresh_from_db()
+        self.assertTrue(result.applied)
+        self.assertTrue(FinancialAreaGrant.objects.filter(area=self.secret, member=self.owner, role='reader').exists())
+
     def test_shared_editor_has_write_capability_personal_editor_rejected(self):
         with self.assertRaises(ValidationError):
             create_area(self.owner, editor_ids=[self.parent.pk])

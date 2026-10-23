@@ -143,16 +143,17 @@ def confirm_access_change(member, proposal_id, digest):
         raise ValidationError('Forslaget er endret eller allerede aktivert.')
     if change.owner_confirmation_id == member.pk or change.admin_confirmation_id == member.pk:
         return change
+    participant_ids = {p['member'] for p in change.after if p['role'] in ('reader', 'editor')}
     if member.pk == change.owner_id:
         change.owner_confirmation = member
-    elif member.role == 'admin':
+    elif member.role == 'admin' or member.pk in participant_ids:
         change.admin_confirmation = member
     else:
-        raise PermissionDenied('Bekreftelsen krever eier eller en annen familieadministrator.')
+        raise PermissionDenied('Bekreftelsen krever eieren eller en annen deltaker i budsjettet.')
     if change.owner_confirmation_id and change.admin_confirmation_id:
-        admin = Membership.objects.select_for_update().get(pk=change.admin_confirmation_id)
+        second = Membership.objects.select_for_update().get(pk=change.admin_confirmation_id)
         owner = Membership.objects.select_for_update().get(pk=change.owner_id)
-        if admin.role != 'admin' or admin.household_id != member.household_id or not admin.user.is_active or not owner.user.is_active:
+        if not (second.role == 'admin' or second.pk in participant_ids) or second.household_id != member.household_id or not second.user.is_active or not owner.user.is_active:
             raise PermissionDenied('Rollene er endret. Opprett et nytt forslag.')
         readers = [p['member'] for p in change.after if p['role'] == 'reader']
         editors = [p['member'] for p in change.after if p['role'] == 'editor']
