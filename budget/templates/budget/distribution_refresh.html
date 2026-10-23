@@ -1,6 +1,15 @@
 {% load budget_tags ui_tags %}{% budget_distribution totals as distribution %}
-<section class="budget-distribution" aria-label="Slik er pengene fordelt">
+<section class="budget-distribution" aria-label="Slik er pengene fordelt" data-hero-distribution>
+<div class="distribution-header"><span class="distribution-title">Pengenes fordeling i perioden</span><div class="hero-view-toggle" role="group" aria-label="Visningsmodus"><button type="button" class="hero-toggle-btn is-active" data-hero-mode="bar" aria-pressed="true">Fordeling</button><button type="button" class="hero-toggle-btn" data-hero-mode="trend" aria-pressed="false">Graf</button><button type="button" class="hero-toggle-btn" data-hero-mode="breakdown" aria-pressed="false">Regnestykke</button></div></div>
+<div class="hero-mode-panel" data-hero-panel="bar">
 {% if distribution.chartable %}<div class="distribution-bar" aria-hidden="true">{% for part in distribution.parts %}<span class="distribution-segment {{ part.kind }}" style="flex-grow:{{ part.weight }}"></span>{% endfor %}</div>{% endif %}
 <dl class="distribution-values">{% for part in distribution.parts %}<div class="{{ part.kind }}"><dt>{{ part.label }}</dt><dd>{{ part.amount|nok }}</dd></div>{% endfor %}</dl>
+</div>
+<div class="hero-mode-panel" data-hero-panel="trend" hidden>
+{% if chart %}<div class="trend-chart"><div class="trend-chart-head"><span>Forbruk siste 3 måneder</span><span>Ordinært forbruk</span></div><svg viewBox="0 0 320 76" role="img" aria-label="Utvikling i ordinært forbruk de siste tre månedene"><line x1="24" y1="56" x2="296" y2="56" stroke="rgba(255,255,255,0.28)" stroke-width="1"/><polyline points="{% for point in chart %}{{ point.x }},{{ point.y }} {% endfor %}" fill="none" stroke="#9CC4A3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>{% for point in chart %}<circle cx="{{ point.x }}" cy="{{ point.y }}" r="4.5" fill="#ffffff" stroke="#13614A" stroke-width="2"/><text x="{{ point.x }}" y="72" text-anchor="middle" fill="#D5ECE0" font-size="11" font-weight="700">{{ point.label }}</text>{% endfor %}</svg></div>{% else %}<p class="trend-empty">Ingen forbrukshistorikk å vise ennå.</p>{% endif %}
+</div>
+<div class="hero-mode-panel" data-hero-panel="breakdown" hidden>
+<dl class="distribution-values hero-breakdown-grid"><div><dt>Mottatt inntekt</dt><dd>{{ totals.income|nok }}</dd></div><div><dt>Ordinært forbruk</dt><dd>{{ totals.ordinary|nok }}</dd></div><div><dt>Regningsreserve</dt><dd>{{ totals.bills|nok }}</dd></div><div><dt>Sparing, gjeld &amp; fond</dt><dd>{{ totals.savings|nok }} · {{ totals.debt|nok }} · {{ totals.funds|nok }}</dd></div></dl>
+</div>
 <p>Forpliktelser omfatter regningsreserve, sparing, gjeld og årsavsetning i beregningen. Fordelingen inkluderer netto frigjort sparing.</p>
 </section>

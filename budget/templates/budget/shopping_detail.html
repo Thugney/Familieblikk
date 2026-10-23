@@ -1,6 +1,103 @@
 {% extends 'budget/base.html' %}{% load static budget_tags %}{% block content %}
-<section class="work-surface" data-shopping-revision="{{ listing.version }}" data-preserved-draft="{% if recovered or form.is_bound %}true{% else %}false{% endif %}" data-revision-url="{% url 'shopping_revision' listing.pk %}"><a href="{% url 'shopping_lists' %}">Alle lister</a><h1>{{ listing.name }}</h1><p>Kjøptstatus deles med familien. Avkryssing bokfører ingenting.</p><p id="shopping-updates" role="status" hidden>Listen er endret. Utkastet ditt er beholdt. Lagre eller avbryt før du laster listen på nytt.</p>
-{% for item in items %}<article class="row"><div><strong>{{ item.name }}</strong><p>{{ item.quantity }} · {% if item.purchased %}Kjøpt{% else %}Gjenstår{% endif %}</p></div><a class="button secondary" href="{% url 'shopping_item' item.pk %}">Endre / kryss av</a></article>{% empty %}<p>Listen er tom. Legg til den første varen.</p>{% endfor %}
-{% if request.financial_can_write %}<p><a class="button primary" href="{% url 'shopping_complete' listing.pk %}">Fullfør handletur</a></p>{% else %}<p><a href="{% url 'shopping_complete' listing.pk %}">Velg målbudsjett for handleturen</a></p>{% endif %}</section>
-<section class="work-surface form-surface"><h2>Legg til vare</h2>{% if recovered %}<p role="status">Gjeldende versjon er lastet. Utkastet er beholdt.</p>{% endif %}<form method="post" data-dirty-warning>{% csrf_token %}{{ form.as_p }}<button class="primary">Legg til uten bokføring</button>{% if form.errors %}<button name="refresh_version" value="1" formnovalidate>Last gjeldende versjon og behold utkast</button>{% endif %}</form></section>
-<section class="work-surface"><h2>Fjernede varer</h2>{% for item in removed_items %}<article class="row"><span>{{ item.name }} · {{ item.quantity }}</span><a href="{% url 'shopping_item' item.pk %}">Gjennomgå og gjenopprett vare</a></article>{% empty %}<p>Ingen fjernede varer.</p>{% endfor %}</section><section class="work-surface"><h2>Fullførte turer</h2>{% for trip in trips %}<article class="row"><div><h3>{{ trip.store }}</h3><details><summary>Varer i denne turen</summary><ul>{% for item in trip.items %}<li>{{ item.name }} · {{ item.quantity }} · {% if item.purchased %}Kjøpt{% else %}Ikke krysset av{% endif %}</li>{% empty %}<li>Ingen bevarte varer.</li>{% endfor %}</ul></details>{% if trip.entry %}<p>{{ trip.entry.effective_date }} · {{ trip.entry.amount_ore|nok }} · {% if trip.entry.active %}Bokført{% else %}Angret{% endif %}</p><p><a href="{% url 'correction_history' 'entry' trip.entry.pk %}">Utgift, retting og historikk</a></p>{% if trip.receipt %}<a href="{% url 'document_detail' trip.receipt.pk %}">Kvittering</a>{% endif %}{% if trip.can_attach %}<a href="{% url 'shopping_receipt' trip.id %}">Legg til sen kvittering</a>{% endif %}{% else %}<p>Fullført. Økonomiopplysninger krever separat tilgang.</p>{% endif %}</div></article>{% empty %}<p>Ingen fullførte turer.</p>{% endfor %}</section>{% endblock %}{% block scripts_extra %}<script src="{% static 'budget/shopping.js' %}" defer></script>{% endblock %}
+<section class="work-surface" data-shopping-revision="{{ listing.version }}" data-preserved-draft="{% if recovered or form.is_bound %}true{% else %}false{% endif %}" data-revision-url="{% url 'shopping_revision' listing.pk %}">
+  <div class="shopping-header-top">
+    <a class="back-pill" href="{% url 'shopping_lists' %}">← Alle lister</a>
+    <span class="ui-status reserved">Synkronisert i familien</span>
+  </div>
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Felles handleliste</p>
+      <h1>{{ listing.name }}</h1>
+    </div>
+    <div class="heading-actions">
+      {% if request.financial_can_write %}
+        {% if member|allows_module:'documents' %}<a class="button secondary scan-shortcut" href="{% url 'shopping_complete' listing.pk %}#scan-trip-receipt">{% nav_icon 'dokumenter' %}<span>Skann kvittering for turen</span></a>{% endif %}
+        <a class="button primary" href="{% url 'shopping_complete' listing.pk %}">Fullfør handletur</a>
+      {% else %}
+        <a class="button secondary" href="{% url 'shopping_complete' listing.pk %}">Velg målbudsjett for handleturen</a>
+      {% endif %}
+    </div>
+  </div>
+  <p class="shopping-intro">Kjøptstatus deles med familien. Avkryssing bokfører ingenting før du fullfører handleturen.</p>
+  <p id="shopping-updates" class="notice" role="status" hidden>Listen er endret. Utkastet ditt er beholdt. Lagre eller avbryt før du laster listen på nytt.</p>
+
+  <div class="shopping-workspace-grid">
+    <div class="shopping-items-panel">
+      <div class="shopping-panel-head">
+        <h2>Varer på listen ({{ items|length }})</h2>
+      </div>
+      {% for item in items %}
+      <article class="row shopping-item-row {% if item.purchased %}is-purchased{% endif %}">
+        <div class="shopping-item-main">
+          <span class="shopping-check-badge {% if item.purchased %}checked{% endif %}" aria-hidden="true">{% if item.purchased %}✓{% endif %}</span>
+          <div>
+            <strong>{{ item.name }}</strong>
+            <p><span class="shopping-qty-pill">{{ item.quantity }}</span> · <span class="ui-status {% if item.purchased %}actual{% else %}neutral{% endif %}">{% if item.purchased %}Kjøpt{% else %}Gjenstår{% endif %}</span></p>
+          </div>
+        </div>
+        <a class="button secondary shopping-item-action" href="{% url 'shopping_item' item.pk %}">Endre / kryss av</a>
+      </article>
+      {% empty %}
+      <p class="shopping-empty-note">Listen er tom. Legg til den første varen i skjemaet ved siden av.</p>
+      {% endfor %}
+
+      <div class="shopping-complete-banner" id="scan-trip-receipt">
+        <div>
+          <strong>Ferdig å handle?</strong>
+          <p>Bekreft handleturen som én samlet utgift, eller ta bilde av kvitteringen og koble den direkte til denne turen.</p>
+        </div>
+        <div class="heading-actions">
+          {% if request.financial_can_write %}
+            {% if member|allows_module:'documents' %}<a class="button secondary scan-shortcut" href="{% url 'shopping_complete' listing.pk %}#scan-trip-receipt">{% nav_icon 'dokumenter' %}<span>Ta bilde av kvittering</span></a>{% endif %}
+            <a class="button primary" href="{% url 'shopping_complete' listing.pk %}">Fullfør handletur</a>
+          {% else %}
+            <a class="button secondary" href="{% url 'shopping_complete' listing.pk %}">Velg målbudsjett for handleturen</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="shopping-add-panel form-surface">
+      <h2>Legg til vare</h2>
+      {% if recovered %}<p class="notice" role="status">Gjeldende versjon er lastet. Utkastet er beholdt.</p>{% endif %}
+      <form method="post" data-dirty-warning>{% csrf_token %}{{ form.as_p }}<button class="primary">Legg til uten bokføring</button>{% if form.errors %}<button name="refresh_version" value="1" class="secondary" formnovalidate>Last gjeldende versjon og behold utkast</button>{% endif %}</form>
+    </div>
+  </div>
+</section>
+
+<div class="two-columns shopping-history-columns">
+  <section class="work-surface">
+    <h2>Fullførte turer</h2>
+    {% for trip in trips %}
+    <article class="row shopping-trip-row">
+      <div>
+        <h3>{{ trip.store }}</h3>
+        <details><summary>Varer i denne turen</summary><ul>{% for item in trip.items %}<li>{{ item.name }} · {{ item.quantity }} · {% if item.purchased %}Kjøpt{% else %}Ikke krysset av{% endif %}</li>{% empty %}<li>Ingen bevarte varer.</li>{% endfor %}</ul></details>
+        {% if trip.entry %}
+          <p>{{ trip.entry.effective_date }} · <strong>{{ trip.entry.amount_ore|nok }}</strong> · <span class="ui-status {% if trip.entry.active %}actual{% else %}neutral{% endif %}">{% if trip.entry.active %}Bokført{% else %}Angret{% endif %}</span></p>
+          <p><a href="{% url 'correction_history' 'entry' trip.entry.pk %}">Utgift, retting og historikk</a></p>
+          {% if trip.receipt %}<p><a class="button secondary" href="{% url 'document_detail' trip.receipt.pk %}">Se koblet kvittering</a></p>{% endif %}
+          {% if trip.can_attach %}<p><a class="button secondary scan-shortcut" href="{% url 'shopping_receipt' trip.id %}">{% nav_icon 'dokumenter' %}<span>Legg til sen kvittering</span></a></p>{% endif %}
+        {% else %}
+          <p>Fullført. Økonomiopplysninger krever separat tilgang.</p>
+        {% endif %}
+      </div>
+    </article>
+    {% empty %}
+    <p>Ingen fullførte turer.</p>
+    {% endfor %}
+  </section>
+
+  <section class="work-surface">
+    <h2>Fjernede varer</h2>
+    {% for item in removed_items %}
+    <article class="row">
+      <span>{{ item.name }} · {{ item.quantity }}</span>
+      <a class="button secondary" href="{% url 'shopping_item' item.pk %}">Gjennomgå og gjenopprett vare</a>
+    </article>
+    {% empty %}
+    <p>Ingen fjernede varer.</p>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}{% block scripts_extra %}<script src="{% static 'budget/shopping.js' %}" defer></script>{% endblock %}

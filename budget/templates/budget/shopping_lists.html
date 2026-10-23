@@ -1,1 +1,34 @@
-{% extends 'budget/base.html' %}{% block content %}<section class="work-surface"><h1>Handlelister</h1><p>Del varer og kjøptstatus med familien. Listen påvirker ikke budsjettet før en handletur bekreftes.</p>{% for row in lists %}<p><a href="{% url 'shopping_detail' row.pk %}">{{ row.name }}</a></p>{% empty %}<p>Ingen handlelister ennå.</p>{% endfor %}</section><section class="work-surface form-surface"><h2>Ny felles liste</h2><form method="post">{% csrf_token %}{{ form.as_p }}<button class="primary">Opprett liste</button></form></section>{% endblock %}
+{% extends 'budget/base.html' %}{% load budget_tags %}{% block content %}
+<section class="work-surface">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Felles for familien</p>
+      <h1>Handlelister</h1>
+    </div>
+  </div>
+  <p class="shopping-intro">Del varer og kjøptstatus med familien i sanntid. Listen påvirker ikke budsjettet før en handletur bekreftes, og du kan skanne kvitteringen direkte når du er ferdig å handle.</p>
+  <div class="shopping-lists-layout">
+    <div class="shopping-lists-grid">
+      {% for row in lists %}
+      <a class="shopping-list-card" href="{% url 'shopping_detail' row.pk %}">
+        <div class="shopping-list-card-icon">{% nav_icon 'handlelister' %}</div>
+        <div class="shopping-list-card-body">
+          <strong>{{ row.name }}</strong>
+          <small>Felles handleliste · Åpne varer og fullfør handletur</small>
+        </div>
+        <span class="shopping-list-arrow" aria-hidden="true">›</span>
+      </a>
+      {% empty %}
+      <div class="shopping-empty-card">
+        <p>Ingen handlelister ennå. Opprett familiens første felles handleliste til høyre.</p>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="shopping-create-card form-surface">
+      <h2>Ny felles liste</h2>
+      <p>Alle i familien med tilgang til handlelister kan legge til og krysse av varer.</p>
+      <form method="post">{% csrf_token %}{{ form.as_p }}<button class="primary">Opprett liste</button></form>
+    </div>
+  </div>
+</section>
+{% endblock %}

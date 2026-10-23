@@ -1,7 +1,7 @@
 import json
 import re
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth import logout, update_session_auth_hash
@@ -22,7 +22,7 @@ from . import access, forms, identity, importing, services
 from .models import Asset, BillOccurrence, BillTemplate, Category, Entry, ImportBatch, ImportRecord, Invitation, Membership, MonthPlan
 
 
-NAV = [('oversikt', 'Oversikt'), ('poster', 'Poster'), ('budsjett', 'Budsjett'), ('sparing', 'Sparing'), ('kalender', 'Kalender'), ('mer', 'Mer')]
+NAV = [('oversikt', 'Oversikt'), ('poster', 'Poster'), ('budsjett', 'Budsjett'), ('sparing', 'Sparing'), ('handlelister', 'Handlelister'), ('kalender', 'Kalender'), ('mer', 'Mer')]
 TITLES = dict(NAV + [('dokumenter', 'Skann kvittering'), ('handlelister', 'Handlelister'), ('kategorier', 'Kategorier og rammer'), ('regninger', 'Regninger'), ('gjeld', 'Gjeld'), ('arsutgifter', 'Årsutgifter'), ('utland', 'Sendt utenlands'), ('arsoversikt', 'Årsoversikt'), ('familie', 'Familie og innstillinger'), ('tilpass', 'Tilpass appen'), ('import', 'Familiens kildeimport'), ('varsler', 'Varsler')])
 
 
@@ -249,7 +249,8 @@ def page_view(request, page='oversikt'):
         plan = plans_by_category.get(category.pk)
         spent = spent_by_category.get(category.pk, 0) - refunds_by_category.get(category.pk, 0)
         limit = plan.amount_ore if plan else None
-        categories.append({'row': category, 'spent': spent, 'plan': plan, 'limit': limit, 'over': max(spent - limit, 0) if limit is not None else None, 'progress_value': min(max(spent, 0), limit) if limit else 0})
+        pct = round(spent * 100 / limit) if limit else None
+        categories.append({'row': category, 'spent': spent, 'plan': plan, 'limit': limit, 'over': max(spent - limit, 0) if limit is not None else None, 'progress_value': min(max(spent, 0), limit) if limit else 0, 'pct': pct, 'bar_pct': min(max(pct, 0), 100) if pct is not None else 0, 'has_limit': bool(limit)})
     positive_spending = sum(max(item['spent'], 0) for item in categories)
     for item in categories:
         share = Decimal(max(item['spent'], 0)) * 100 / positive_spending if positive_spending else Decimal(0)
@@ -285,7 +286,46 @@ def page_view(request, page='oversikt'):
     if comparison and month == services.month_start(timezone.localdate()):
         end_previous = previous.replace(day=min(timezone.localdate().day, services.month_end(previous).day))
         comparison['ordinary'] = services.ordinary_for_period(house, previous, end_previous)
-    ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
+    # Bento analytics on Oversikt: a 7-day spending mini chart, a month-over-month
+    # pace badge, and coordinates for the hero trend chart (reusing `chart`).
+    month_abbr = ('jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des')
+    weekly_bars = []
+    weekly_total = 0
+    pace = None
+    if full_finance:
+        today = timezone.localdate()
+        week_start = today - timedelta(days=6)
+        week_rows = list(Entry.objects.filter(active=True, household=house, effective_date__range=(week_start, today)).select_related('original'))
+        daily = {}
+        for row in week_rows:
+            if row.kind == 'refund':
+                if row.original and row.original.kind in ('expense', 'remittance'):
+                    daily[row.effective_date] = daily.get(row.effective_date, 0) - row.amount_ore
+            elif row.kind in ('expense', 'remittance'):
+                daily[row.effective_date] = daily.get(row.effective_date, 0) + row.amount_ore
+        week_max = max(daily.values(), default=0)
+        weekday_labels = ('ma', 'ti', 'on', 'to', 'fr', 'lø', 'sø')
+        for n in range(7):
+            day = week_start + timedelta(days=n)
+            amount = daily.get(day, 0)
+            weekly_bars.append({'date': day, 'label': weekday_labels[day.weekday()], 'amount': amount,
+                                'height': round(amount * 58 / week_max) if week_max else 0,
+                                'peak': week_max > 0 and amount == week_max, 'weekend': day.weekday() >= 5})
+        weekly_total = sum(bar['amount'] for bar in weekly_bars)
+        if comparison and comparison.get('ordinary') not in (None, 0) and totals.get('ordinary') is not None:
+            try:
+                delta = round((totals['ordinary'] - comparison['ordinary']) * 100 / comparison['ordinary'], 1)
+            except (TypeError, ZeroDivisionError):
+                delta = None
+            if delta is not None:
+                pace = {'delta': ('+' if delta >= 0 else '−') + f'{abs(delta):.1f}'.replace('.', ','),
+                        'up': delta >= 0, 'label': month_abbr[previous.month - 1]}
+    trend_x = (24, 160, 296)
+    for idx, item in enumerate(chart):
+        item['x'] = trend_x[idx]
+        item['y'] = 56 - item['height'] * 48 // 100
+        item['label'] = month_abbr[item['month'].month - 1]
+    ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'weekly_bars': weekly_bars, 'weekly_total': weekly_total, 'pace': pace, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
     if page == 'oversikt':
         ctx['spending_embedded'] = True
         ctx['spending_boot'] = {'initial_tab': 'spending', 'month': month.strftime('%Y-%m'), 'can_save': getattr(request, 'financial_can_write', False), 'urls': {'spending': reverse('spending_data'), 'planning': reverse('planning_data'), 'preview': reverse('planning_preview'), 'save': reverse('planning_save')}}
@@ -550,7 +590,7 @@ def edit_view(request, kind, row_id=None):
         except ValidationError as error:
             form.add_error(None, error_text(error))
             status = 409 if isinstance(error, services.Conflict) else 400
-    return render(request, 'budget/form.html', {'form': form, 'title': 'Rediger' if row_id else 'Ny registrering', 'recoverable':kind == 'entry' and status == 409, 'recovered':recovering, 'member': member, 'nav': NAV, 'month': month, 'page': destination, 'back': module_url(destination, month, request.GET)}, status=status)
+    return render(request, 'budget/form.html', {'form': form, 'title': 'Rediger' if row_id else 'Ny registrering', 'recoverable':kind == 'entry' and status == 409, 'recovered':recovering, 'scan_key': uuid.uuid4() if kind in ('entry', 'bill') and not row_id else None, 'member': member, 'nav': NAV, 'month': month, 'page': destination, 'back': module_url(destination, month, request.GET)}, status=status)
 
 
 @login_required
