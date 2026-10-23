@@ -90,15 +90,26 @@ def participant_ids(change):
     ``after`` is persisted JSON. Treat malformed rows as empty rather than
     letting a single bad proposal take down the proposal page or confirmation.
     """
-    ids = set()
+    readers, editors = participant_roles(change)
+    return set(readers) | set(editors)
+
+
+def participant_roles(change):
+    """Return ``(reader_ids, editor_ids)`` from a stored proposal, skipping malformed rows."""
+    readers, editors = [], []
     for item in change.after or []:
-        if not isinstance(item, dict) or item.get('role') not in ('reader', 'editor'):
+        if not isinstance(item, dict):
             continue
+        role = item.get('role')
         try:
-            ids.add(int(item.get('member')))
+            member_id = int(item.get('member'))
         except (TypeError, ValueError):
             continue
-    return ids
+        if role == 'reader':
+            readers.append(member_id)
+        elif role == 'editor':
+            editors.append(member_id)
+    return readers, editors
 
 
 def _digest(data):
@@ -172,8 +183,7 @@ def confirm_access_change(member, proposal_id, digest):
         owner = Membership.objects.select_for_update().get(pk=change.owner_id)
         if not (second.role == 'admin' or second.pk in invited_ids) or second.household_id != member.household_id or not second.user.is_active or not owner.user.is_active:
             raise PermissionDenied('Rollene er endret. Opprett et nytt forslag.')
-        readers = [p['member'] for p in change.after if p['role'] == 'reader']
-        editors = [p['member'] for p in change.after if p['role'] == 'editor']
+        readers, editors = participant_roles(change)
         if change.kind == 'legacy':
             if legacy_inventory(member) != change.inventory:
                 raise ValidationError('Vertsdata er endret. Se gjennom et nytt oppsett.')
