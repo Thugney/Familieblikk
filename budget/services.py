@@ -64,7 +64,14 @@ def save_row(actor, row, expected_version=None, admin=False, command=None):
     access.require_write_row(member, row)
     if current:
         if isinstance(row, Asset):
-            if current.kind == "fund": prepare_month(member.household, month_start(timezone.localdate()))
+            if current.kind == 'fund':
+                if current.opening_date != row.opening_date and (
+                    MonthPlan.objects.filter(asset=current).exists()
+                    or Entry.objects.filter(Q(asset=current) | Q(original__asset=current)).exists()
+                    or BillOccurrence.objects.filter(asset=current).exists()
+                ):
+                    raise ValidationError('Åpningsdatoen kan ikke flyttes når fondet har avsetninger, betalinger eller regningshistorikk. Behold den opprinnelige datoen.')
+                prepare_month(member.household, month_start(timezone.localdate()))
             if current.kind != row.kind and (Entry.objects.filter(asset=current).exists() or MonthPlan.objects.filter(asset=current).exists() or BillTemplate.objects.filter(asset=current).exists() or BillOccurrence.objects.filter(asset=current).exists()):
                 raise ValidationError('Typen kan ikke endres når oppsettet har finanshistorikk.')
             if row.kind == 'savings': validate_savings(row)
@@ -77,6 +84,10 @@ def save_row(actor, row, expected_version=None, admin=False, command=None):
         if current and current.asset_id and current.asset.kind == "savings" and current.month < month_start(timezone.localdate()):
             raise ValidationError("Avsluttet spareplan kan ikke flyttes eller endres.")
         row.derived = False
+        if row.asset_id and row.asset.kind == 'fund':
+            # An explicit monthly override carries its amount, not an older annual target.
+            # Annual-target edits create their own anchor directly below.
+            row.annual_total_ore = None
     access.require_write_row(member, row)
     row.full_clean()
     row.save()
@@ -277,11 +288,12 @@ def prepare_month(household, month):
     reconcile_funds(household)
 
 
-def pending_bills(household, end):
+def pending_bills(household, end, today=None):
     from .financial_areas import current_area
     if current_area().household_id != household.pk:
         raise PermissionDenied('Budsjettet tilhorer en annen familie.')
-    return BillOccurrence.objects.filter(household=household, cancelled=False, due_date__lte=end).exclude(pk__in=Entry.objects.filter(active=True, household=household, effective_date__lte=end, occurrence__isnull=False).values('occurrence_id'))
+    cutoff = min(end, today or timezone.localdate())
+    return BillOccurrence.objects.filter(household=household, cancelled=False, due_date__lte=end).exclude(pk__in=Entry.objects.filter(active=True, household=household, effective_date__lte=cutoff, occurrence__isnull=False).values('occurrence_id'))
 
 
 from django.db.models import Q
@@ -301,39 +313,12 @@ def reconcile_funds(household, actor=None):
     from .financial_areas import current_area
     if current_area().household_id != household.pk:
         raise PermissionDenied('Budsjettet tilhorer en annen familie.')
+    from .financial_projection import replay_fund
     for asset in Asset.objects.filter(household=household, kind='fund'):
-        events = []
-        for plan in MonthPlan.objects.filter(asset=asset): events.append((plan.month, 0, 0, 'allocation', plan))
+        plans = list(MonthPlan.objects.filter(asset=asset))
         bills = list(BillOccurrence.objects.filter(asset=asset, accounting_class='fund').order_by('due_date', 'id'))
-        for index, bill in enumerate(b for b in bills if not b.cancelled): events.append((bill.due_date, 1, index, 'due', bill))
         entries = Entry.objects.filter(active=True, household=household).filter(Q(asset=asset, kind='fund') | Q(original__asset=asset, original__kind='fund', kind='refund'))
-        for entry in entries: events.append((entry.effective_date, 2, entry.sequence, 'entry', entry))
-        balance, reserved, desired, settled = asset.opening_ore, {}, {}, set()
-        for day, priority, sequence, kind, row in sorted(events, key=lambda event: event[:3]):
-            if kind == 'allocation':
-                balance += row.amount_ore
-                continue
-            if day < asset.opening_date: raise ValidationError('Fondsforpliktelse eller betaling er før åpningsdato.')
-            if kind == 'due':
-                if row.pk in settled: continue
-                gap = max(row.amount_ore - (balance - sum(reserved.values())), 0)
-                desired[row.pk] = (month_start(day), gap)
-                balance += gap
-                reserved[row.pk] = row.amount_ore
-            elif row.kind == 'refund':
-                balance += row.amount_ore
-            else:
-                bill_id = row.occurrence_id
-                if bill_id:
-                    if bill_id not in reserved:
-                        gap = max(row.amount_ore - (balance - sum(reserved.values())), 0)
-                        desired[bill_id] = (month_start(day), gap)
-                        balance += gap
-                    reserved.pop(bill_id, None)
-                    settled.add(bill_id)
-                if balance - sum(reserved.values()) < row.amount_ore:
-                    raise ValidationError('Endringen gir et udekket senere fondsoppgjør. Avstem forpliktelser og påfyll først.')
-                balance -= row.amount_ore
+        desired = replay_fund(asset, plans, bills, entries)['topups']
         for bill in bills:
             old = FundTopUp.objects.filter(occurrence=bill).first()
             period, amount = desired.get(bill.pk, (month_start(bill.due_date), 0))
@@ -389,15 +374,18 @@ def calculate(household, month, today=None, projected_asset_plans=None):
         raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     today = today or timezone.localdate()
     start, end = month_start(month), month_end(month)
-    entries = Entry.objects.filter(active=True, household=household, effective_date__range=(start, end))
+    month_entries = Entry.objects.filter(active=True, household=household, effective_date__range=(start, end))
+    entries = month_entries.filter(effective_date__lte=today)
     income = total(entries.filter(kind='income', received=True))
-    expected = total(entries.filter(kind='income', received=False))
+    expected = total(month_entries.filter(kind='income', received=False))
     ordinary = total(entries.filter(kind__in=['expense', 'remittance'])) - total(entries.filter(kind='refund', original__kind__in=['expense', 'remittance']))
-    pending = pending_bills(household, end)
+    from .financial_projection import month_basis
+    basis = month_basis(household, start, today=today)
+    pending = basis['pending']
     def asset_plan(asset):
         if projected_asset_plans is not None: return projected_asset_plans.get(asset.pk, 0)
-        return total(MonthPlan.objects.filter(asset=asset, month=start))
-    bills = total(pending.filter(accounting_class='ordinary'))
+        return basis['asset_plans'].get(asset.pk, 0)
+    bills = sum(row['amount_ore'] for row in pending if row['accounting_class'] == 'ordinary')
     savings, released = 0, 0
     for asset in Asset.objects.filter(household=household, kind='savings'):
         net = total(entries.filter(asset=asset, kind='deposit')) - total(entries.filter(asset=asset, kind='withdrawal'))
@@ -407,9 +395,9 @@ def calculate(household, month, today=None, projected_asset_plans=None):
     debt = 0
     for asset in Asset.objects.filter(household=household, kind='debt'):
         paid = total(entries.filter(asset=asset, kind='debt')) - total(entries.filter(kind='refund', original__asset=asset, original__kind='debt'))
-        debt += max(asset_plan(asset), paid + total(pending.filter(asset=asset, accounting_class='debt')))
-    fund_plans = total(MonthPlan.objects.filter(household=household, asset__kind='fund', month=start)) if projected_asset_plans is None else sum(asset_plan(asset) for asset in Asset.objects.filter(household=household, kind='fund'))
-    funds = fund_plans + total(FundTopUp.objects.filter(household=household, effective_month=start))
+        debt += max(asset_plan(asset), paid + sum(row['amount_ore'] for row in pending if row['asset_id'] == asset.pk and row['accounting_class'] == 'debt'))
+    fund_plans = sum(asset_plan(asset) for asset in Asset.objects.filter(household=household, kind='fund'))
+    funds = fund_plans + sum(basis['fund_topups'].values())
     available = income + released - ordinary - bills - savings - debt - funds
     cash = income + total(entries.filter(kind='withdrawal')) - ordinary - total(entries.filter(kind__in=['debt', 'fund', 'deposit'])) + total(entries.filter(kind='refund', original__kind__in=['debt', 'fund']))
     return dict(income=income, expected=expected, ordinary=ordinary, bills=bills, savings=savings, released=released, debt=debt, funds=funds, available=available, cash=cash, daily=available // (end.day - today.day + 1) if start == month_start(today) else None)
@@ -422,10 +410,28 @@ def savings_balance(asset, end=None):
     return asset.opening_ore + total(rows.filter(kind='deposit')) - total(rows.filter(kind='withdrawal'))
 
 
+def debt_month_allocation(assets, balances, budget, ordered):
+    """Allocate one fixed monthly budget; freed minimums follow the chosen priority."""
+    amounts = {str(asset.pk): 0 for asset in assets}
+    remaining = budget
+    for asset in assets:
+        key = str(asset.pk)
+        paid = min(balances[key], getattr(asset, 'minimum_ore', 0), remaining)
+        amounts[key] += paid
+        remaining -= paid
+    for asset in ordered:
+        key = str(asset.pk)
+        paid = min(balances[key] - amounts[key], remaining)
+        amounts[key] += paid
+        remaining -= paid
+    return amounts, remaining
+
+
 def debt_projection(assets, strategy='avalanche', extra_ore=0):
     """360 måneders estimat fra dokumentert referansesaldo, ikke bankbalanse."""
     if any(a.annual_rate is None for a in assets): return {'error': 'Manglende rente; ingen beregnbar sluttdato.'}
     balances = {str(a.pk): a.opening_ore for a in assets}
+    if not any(balances.values()): return {'months': 0, 'interest_ore': 0}
     ordered = sorted(assets, key=lambda a: (-a.annual_rate, str(a.pk)) if strategy == 'avalanche' else (a.opening_ore, str(a.pk)))
     minima = {str(a.pk): getattr(a, 'minimum_ore', 0) for a in assets}
     budget = sum(minima.values()) + extra_ore
@@ -436,17 +442,9 @@ def debt_projection(assets, strategy='avalanche', extra_ore=0):
             charge = int((Decimal(balances[key]) * asset.annual_rate / Decimal(1200)).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
             balances[key] += charge
             interest += charge
-        remaining = budget
-        for asset in assets:
-            key = str(asset.pk)
-            paid = min(balances[key], minima[key], remaining)
+        amounts, _ = debt_month_allocation(assets, balances, budget, ordered)
+        for key, paid in amounts.items():
             balances[key] -= paid
-            remaining -= paid
-        for asset in ordered:
-            key = str(asset.pk)
-            paid = min(balances[key], remaining)
-            balances[key] -= paid
-            remaining -= paid
         if sum(balances.values()) == 0: return {'months': number, 'interest_ore': interest}
     return {'error': 'Ikke nedbetalt innen 30 år.'}
 
@@ -459,20 +457,17 @@ def allocate_debt_plan(actor, month, strategy, extra_ore):
     if month.day != 1: raise ValidationError('Velg første dag i måneden.')
     debts = list(Asset.objects.filter(household=member.household, kind='debt', archived=False))
     if any(debt.annual_rate is None for debt in debts): raise ValidationError('Bekreft rente før planen fordeles.')
-    balances = {debt.pk: estimated_debt_balance(debt, month_end(month)) for debt in debts}
-    debts.sort(key=lambda item: (-item.annual_rate, str(item.pk)) if strategy == 'avalanche' else (balances[item.pk], str(item.pk)))
-    remaining = extra_ore
-    for debt in debts:
-        outstanding = balances[debt.pk] or 0
-        minimum = min(debt.minimum_ore, outstanding)
-        extra = min(remaining, max(outstanding - minimum, 0))
-        remaining -= extra
-        plan, created = MonthPlan.objects.get_or_create(household=member.household, month=month, asset=debt, defaults={'created_by': actor, 'amount_ore': minimum + extra})
-        if not created:
-            plan.amount_ore = minimum + extra
-            save_row(actor, plan, plan.version, True)
-    if remaining:
+    balances = {str(debt.pk): estimated_debt_balance(debt, month_end(month)) or 0 for debt in debts}
+    ordered = sorted(debts, key=lambda item: (-item.annual_rate, str(item.pk)) if strategy == 'avalanche' else (balances[str(item.pk)], str(item.pk)))
+    amounts, remaining = debt_month_allocation(debts, balances, sum(debt.minimum_ore for debt in debts) + extra_ore, ordered)
+    if remaining and extra_ore:
         raise ValidationError('Ekstrabeløpet overstiger gjeld som kan fordeles. Ingen plan er endret.')
+    for debt in debts:
+        amount = amounts[str(debt.pk)]
+        plan, created = MonthPlan.objects.get_or_create(household=member.household, month=month, asset=debt, defaults={'created_by': actor, 'amount_ore': amount})
+        if not created:
+            plan.amount_ore = amount
+            save_row(actor, plan, plan.version, True)
 
 
 def ordinary_for_period(household, start, end):

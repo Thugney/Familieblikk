@@ -1,0 +1,60 @@
+{% load budget_tags %}
+{% if money_control %}
+<section class="money-control" aria-labelledby="money-control-title">
+  <div class="sheet-head"><div><p class="section-eyebrow">Registrert pengebruk · til {{ money_control.through|date:'d.m.Y' }}</p><h2 id="money-control-title">Hvor ble pengene av?</h2></div><a class="btn-sec" href="{{ money_control.entries_url }}">Se postene</a></div>
+  <p class="sheet-note">Dette viser registrerte poster i dette budsjettet, ikke bankens saldo. Kjøp som ikke er registrert, kan appen ikke oppdage. Sammenlign med kontoutskriften for å finne det som mangler.</p>
+  <p class="sheet-note">{{ money_control.coverage.warning }}</p>
+  <div class="sheet-split">
+    <div class="c">
+      <h3>Forbruk etter refusjoner</h3>
+      <dl class="calculation-details">
+        <dt>Utgifter og sendt utenlands</dt><dd>{{ money_control.ordinary_gross|nok }}</dd>
+        <dt>− Refusjoner av disse utgiftene</dt><dd>{{ money_control.ordinary_refunds|nok }}</dd>
+        <dt>= Netto forbruk</dt><dd>{{ money_control.ordinary_net|nok }}</dd>
+      </dl>
+      <p class="sheet-note">Betalte vanlige regninger er inkludert én gang. Refusjoner vises i måneden de kom inn, også når kjøpet var tidligere.</p>
+      <details><summary>Vis alle registrerte pengebevegelser</summary>
+        <dl class="calculation-details">
+          <dt>Mottatt inntekt</dt><dd>{{ money_control.movements.income|default:0|nok }}</dd>
+          <dt>Spareuttak</dt><dd>{{ money_control.movements.withdrawal|default:0|nok }}</dd>
+          <dt>Alle refusjoner</dt><dd>{{ money_control.movements.refund|default:0|nok }}</dd>
+          <dt>= Registrert inn</dt><dd>{{ money_control.cash_in|nok }}</dd>
+          <dt>Utgifter og sendt utenlands</dt><dd>{{ money_control.ordinary_gross|nok }}</dd>
+          <dt>Spareinnskudd</dt><dd>{{ money_control.movements.deposit|default:0|nok }}</dd>
+          <dt>Gjeldsbetalinger</dt><dd>{{ money_control.movements.debt|default:0|nok }}</dd>
+          <dt>Betalte årsutgifter</dt><dd>{{ money_control.movements.fund|default:0|nok }}</dd>
+          <dt>= Registrert ut</dt><dd>{{ money_control.cash_out|nok }}</dd>
+          <dt>Inn minus ut</dt><dd>{{ money_control.cash_net|nok }}</dd>
+        </dl>
+        <p class="sheet-note">Spareinnskudd og spareuttak er flytting av penger, ikke forbruk eller ny inntekt. Denne oversikten over bevegelser skal ikke legges til avsetningene i budsjettet.</p>
+      </details>
+    </div>
+    <div class="c">
+      <h3>Hva skal resten dekke?</h3>
+      <dl class="calculation-details">
+        <dt>Igjen å bruke</dt><dd>{{ totals.available|nok }}</dd>
+        <dt>− Rest av kjente kategorirammer</dt><dd>{{ money_control.remaining_categories|nok }}</dd>
+        <dt>= Restbeløp i registrerte planer</dt><dd>{{ money_control.plan_remainder|nok }}</dd>
+      </dl>
+      <p class="sheet-note">Kategorirammene skal dekke resten av måneden. Ubetalte regninger er allerede reservert i «igjen å bruke» og trekkes ikke en gang til. Manglende rammer og uregistrerte utgifter er ikke med i restbeløpet.</p>
+      <p class="sheet-note">Et positivt restbeløp er ikke et løfte om at pengene kan brukes eller spares. Kontroller også kommende og uregelmessige utgifter.</p>
+      {% if not money_control.current %}<p class="sheet-note">Historisk oversikt. Restbeløpet overføres ikke automatisk til en ny måned.</p>{% endif %}
+    </div>
+  </div>
+  {% for notice in money_control.notices %}<div class="notice"><h3>{{ notice.title }}{% if notice.amount != None %} · {{ notice.amount|nok }}{% endif %}</h3><p>{{ notice.text }} <a href="{{ notice.url }}">{{ notice.link }}</a></p></div>{% endfor %}
+  <details><summary>Kategorier: brukt, ubetalt og igjen innen rammen</summary>
+    <div class="category-cards">
+      {% for row in money_control.rows %}<div class="c category-card"><h3>{{ row.name }}{% if row.archived %} · Arkivert{% endif %}</h3>
+        <dl class="calculation-details">
+          <dt>Månedsramme</dt><dd>{% if row.limit != None %}{{ row.limit|nok }}{% else %}Ikke satt{% endif %}</dd>
+          <dt>Netto brukt</dt><dd>{{ row.spent|nok }}</dd>
+          <dt>Ubetalte vanlige regninger</dt><dd>{{ row.pending|nok }}</dd>
+          <dt>Igjen innen rammen</dt><dd>{% if row.remaining != None %}{{ row.remaining|nok }}{% else %}Ukjent uten ramme{% endif %}</dd>
+        </dl>
+        {% if row.over %}<p class="over">{{ row.over|nok }} over rammen, inkludert ubetalte regninger.</p>{% endif %}
+        <a href="{{ row.entries_url }}">Se registrerte poster{% if row.uncategorized %} og kontroller kategoriene{% endif %}</a>
+      </div>{% empty %}<p class="sheet-note">Ingen registrerte utgifter, regninger eller kategorirammer i denne måneden.</p>{% endfor %}
+    </div><p><a href="{{ money_control.categories_url }}">Gå gjennom månedsrammene</a></p>
+  </details>
+</section>
+{% endif %}

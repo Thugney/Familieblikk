@@ -186,10 +186,15 @@ def page_view(request, page='oversikt'):
     house = member.household
     full_finance = access.complete_finance(member)
     totals = services.calculate(house, month) if full_finance else {}
+    money_info = None
+    if page == 'oversikt' and full_finance:
+        from .money_control import overview as money_overview
+        money_info = money_overview(member, month, totals)
     month_entries = access.safe_rows(member, Entry.objects.filter(active=True, household=house, effective_date__range=(month, services.month_end(month))))
+    actual_entries = month_entries.filter(effective_date__lte=timezone.localdate())
     if full_finance:
-        totals['gross_deposits'] = services.total(month_entries.filter(kind='deposit'))
-        totals['planned_savings'] = services.total(MonthPlan.objects.filter(household=house, month=month, asset__kind='savings'))
+        totals['gross_deposits'] = services.total(actual_entries.filter(kind='deposit'))
+        totals['planned_savings'] = money_info['planned_savings'] if money_info else services.total(MonthPlan.objects.filter(household=house, month=month, asset__kind='savings'))
     chart = []
     for offset in ([-2, -1, 0] if full_finance else []):
         period = add_calendar_months(month, offset)
@@ -254,14 +259,14 @@ def page_view(request, page='oversikt'):
         entries = page_obj.object_list
         poster_query = {'poster_status': poster_status} if page == 'poster' and poster_status != 'alle' else {}
         entry_query = urlencode({**{key: request.GET[key] for key in filter_form.fields if request.GET.get(key)}, **poster_query, 'month': month.strftime('%Y-%m')})
-    spent_by_category = dict(month_entries.filter(kind__in=['expense', 'remittance']).values('category_id').annotate(amount=Sum('amount_ore')).values_list('category_id', 'amount'))
-    refunds_by_category = dict(month_entries.filter(kind='refund', original__kind__in=['expense', 'remittance']).values('original__category_id').annotate(amount=Sum('amount_ore')).values_list('original__category_id', 'amount'))
+    spent_by_category = dict(actual_entries.filter(kind__in=['expense', 'remittance']).values('category_id').annotate(amount=Sum('amount_ore')).values_list('category_id', 'amount'))
+    refunds_by_category = dict(actual_entries.filter(kind='refund', original__kind__in=['expense', 'remittance']).values('original__category_id').annotate(amount=Sum('amount_ore')).values_list('original__category_id', 'amount'))
     plans_by_category = {plan.category_id: plan for plan in access.safe_rows(member, MonthPlan.objects.filter(household=house, month=month, category__isnull=False))}
     categories = []
     for category in (Category.objects.filter(household=house).order_by('name', 'id') if access.allows(member, 'budget') else []):
         plan = plans_by_category.get(category.pk)
         spent = spent_by_category.get(category.pk, 0) - refunds_by_category.get(category.pk, 0)
-        limit = plan.amount_ore if plan else None
+        limit = money_info['category_limits'].get(category.pk) if money_info else plan.amount_ore if plan else None
         pct = round(spent * 100 / limit) if limit else None
         categories.append({'row': category, 'spent': spent, 'plan': plan, 'limit': limit, 'over': max(spent - limit, 0) if limit is not None else None, 'progress_value': min(max(spent, 0), limit) if limit else 0, 'pct': pct, 'bar_pct': min(max(pct, 0), 100) if pct is not None else (100 if limit == 0 and spent > 0 else 0), 'has_limit': limit is not None, 'budget_status': 'over' if limit is not None and spent >= limit and (limit > 0 or spent > 0) else 'warning' if limit and spent * 100 >= limit * 85 else 'normal'})
     positive_spending = sum(max(item['spent'], 0) for item in categories)
@@ -285,12 +290,15 @@ def page_view(request, page='oversikt'):
     if page in kind_map: all_assets = all_assets.filter(kind=kind_map[page])
     for asset in all_assets:
         composite_hidden = asset.kind == 'fund' and not access.allows(member, 'bills')
+        debt_estimate = (services.estimated_debt_balance(asset, timezone.localdate())
+                         if page == 'gjeld' and asset.kind == 'debt' and access.allows(member, 'bills') else None)
         balance = None if composite_hidden else services.savings_balance(asset, services.month_end(month)) if asset.kind == 'savings' else services.fund_balance(asset, services.month_end(month)) if asset.kind == 'fund' else asset.opening_ore
         plan = services.total(MonthPlan.objects.filter(asset=asset, month=month))
         remaining = max(asset.target_ore - balance, 0) if balance is not None else None
         months_left = (asset.target_date.year - month.year) * 12 + asset.target_date.month - month.month + 1 if asset.target_date else None
         movements = access.safe_rows(member, Entry.objects.filter(active=True, household=house, asset=asset, effective_date__range=(month, services.month_end(month))))
         assets.append({'row': asset, 'balance': balance, 'composite_hidden': composite_hidden, 'plan': plan, 'remaining': remaining, 'needed': (remaining + months_left - 1) // months_left if remaining is not None and months_left and months_left > 0 else None, 'target_overdue': bool(months_left is not None and months_left <= 0 and remaining), 'projected_date': add_calendar_months(month, max((remaining + plan - 1) // plan - 1, 0)) if plan and remaining else None, 'deposits': services.total(movements.filter(kind='deposit')), 'withdrawals': services.total(movements.filter(kind='withdrawal')), 'paid': services.total(movements.filter(kind__in=['debt', 'fund'])), 'percent': min(max(balance * 100 // asset.target_ore, 0), 100) if balance is not None and asset.target_ore else 0})
+        assets[-1]['debt_estimate'] = debt_estimate
     bills = BillOccurrence.objects.filter(household=house, due_date__lte=services.month_end(month)).select_related('template', 'asset').order_by('due_date')
     if page in ('oversikt', 'varsler'): bills = services.pending_bills(house, services.month_end(month)).order_by('due_date')
     bills = access.safe_rows(member, bills)
@@ -346,7 +354,8 @@ def page_view(request, page='oversikt'):
         end = services.month_end(month)
         cutoff = min(today, end)
         plans = list(plans_by_category.values())
-        trend_budget = sum(plan.amount_ore for plan in plans) if plans else None
+        trend_limits = money_info['category_limits'] if money_info else {plan.category_id: plan.amount_ore for plan in plans}
+        trend_budget = sum(trend_limits.values()) if trend_limits else None
         cumulative = 0
         for number in range(1, end.day + 1):
             day = month.replace(day=number)
@@ -375,6 +384,7 @@ def page_view(request, page='oversikt'):
         item['label'] = month_abbr[item['month'].month - 1]
     ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'overview_filter': overview_filter, 'overview_bills': overview_bills, 'overview_entries': overview_entries, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'weekly_bars': weekly_bars, 'weekly_total': weekly_total, 'pace': pace, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'poster_status': poster_status, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
     if page == 'oversikt':
+        ctx['money_control'] = money_info
         ctx.update(trend_has_actual=any(point["amount"] is not None for point in month_trend), month_trend=month_trend, trend_budget=trend_budget, daily_days=daily_days, weekly_start=weekly_bars[0]["date"] if weekly_bars else None, weekly_end=weekly_bars[-1]["date"] if weekly_bars else None)
         ctx['spending_embedded'] = True
         ctx['spending_boot'] = {'initial_tab': 'spending', 'month': month.strftime('%Y-%m'), 'can_save': getattr(request, 'financial_can_write', False), 'urls': {'spending': reverse('spending_data'), 'planning': reverse('planning_data'), 'preview': reverse('planning_preview'), 'save': reverse('planning_save')}}
@@ -385,7 +395,7 @@ def page_view(request, page='oversikt'):
         ctx['calendar_notifications'] = visible_notifications(member, limit=100)
     if page == 'arsoversikt':
         # Project existing anchors without materializing future plans or bills.
-        year_entries = list(Entry.objects.filter(active=True, household=house, effective_date__year=month.year).select_related('original'))
+        year_entries = list(Entry.objects.filter(active=True, household=house, effective_date__year=month.year, effective_date__lte=timezone.localdate()).select_related('original'))
         year_plans = list(MonthPlan.objects.filter(household=house).order_by('month'))
         year_category_rows = list(Category.objects.filter(household=house))
         year_asset_rows = list(Asset.objects.filter(household=house))

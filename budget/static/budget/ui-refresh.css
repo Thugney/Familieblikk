@@ -1670,6 +1670,8 @@ h1, h2, h3, h4, p {
 .calculation-details { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px 16px; margin: 12px 0; }
 .calculation-details dd { margin: 0; text-align: right; font-weight: 800; }
 .calculation-details dt:last-of-type, .calculation-details dd:last-of-type { padding-top: 8px; border-top: 1px solid #9CC4A3; color: white; font-weight: 800; }
+.money-control .calculation-details dt:last-of-type,
+.money-control .calculation-details dd:last-of-type { color: var(--text-main); }
 .bento-progress-row.is-warning { color: var(--amber-txt); }
 .bento-progress-row.is-over { color: var(--red-txt); }
 .bento-progress-row.is-warning .bar i { background: #D9822B !important; }

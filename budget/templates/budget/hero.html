@@ -9,12 +9,13 @@
         <div class="hero-big-amount">{{ totals.available|nok }}</div>
         <div class="hero-per-day"><span>Veiledende dagsbeløp</span><br><b>{% if totals.daily != None %}{{ totals.daily|nok }}{% else %}—{% endif %}</b></div>
       </div>
+      <p class="hero-note">Restbeløpet skal dekke kategorirammene resten av måneden. Dagsbeløpet er ikke ekstra lommepenger.</p>
       {% if totals.available < 0 %}<p class="hero-note">Underskudd</p>{% endif %}
       <div class="hero-calc-row">
         <details class="calc-drawer">
           <summary>Slik beregnes beløpet</summary>
           <div class="calc-drawer-body">
-            <p>Et budsjettanslag fra registrerte poster, ikke saldoen i banken. Gammelt overskudd inngår ikke i ny måned.</p>
+            <p>Et budsjettanslag fra registrerte poster, ikke saldoen i banken. Beløpet skal også dekke kategorirammene resten av måneden. Dagsbeløpet er ikke et forslag om ekstra forbruk. Gammelt overskudd inngår ikke i ny måned.</p>
             <dl class="calculation-details">
               <dt>Mottatt inntekt</dt><dd>{{ totals.income|nok }}</dd>
               <dt>+ Netto frigjort sparing</dt><dd>{{ totals.released|nok }}</dd>

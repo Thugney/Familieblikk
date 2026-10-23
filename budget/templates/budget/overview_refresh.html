@@ -1,4 +1,5 @@
 {% load budget_tags ui_tags %}
+{% include 'budget/money_control.html' %}
 <div class="bento" aria-label="Analyse av forbruk og sparing">
   <div class="c">
     <div class="bento-head"><div><h3>Daglig bruk</h3><p class="l">{% if weekly_start %}{{ weekly_start|date:"d.m" }}–{{ weekly_end|date:"d.m.Y" }}{% else %}Ingen inntrufne dager{% endif %}</p></div><strong>{{ weekly_total|nok }}</strong></div>
