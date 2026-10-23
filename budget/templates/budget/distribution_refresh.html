@@ -8,7 +8,7 @@
   <div class="hero-mode-panel" data-hero-panel="bar">
     {% if distribution.chartable %}
     <div class="seg" aria-hidden="true">
-      {% for part in distribution.parts %}<div{% if part.kind == 'committed' %} class="hat" style="flex-grow:{{ part.weight }};color:#fff"{% elif part.kind == 'spent' %} style="flex-grow:{{ part.weight }};background:#fff;color:#0E4A38"{% else %} style="flex-grow:{{ part.weight }};background:#9CC4A3;color:#0A3A2C"{% endif %}>{{ part.label }}</div>{% endfor %}
+      {% for part in distribution.parts %}{% if part.weight %}<div{% if part.kind == 'committed' %} class="hat" style="flex-grow:{{ part.weight }};color:#fff"{% elif part.kind == 'spent' %} style="flex-grow:{{ part.weight }};background:#fff;color:#0E4A38"{% else %} style="flex-grow:{{ part.weight }};background:#9CC4A3;color:#0A3A2C"{% endif %}>{{ part.label }}</div>{% endif %}{% endfor %}
     </div>
     <div class="seg-legend">
       {% for part in distribution.parts %}<span{% if part.weight %} style="flex-grow:{{ part.weight }}"{% endif %}>{{ part.label }} ({{ part.amount|nok }})</span>{% endfor %}
@@ -18,13 +18,16 @@
 
   <div class="hero-mode-panel" data-hero-panel="trend" hidden>
     <div class="hero-chart-box">
-      <div class="hero-chart-head"><span>Utvikling mot budsjett ({{ month|date:'F' }})</span>{% if pace %}<span>vs. {{ pace.label }}: {{ pace.delta }}</span>{% endif %}</div>
-      {% if chart %}<svg viewBox="0 0 320 56" width="100%" height="56" role="img" aria-label="Utviklingsgraf mot budsjett">
-        <path d="M0,44 Q80,34 160,26 T320,12" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.6" stroke-dasharray="4 3"/>
-        <polyline points="{% for point in chart %}{{ point.x }},{{ point.y }} {% endfor %}" fill="none" stroke="#9CC4A3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        {% for point in chart %}<circle cx="{{ point.x }}" cy="{{ point.y }}" r="4.5" fill="#fff" stroke="#13614A" stroke-width="2"/>{% endfor %}
-      </svg>{% else %}<p class="hero-note">Ingen trend å vise ennå.</p>{% endif %}
-      <div class="hero-chart-labels">{% for point in chart %}<span>{{ point.label }}</span>{% endfor %}</div>
+      <div class="hero-chart-head"><span>Akkumulert forbruk · {{ month|date:'F Y' }}</span></div>
+      <svg viewBox="0 0 320 56" width="100%" height="56" role="img" aria-label="Akkumulert forbruk per dag. Tall finnes under grafen.">
+        {% if trend_budget != None %}<polyline points="{% for point in month_trend %}{{ point.x }},{{ point.budget_y }} {% endfor %}" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.6" stroke-dasharray="4 3"/>{% endif %}
+        <polyline points="{% for point in month_trend %}{% if point.amount != None %}{{ point.x }},{{ point.amount_y }} {% endif %}{% endfor %}" fill="none" stroke="#9CC4A3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        {% for point in month_trend %}{% if point.amount != None %}<circle cx="{{ point.x }}" cy="{{ point.amount_y }}" r="2.5" fill="#fff"/>{% endif %}{% endfor %}
+      </svg>
+      {% if not trend_has_actual %}<p class="hero-note">Ingen inntrufne dager i denne måneden. Faktisk forbruk vises når måneden starter.</p>{% endif %}
+      <div class="hero-chart-labels"><span>1.</span><span>15.</span><span>{{ month_trend|length }}.</span></div>
+      <p class="hero-note">Heltrukket: bokført forbruk etter refusjoner, til og med i dag. {% if trend_budget != None %}Stiplet: summen av kategorirammer ({{ trend_budget|nok }}) fordelt jevnt på månedens dager. Kategorier uten ramme inngår bare i forbruket.{% else %}Ingen kategorirammer registrert; budsjettlinje vises ikke.{% endif %}</p>
+      <details><summary>Vis grafens tall</summary><table><thead><tr><th scope="col">Dag</th><th scope="col">Forbruk</th><th scope="col">Budsjettempo</th></tr></thead><tbody>{% for point in month_trend %}<tr><th scope="row">{{ point.date|date:'d.m' }}</th><td>{% if point.amount != None %}{{ point.amount|nok }}{% else %}Ikke inntruffet{% endif %}</td><td>{% if point.budget != None %}{{ point.budget|nok }}{% else %}Ingen ramme{% endif %}</td></tr>{% endfor %}</tbody></table></details>
     </div>
   </div>
   <p class="hero-note">Forpliktelser omfatter regningsreserve, sparing, gjeld og årsavsetning. Fordelingen inkluderer netto frigjort sparing.</p>

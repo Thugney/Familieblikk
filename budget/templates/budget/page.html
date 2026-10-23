@@ -7,7 +7,7 @@
     <div class="heading-actions"><a class="btn-sec" href="{% url 'correction_export' 'entry' %}">Revisjonshistorikk &amp; CSV</a>{% if request.financial_can_write %}<a class="btn-pri" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to={{ page }}">+ Ny post</a>{% endif %}</div>
     {% elif page == 'regninger' %}
     <div><p class="section-eyebrow">Faste og variable regninger</p><h1>{{ title }}</h1></div>
-    <div class="heading-actions"><a class="btn-sec" href="{% url 'correction_export' 'bill' %}">Revisjonshistorikk &amp; CSV</a>{% if request.financial_can_write %}<a class="btn-pri" href="{% url 'create' 'bill' %}?month={{ month|date:'Y-m' }}&amp;return_to=regninger">Korriger regning</a>{% endif %}</div>
+    <div class="heading-actions"><a class="btn-sec" href="{% url 'correction_export' 'bill' %}">Revisjonshistorikk &amp; CSV</a>{% if request.financial_can_write %}<a class="btn-pri" href="{% url 'create' 'bill' %}?month={{ month|date:'Y-m' }}&amp;return_to=regninger">+ Ny regning</a>{% endif %}</div>
     {% elif page == 'sparing' %}
     <div><p class="section-eyebrow">Sparemål &amp; buffer · Reserveres én gang</p><h1>Sparemål · {{ request.financial_area.name }}</h1><p class="l">{% if totals.planned_savings %}Fast månedlig sparing ({{ totals.planned_savings|nok }}) er reservert i tilgjengelig beløp · {% endif %}Ekstra innskudd trekkes direkte</p></div>
     <div class="heading-actions">{% if request.financial_can_write %}<a class="btn-pri" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to=sparing&amp;entry_kind=deposit">+ Ekstra innskudd</a><a class="btn-sec" href="{% url 'create' 'asset' %}?month={{ month|date:'Y-m' }}&amp;asset_kind=savings">Nytt sparemål</a>{% endif %}</div>

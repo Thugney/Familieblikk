@@ -187,3 +187,35 @@ class UiAssetTests(SimpleTestCase):
         response.close()
         html = render_to_string('budget/base.html')
         self.assertIn('/static/budget/ui-refresh.js', html)
+
+
+class NavigationPermissionPresentationTests(SimpleTestCase):
+    def render_shell(self, *, selected=True, writable=False, calendar=False):
+        from unittest.mock import patch
+        from budget.views import NAV
+        house = SimpleNamespace(name='Testfamilien', modules={})
+        member = SimpleNamespace(user_id=1, household_id=uuid4(), role='member', module_access={'shopping': False, 'calendar': calendar},
+                                 household=house, get_role_display='Medlem')
+        request = SimpleNamespace(financial_area=SimpleNamespace(name='Lesebudsjett') if selected else None,
+                                  financial_can_write=writable, GET={},
+                                  user=SimpleNamespace(is_authenticated=False, email='test@example.test'))
+        with patch('budget.models.CalendarNotification.objects.filter') as notices:
+            notices.return_value.count.return_value = 0
+            return render_to_string('budget/base.html', {'member': member, 'request': request,
+                                    'nav': NAV, 'page': 'kalender' if calendar else 'mer'})
+
+    def test_reader_keeps_mobile_navigation_without_write_actions(self):
+        html = self.render_shell()
+        self.assertIn('aria-label="Mobilmeny"', html)
+        self.assertNotIn('data-mobile-fab', html)
+        self.assertNotIn('Utgift / ny post', html)
+
+    def test_shared_page_offers_explicit_budget_selection(self):
+        html = self.render_shell(selected=False)
+        self.assertIn('Velg budsjett for ny post', html)
+        self.assertNotIn('Utgift / ny post', html)
+        self.assertNotIn('?area=', html)
+
+    def test_calendar_creation_does_not_require_financial_write(self):
+        html = self.render_shell(selected=False, calendar=True)
+        self.assertIn('data-calendar-quick-create', html)

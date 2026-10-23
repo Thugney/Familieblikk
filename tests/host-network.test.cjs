@@ -87,7 +87,7 @@ test('releasekontrakten bevarer eksisterende prosjektnavn, volum, hemmelighet og
   assert.equal(after.services.app.volumes.find(v=>v.target==='/private-import').source.replaceAll('\\','/'),root.replaceAll('\\','/'));
   assert.doesNotMatch(after.services.migrate.command.join(' '),/provision_owner|restore|apply_import|seed|flush|DROP|TRUNCATE/i);
   const dockerignore=fs.readFileSync(path.join(root,'.dockerignore'),'utf8');
-  assert.ok(dockerignore.startsWith('*\n'));
+  assert.match(dockerignore, /^\*\r?\n/);
   assert.doesNotMatch(dockerignore,/^!(?:\.env|private-data|Familieblikk-Synology)/m);
   for(const name of ['AGENTS.md','rules.md','docs/DRIFT.md']){
     const rules=fs.readFileSync(path.join(root,name),'utf8');

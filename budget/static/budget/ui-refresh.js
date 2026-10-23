@@ -11,9 +11,30 @@
     reveal();
   });
 
+  const keyboardChoice = (controls, activate) => {
+    controls.forEach((control, index) => control.addEventListener('keydown', event => {
+      let next;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % controls.length;
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index + controls.length - 1) % controls.length;
+      else if (event.key === 'Home') next = 0;
+      else if (event.key === 'End') next = controls.length - 1;
+      else return;
+      event.preventDefault();
+      activate(controls[next]);
+      controls[next].focus();
+    }));
+  };
+  document.querySelectorAll('[data-calendar-quick-create]').forEach(button => {
+    const create = document.getElementById('calendar-create');
+    if (!create) return;
+    button.hidden = false;
+    button.addEventListener('click', () => create.click());
+  });
+
   document.querySelectorAll('[data-hero-distribution]').forEach(section => {
     const buttons = section.querySelectorAll('[data-hero-mode]');
     const panels = section.querySelectorAll('[data-hero-panel]');
+    keyboardChoice(buttons, button => button.click());
     buttons.forEach(btn => {
       btn.addEventListener('click', () => {
         const target = btn.getAttribute('data-hero-mode');
@@ -29,19 +50,32 @@
     });
   });
 
-  document.querySelectorAll('[data-entry-create-surface]').forEach(surface => {
+  document.querySelectorAll('[data-entry-create-surface]').forEach((surface, surfaceIndex) => {
     const tabs = surface.querySelectorAll('[data-capture-mode]');
     const panels = surface.querySelectorAll('[data-capture-panel]');
+    tabs.forEach((tab, index) => {
+      const mode = tab.getAttribute('data-capture-mode');
+      const panel = Array.from(panels).find(item => item.getAttribute('data-capture-panel') === mode);
+      if (!panel) return;
+      tab.id = tab.id || `capture-tab-${surfaceIndex}-${index}`;
+      panel.id = panel.id || `capture-panel-${surfaceIndex}-${index}`;
+      tab.setAttribute('aria-controls', panel.id);
+      panel.setAttribute('role', 'tabpanel');
+      panel.setAttribute('aria-labelledby', tab.id);
+    });
     const activateMode = mode => {
       tabs.forEach(t => {
         const active = t.getAttribute('data-capture-mode') === mode;
         t.classList.toggle('is-active', active);
         t.setAttribute('aria-selected', active ? 'true' : 'false');
+        t.tabIndex = active ? 0 : -1;
       });
       panels.forEach(panel => {
         panel.hidden = panel.getAttribute('data-capture-panel') !== mode;
       });
     };
+    keyboardChoice(tabs, tab => activateMode(tab.getAttribute('data-capture-mode')));
+    activateMode('manual');
     tabs.forEach(tab => {
       tab.addEventListener('click', () => activateMode(tab.getAttribute('data-capture-mode')));
     });
@@ -54,9 +88,11 @@
     const fab = container.querySelector('[data-mobile-fab]');
     const sheet = container.querySelector('[data-mobile-sheet]');
     if (!fab || !sheet) return;
-    const setOpen = open => {
+    const setOpen = (open, restoreFocus = false) => {
       sheet.hidden = !open;
       fab.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) sheet.querySelector('a, button')?.focus();
+      else if (restoreFocus) fab.focus();
     };
     fab.addEventListener('click', e => {
       e.stopPropagation();
@@ -65,8 +101,11 @@
     document.addEventListener('click', e => {
       if (!sheet.hidden && !container.contains(e.target)) setOpen(false);
     });
+    container.addEventListener('focusout', e => {
+      if (!sheet.hidden && !container.contains(e.relatedTarget)) setOpen(false);
+    });
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && !sheet.hidden) setOpen(false);
+      if (e.key === 'Escape' && !sheet.hidden) { e.preventDefault(); setOpen(false, true); }
     });
   });
 })();

@@ -476,11 +476,21 @@ def allocate_debt_plan(actor, month, strategy, extra_ore):
 
 
 def ordinary_for_period(household, start, end):
+    return sum(ordinary_by_date(household, start, end).values())
+
+
+def ordinary_by_date(household, start, end):
+    """Net ordinary spending by date, using one area-scoped aggregate query."""
+    from django.db.models import Case, When, F, BigIntegerField
     from .financial_areas import current_area
     if current_area().household_id != household.pk:
         raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     rows = Entry.objects.filter(active=True, household=household, effective_date__range=(start, end))
-    return total(rows.filter(kind__in=['expense', 'remittance'])) - total(rows.filter(kind='refund', original__kind__in=['expense', 'remittance']))
+    spending = Q(kind__in=['expense', 'remittance'])
+    refunds = Q(kind='refund', original__kind__in=['expense', 'remittance'])
+    amounts = rows.filter(spending | refunds).order_by().values('effective_date').annotate(
+        net=Sum(Case(When(spending, then=F('amount_ore')), default=-F('amount_ore'), output_field=BigIntegerField())))
+    return {row['effective_date']: row['net'] for row in amounts}
 
 
 def estimated_debt_balance(asset, as_of):

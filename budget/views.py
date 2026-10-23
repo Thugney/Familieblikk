@@ -262,7 +262,7 @@ def page_view(request, page='oversikt'):
         spent = spent_by_category.get(category.pk, 0) - refunds_by_category.get(category.pk, 0)
         limit = plan.amount_ore if plan else None
         pct = round(spent * 100 / limit) if limit else None
-        categories.append({'row': category, 'spent': spent, 'plan': plan, 'limit': limit, 'over': max(spent - limit, 0) if limit is not None else None, 'progress_value': min(max(spent, 0), limit) if limit else 0, 'pct': pct, 'bar_pct': min(max(pct, 0), 100) if pct is not None else 0, 'has_limit': bool(limit)})
+        categories.append({'row': category, 'spent': spent, 'plan': plan, 'limit': limit, 'over': max(spent - limit, 0) if limit is not None else None, 'progress_value': min(max(spent, 0), limit) if limit else 0, 'pct': pct, 'bar_pct': min(max(pct, 0), 100) if pct is not None else (100 if limit == 0 and spent > 0 else 0), 'has_limit': limit is not None, 'budget_status': 'over' if limit is not None and spent >= limit and (limit > 0 or spent > 0) else 'warning' if limit and spent * 100 >= limit * 85 else 'normal'})
     positive_spending = sum(max(item['spent'], 0) for item in categories)
     for item in categories:
         share = Decimal(max(item['spent'], 0)) * 100 / positive_spending if positive_spending else Decimal(0)
@@ -317,35 +317,51 @@ def page_view(request, page='oversikt'):
     if comparison and month == services.month_start(timezone.localdate()):
         end_previous = previous.replace(day=min(timezone.localdate().day, services.month_end(previous).day))
         comparison['ordinary'] = services.ordinary_for_period(house, previous, end_previous)
-    # Bento analytics on Oversikt: a 7-day spending mini chart, a month-over-month
-    # pace badge, and coordinates for the hero trend chart (reusing `chart`).
+    # Presentation uses the existing accounting helper, with the same area scope.
     month_abbr = ('jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des')
     weekly_bars = []
     weekly_total = 0
     pace = None
-    if full_finance:
+    month_trend = []
+    trend_budget = None
+    daily_days = None
+    if full_finance and page == 'oversikt':
         today = timezone.localdate()
-        week_start = today - timedelta(days=6)
-        week_rows = list(Entry.objects.filter(active=True, household=house, effective_date__range=(week_start, today)).select_related('original'))
-        daily = {}
-        for row in week_rows:
-            if row.kind == 'refund':
-                if row.original and row.original.kind in ('expense', 'remittance'):
-                    daily[row.effective_date] = daily.get(row.effective_date, 0) - row.amount_ore
-            elif row.kind in ('expense', 'remittance'):
-                daily[row.effective_date] = daily.get(row.effective_date, 0) + row.amount_ore
-        week_max = max(daily.values(), default=0)
+        if month == services.month_start(today):
+            daily_days = services.month_end(month).day - today.day + 1
+        week_end = min(today, services.month_end(month))
+        week_start = max(month, week_end - timedelta(days=6))
+        monthly_daily = services.ordinary_by_date(house, month, week_end) if week_end >= month else {}
+        daily = {week_start + timedelta(days=n): monthly_daily.get(week_start + timedelta(days=n), 0) for n in range(max((week_end - week_start).days + 1, 0))}
+        week_max = max([abs(value) for value in daily.values()] + [1])
         weekday_labels = ('ma', 'ti', 'on', 'to', 'fr', 'lø', 'sø')
-        for n in range(7):
+        for n in range(max((week_end - week_start).days + 1, 0)):
             day = week_start + timedelta(days=n)
             amount = daily.get(day, 0)
             weekly_bars.append({'date': day, 'label': weekday_labels[day.weekday()], 'amount': amount,
-                                'height': round(amount * 58 / week_max) if week_max else 0,
+                                'height': round(abs(amount) * 58 / week_max),
                                 'peak': week_max > 0 and amount == week_max, 'weekend': day.weekday() >= 5})
         weekly_total = sum(bar['amount'] for bar in weekly_bars)
-        if comparison and comparison.get('ordinary') not in (None, 0) and totals.get('ordinary') is not None:
+        end = services.month_end(month)
+        cutoff = min(today, end)
+        plans = list(plans_by_category.values())
+        trend_budget = sum(plan.amount_ore for plan in plans) if plans else None
+        cumulative = 0
+        for number in range(1, end.day + 1):
+            day = month.replace(day=number)
+            cumulative += monthly_daily.get(day, 0)
+            actual = cumulative if day <= cutoff else None
+            budget = trend_budget * number // end.day if trend_budget is not None else None
+            month_trend.append({'day': number, 'date': day, 'amount': actual, 'budget': budget, 'x': 8 + (number - 1) * 304 // (end.day - 1)})
+        values = [point[key] for point in month_trend for key in ('amount', 'budget') if point[key] is not None]
+        low, high = min(values + [0]), max(values + [1])
+        for point in month_trend:
+            for key in ('amount', 'budget'):
+                point[key + '_y'] = 52 - (point[key] - low) * 44 // (high - low) if point[key] is not None else None
+        current_ordinary = cumulative
+        if comparison and comparison.get('ordinary', 0) > 0 and month <= today:
             try:
-                delta = round((totals['ordinary'] - comparison['ordinary']) * 100 / comparison['ordinary'], 1)
+                delta = round((current_ordinary - comparison['ordinary']) * 100 / comparison['ordinary'], 1)
             except (TypeError, ZeroDivisionError):
                 delta = None
             if delta is not None:
@@ -358,6 +374,7 @@ def page_view(request, page='oversikt'):
         item['label'] = month_abbr[item['month'].month - 1]
     ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'overview_filter': overview_filter, 'overview_bills': overview_bills, 'overview_entries': overview_entries, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'weekly_bars': weekly_bars, 'weekly_total': weekly_total, 'pace': pace, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'poster_status': poster_status, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
     if page == 'oversikt':
+        ctx.update(trend_has_actual=any(point["amount"] is not None for point in month_trend), month_trend=month_trend, trend_budget=trend_budget, daily_days=daily_days, weekly_start=weekly_bars[0]["date"] if weekly_bars else None, weekly_end=weekly_bars[-1]["date"] if weekly_bars else None)
         ctx['spending_embedded'] = True
         ctx['spending_boot'] = {'initial_tab': 'spending', 'month': month.strftime('%Y-%m'), 'can_save': getattr(request, 'financial_can_write', False), 'urls': {'spending': reverse('spending_data'), 'planning': reverse('planning_data'), 'preview': reverse('planning_preview'), 'save': reverse('planning_save')}}
     if page == 'familie':

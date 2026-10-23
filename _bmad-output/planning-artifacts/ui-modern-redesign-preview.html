@@ -1,0 +1,3486 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Familieblikk – Moderne Visuelt Redesignforslag (Mobil & PC · Fiktive data)</title>
+  <link rel="icon" href="../../budget/static/budget/icon.svg" type="image/svg+xml">
+  <style>
+    @font-face {
+      font-family: 'Figtree';
+      src: url('../../budget/static/budget/figtree-latin.woff2') format('woff2');
+      font-weight: 400 800;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      --green-dark: #0A3A2C;
+      --green-mid: #0E4A38;
+      --green-pri: #13614A;
+      --mint: #9CC4A3;
+      --mint-light: #E7F1EA;
+      --canvas-bg: #E2E0D6;
+      --cream: #F3F2EC;
+      --surface: #FFFFFF;
+      --border: #EBE9E0;
+      --border-strong: #DCD9CC;
+      --text-main: #061A2E;
+      --text-muted: #4F5F5A;
+      --red-bg: #FDE8E6;
+      --red-txt: #8F1F1B;
+      --amber-bg: #FFF6E8;
+      --amber-txt: #7A4300;
+      --blue-bg: #E8F1F5;
+      --blue-txt: #1D4E68;
+      --radius-sheet: 28px;
+      --radius-card: 20px;
+      --shadow-elevated: 0 24px 56px rgba(6, 26, 46, 0.14);
+      --shadow-dock: 0 12px 28px rgba(6, 26, 46, 0.16);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background: var(--canvas-bg);
+      color: var(--text-main);
+      font-family: 'Figtree', system-ui, -apple-system, sans-serif;
+      font-variant-numeric: tabular-nums;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+      color: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 2.5px solid var(--green-pri);
+      outline-offset: 2px;
+    }
+
+    h1, h2, h3, h4, p {
+      margin: 0;
+    }
+
+    .section-eyebrow {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* =========================================================================
+       DESIGN PREVIEW TOP CONTROL BAR (FICTIONAL DATA & ROLE/STATE SWITCHER)
+       ========================================================================= */
+    .preview-banner {
+      background: var(--green-dark);
+      color: #FFFFFF;
+      padding: 8px 16px;
+      border-bottom: 1px solid rgba(156, 196, 163, 0.28);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 90;
+    }
+
+    .preview-banner-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .preview-pill {
+      background: var(--mint);
+      color: var(--green-dark);
+      font-weight: 800;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 99px;
+    }
+
+    .preview-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .preview-ctrl-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 10px;
+      padding: 3px 8px;
+      min-height: 44px;
+    }
+
+    .preview-ctrl-group label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--mint);
+      white-space: nowrap;
+    }
+
+    .preview-ctrl-group select {
+      background: transparent;
+      border: none;
+      color: #FFFFFF;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 2px;
+      min-height: 44px;
+    }
+
+    .preview-ctrl-group select option {
+      background: var(--green-dark);
+      color: #FFFFFF;
+    }
+
+    /* =========================================================================
+       EXISTING FAMILIEBLIKK LOADER (FAITHFUL TO budget/templates/budget/loader.html)
+       ========================================================================= */
+    .fb-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: none;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at 50% 34%, rgba(156, 196, 163, 0.26), transparent 44%),
+        linear-gradient(160deg, #F3F2EC 0%, #EEEDE5 58%, #E7F1EA 100%);
+      color: #061A2E;
+    }
+
+    .fb-loader.active {
+      display: grid;
+    }
+
+    .fb-loader__card {
+      display: grid;
+      justify-items: center;
+      gap: 14px;
+      min-width: min(290px, 88vw);
+      padding: 28px 30px 24px;
+      border: 1px solid rgba(19, 97, 74, 0.14);
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: 0 22px 54px rgba(6, 26, 46, 0.12);
+    }
+
+    .fb-loader__mark {
+      width: 68px;
+      height: 68px;
+      display: grid;
+      place-items: center;
+      border-radius: 20px;
+      background: #FFFFFF;
+      box-shadow: inset 0 0 0 1px rgba(19, 97, 74, 0.12), 0 10px 24px rgba(19, 97, 74, 0.12);
+    }
+
+    .fb-loader__svg {
+      width: 48px;
+      height: 48px;
+      overflow: visible;
+    }
+
+    .fb-loader__rotor {
+      transform-origin: 108px 108px;
+      animation: fb-loader-turn 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    }
+
+    .fb-loader__tile {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: fb-loader-pulse 1.5s ease-in-out infinite;
+    }
+
+    .fb-loader__tile--2 { animation-delay: 0.16s; }
+    .fb-loader__tile--3 { animation-delay: 0.32s; }
+    .fb-loader__tile--4 { animation-delay: 0.48s; }
+
+    @keyframes fb-loader-turn {
+      0%, 16% { transform: rotate(-8deg) scale(1); }
+      48%, 64% { transform: rotate(82deg) scale(0.96); }
+      100% { transform: rotate(262deg) scale(1); }
+    }
+
+    @keyframes fb-loader-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.72; transform: scale(0.9); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fb-loader__rotor, .fb-loader__tile {
+        animation: none !important;
+      }
+    }
+
+    /* =========================================================================
+       LAYOUT SHELL: DESKTOP WORKSPACE + MOBILE / PHONE FRAME
+       ========================================================================= */
+    .workspace-shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 18px 20px 32px;
+      display: grid;
+      grid-template-columns: 232px minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* Desktop Left Sidebar (232px, profile strictly at bottom-left) */
+    .pc-sidebar {
+      width: 232px;
+      background: #FAF9F5;
+      border: 1px solid var(--border-strong);
+      border-radius: 28px;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 88px);
+      max-height: 860px;
+      position: sticky;
+      top: 68px;
+      box-shadow: 0 14px 34px rgba(6, 26, 46, 0.06);
+    }
+
+    .pc-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 8px 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 6px;
+    }
+
+    .pc-brand-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--green-dark);
+      letter-spacing: -0.02em;
+    }
+
+    .pc-brand-sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .pc-nav-section-label {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 6px 10px 4px;
+    }
+
+    .pc-nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .pc-nav-btn {
+      width: 100%;
+      min-height: 44px;
+      padding: 8px 12px;
+      border-radius: 14px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      text-align: left;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .pc-nav-btn:hover {
+      background: var(--cream);
+      color: var(--text-main);
+    }
+
+    .pc-nav-btn.on {
+      background: var(--green-pri);
+      color: #FFFFFF;
+      font-weight: 800;
+      box-shadow: 0 6px 16px rgba(19, 97, 74, 0.24);
+    }
+
+    .pc-nav-btn-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .pc-nav-btn svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .pc-nav-badge {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: var(--red-bg);
+      color: var(--red-txt);
+    }
+
+    .pc-nav-btn.on .pc-nav-badge {
+      background: #FFFFFF;
+      color: var(--green-dark);
+    }
+
+    /* Profile strictly at the bottom-left of the desktop sidebar */
+    .pc-sidebar-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .pc-sidebar-profile {
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .pc-profile-card {
+      background: var(--cream);
+      border: 1px solid var(--border-strong);
+      border-radius: 18px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pc-profile-av {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: var(--green-pri);
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 13px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .pc-profile-meta {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .pc-profile-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pc-profile-role {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* =========================================================================
+       MAIN APP STAGE (SLEEK GREEN HERO + WHITE ROUNDED SHEET)
+       ========================================================================= */
+    .app-stage {
+      background: var(--green-pri);
+      color: #FFFFFF;
+      border-radius: 32px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-elevated);
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 96px);
+    }
+
+    /* Top Header inside App Stage */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px 6px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    /* Hide duplicate logo in top header on desktop since pc-sidebar already shows it */
+    .mobile-brand-mark {
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .desktop-context-crumb {
+      font-size: 13px;
+      font-weight: 700;
+      color: #D5ECE0;
+      letter-spacing: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .chip-btn {
+      background: rgba(255, 255, 255, 0.14);
+      border: 1.5px solid rgba(255, 255, 255, 0.3);
+      color: #FFFFFF;
+      border-radius: 99px;
+      padding: 8px 14px;
+      min-height: 44px;
+      font-size: 12px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease;
+    }
+
+    .chip-btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .chip-btn.cta-light {
+      background: #FFFFFF;
+      color: var(--green-mid);
+      border-color: #FFFFFF;
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 99px;
+      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.08);
+      color: #FFFFFF;
+      display: grid;
+      place-items: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .notif-dot {
+      position: absolute;
+      top: 9px;
+      right: 10px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #FDE8E6;
+      border: 1.5px solid var(--green-pri);
+    }
+
+    /* Family Member / Budget Area Switcher Bar (.fam-bar) */
+    .fam-bar-wrap {
+      padding: 8px 24px 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .fam-bar {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .fam-pill {
+      min-height: 44px;
+      padding: 6px 13px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1.5px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.09);
+      color: rgba(255, 255, 255, 0.92);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .fam-pill:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .fam-pill.on {
+      background: #FFFFFF;
+      color: var(--green-mid);
+      border-color: #FFFFFF;
+      font-weight: 800;
+      box-shadow: 0 4px 12px rgba(6, 26, 46, 0.16);
+    }
+
+    .fam-pill.locked {
+      background: rgba(6, 26, 46, 0.26);
+      border-style: dashed;
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    .fam-pill.locked.on {
+      background: #FFF6E8;
+      color: var(--amber-txt);
+      border-color: var(--amber-txt);
+      border-style: solid;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .fam-access-tag {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .fam-pill.on .fam-access-tag {
+      background: var(--mint-light);
+      color: var(--green-dark);
+    }
+
+    /* Hero Section (Shown on Oversikt) */
+    .hero {
+      padding: 12px 24px 20px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      gap: 20px;
+      align-items: end;
+    }
+
+    .hero-eyebrow-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hero-eyebrow {
+      font-size: 13px;
+      font-weight: 700;
+      color: #C8E3CD;
+    }
+
+    .hero-delta-badge {
+      background: rgba(156, 196, 163, 0.24);
+      border: 1px solid var(--mint);
+      color: var(--mint-light);
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 99px;
+    }
+
+    .hero-main-numbers {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .hero-big-amount {
+      font-size: clamp(38px, 4.5vw, 56px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.04;
+    }
+
+    .hero-big-amount .kr {
+      font-size: 24px;
+      letter-spacing: -0.02em;
+      font-weight: 700;
+    }
+
+    .hero-per-day {
+      text-align: right;
+      font-size: 12px;
+      color: #D5ECE0;
+    }
+
+    .hero-per-day b {
+      color: #FFFFFF;
+      font-size: 15px;
+    }
+
+    /* Segmented Proportional Bar (.seg) */
+    .seg {
+      display: flex;
+      gap: 4px;
+      height: 36px;
+      margin-top: 12px;
+    }
+
+    .seg > div {
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      font-weight: 800;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .hat {
+      border: 1.5px solid rgba(255, 255, 255, 0.85);
+      background: repeating-linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.52) 0 2px,
+        transparent 2px 7px
+      );
+    }
+
+    .seg-legend {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #D5ECE0;
+    }
+
+    /* Hero Pace Chart Card */
+    .hero-chart-box {
+      background: rgba(6, 26, 46, 0.24);
+      border: 1px solid rgba(156, 196, 163, 0.28);
+      border-radius: 16px;
+      padding: 10px 14px;
+      position: relative;
+    }
+
+    /* White Curved Sheet (.sheet) */
+    .sheet {
+      flex: 1;
+      background: var(--surface);
+      color: var(--text-main);
+      border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+      padding: 22px 24px 110px;
+      min-height: 520px;
+    }
+
+    /* Bento Cards & Containers (.c) */
+    .c {
+      background: var(--cream);
+      border-radius: var(--radius-card);
+      padding: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .l {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Semantic Status Badges (.s) */
+    .s {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 99px;
+      border: 1.5px solid;
+      white-space: nowrap;
+    }
+
+    .act { background: var(--green-pri); color: #FFFFFF; border-color: var(--green-pri); }
+    .exp { background: #FFFFFF; color: var(--green-pri); border: 1.5px dashed var(--green-pri); }
+    .res { background: var(--mint-light); color: var(--green-mid); border-color: var(--mint); }
+    .ovd { background: var(--red-bg); color: var(--red-txt); border-color: var(--red-txt); }
+    .unk { background: #FFFFFF; color: var(--text-muted); border: 1.5px dotted var(--text-muted); }
+    .wait { background: var(--amber-bg); color: var(--amber-txt); border-color: var(--amber-txt); }
+
+    /* Filter Pills (.pills / .pill) */
+    .pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      min-height: 44px;
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--cream);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .pill:hover {
+      border-color: var(--green-pri);
+      color: var(--text-main);
+    }
+
+    .pill.on {
+      background: var(--green-pri);
+      color: #FFFFFF;
+      border-color: var(--green-pri);
+    }
+
+    /* Action Buttons inside White Sheet */
+    .btn-pri {
+      min-height: 44px;
+      padding: 8px 16px;
+      border-radius: 99px;
+      background: var(--green-pri);
+      color: #FFFFFF;
+      border: none;
+      font-size: 13px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-pri:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-sec {
+      min-height: 44px;
+      padding: 8px 14px;
+      border-radius: 99px;
+      background: #FFFFFF;
+      color: var(--green-mid);
+      border: 1.5px solid var(--border-strong);
+      font-size: 12px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-sec:hover:not(:disabled) {
+      border-color: var(--green-pri);
+      background: var(--mint-light);
+    }
+
+    .btn-sec:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Rows, Avatars & Progress Bars */
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .row:last-child {
+      border-bottom: none;
+    }
+
+    .av {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .bar {
+      height: 7px;
+      border-radius: 99px;
+      background: #E2E0D6;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      border-radius: 99px;
+    }
+
+    /* Two-column desktop split inside sheet */
+    .sheet-split {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+      gap: 18px;
+      margin-top: 18px;
+      align-items: start;
+    }
+
+    /* Grounded Grouped Menu List for Mer (No floating pill clouds) */
+    .mer-groups {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .mer-group-title {
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin: 0 0 8px 4px;
+    }
+
+    .mer-group-card {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .mer-row {
+      width: 100%;
+      min-height: 64px;
+      padding: 13px 16px;
+      background: #FFFFFF;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      text-align: left;
+      color: var(--text-main);
+      transition: background 0.14s ease;
+    }
+
+    .mer-row:last-child {
+      border-bottom: 0;
+    }
+
+    .mer-row:hover {
+      background: var(--mint-light);
+    }
+
+    .mer-row-main {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .mer-row-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .mer-row-body {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .mer-row-body b {
+      display: block;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .mer-row-body span {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .mer-row-end {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .mer-row-chev {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--green-pri);
+      line-height: 1;
+    }
+
+    body.mode-phone .mer-groups {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .mer-groups {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+    }
+
+    /* Read-only / Privacy Notice Banners */
+    .access-banner {
+      border-radius: 16px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+
+    .access-banner.readonly {
+      background: var(--amber-bg);
+      color: var(--amber-txt);
+      border: 1.5px solid #E9C46A;
+    }
+
+    .access-banner.owner-info {
+      background: var(--mint-light);
+      color: var(--green-dark);
+      border: 1.5px solid var(--mint);
+    }
+
+    .access-banner.offline-warn {
+      background: var(--red-bg);
+      color: var(--red-txt);
+      border: 1.5px solid var(--red-txt);
+    }
+
+    /* Floating Glassmorphic Bottom Dock (Mobile / Phone Frame) */
+    .dock-wrap {
+      position: fixed;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      height: 64px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      border: 1px solid #DCD9CC;
+      border-radius: 99px;
+      padding: 6px 8px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-dock);
+      z-index: 45;
+    }
+
+    .dock-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      height: 48px;
+      min-width: 46px;
+      padding: 0 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      border: none;
+      background: transparent;
+      transition: all 0.15s ease;
+    }
+
+    .dock-item.on {
+      background: var(--mint-light);
+      color: var(--green-mid);
+      font-weight: 800;
+      padding: 0 14px;
+    }
+
+    .dock-item svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .dock-fab {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--green-pri);
+      color: #FFFFFF;
+      border: none;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 6px 16px rgba(19, 97, 74, 0.4);
+      flex-shrink: 0;
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .dock-fab.open {
+      background: var(--green-dark);
+    }
+
+    .dock-fab.open svg {
+      transform: rotate(45deg);
+    }
+
+    .dock-speed-list {
+      position: absolute;
+      right: 4px;
+      bottom: 72px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      z-index: 50;
+    }
+
+    .dock-speed-item {
+      min-height: 44px;
+      padding: 8px 16px;
+      border-radius: 99px;
+      background: #FFFFFF;
+      color: var(--text-main);
+      border: 1.5px solid var(--border-strong);
+      box-shadow: 0 8px 22px rgba(6, 26, 46, 0.16);
+      font-size: 13px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+    }
+
+    .dock-speed-item:hover:not(:disabled) {
+      background: var(--mint-light);
+      border-color: var(--green-pri);
+      color: var(--green-dark);
+      transform: translateY(-1px);
+    }
+
+    .dock-speed-item:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .dock-fab:disabled {
+      background: var(--text-muted);
+      opacity: 0.45;
+      box-shadow: none;
+    }
+
+    /* Modal Backdrop & Sheet */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 26, 46, 0.56);
+      backdrop-filter: blur(3px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 120;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-sheet {
+      width: min(520px, 100%);
+      max-height: 90vh;
+      overflow-y: auto;
+      background: #FFFFFF;
+      color: var(--text-main);
+      border-radius: 28px;
+      padding: 24px 22px;
+      box-shadow: 0 28px 64px rgba(6, 26, 46, 0.28);
+    }
+
+    .inp {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border-strong);
+      background: var(--cream);
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    /* Calendar Grid */
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .cal-cell {
+      min-height: 52px;
+      border-radius: 12px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .cal-cell.sel {
+      border: 2px solid var(--green-pri);
+      background: var(--mint-light);
+      color: var(--green-dark);
+    }
+
+    /* =========================================================================
+       PHONE FRAME MODE (WHEN USER SELECTS 390x844 PHONE FRAME IN PREVIEW BAR)
+       ========================================================================= */
+    body.mode-phone .workspace-shell {
+      display: flex;
+      justify-content: center;
+      padding: 14px 12px 32px;
+    }
+
+    body.mode-phone .pc-sidebar {
+      display: none !important;
+    }
+
+    body.mode-phone .app-stage {
+      width: 390px;
+      max-width: 100%;
+      height: 844px;
+      min-height: 844px;
+      border-radius: 40px;
+      box-shadow: 0 28px 60px rgba(6, 26, 46, 0.28), 0 0 0 8px #061A2E;
+      overflow: hidden;
+    }
+
+    body.mode-phone .app-header {
+      padding: 12px 16px 2px;
+    }
+
+    body.mode-phone .mobile-brand-mark {
+      display: inline-flex;
+    }
+
+    body.mode-phone .desktop-context-crumb,
+    body.mode-phone .header-quick-add,
+    body.mode-phone .brand-month-pill {
+      display: none !important;
+    }
+
+    body.mode-phone .fam-bar-wrap {
+      padding: 4px 16px 2px;
+      gap: 5px;
+    }
+
+    body.mode-phone .fam-bar {
+      gap: 5px;
+      flex-wrap: nowrap;
+    }
+
+    body.mode-phone .fam-pill {
+      padding: 4px 9px;
+      font-size: 11px;
+    }
+
+    body.mode-phone .fam-access-tag {
+      display: none;
+    }
+
+    body.mode-phone .hero {
+      padding: 8px 16px 12px;
+    }
+
+    body.mode-phone .hero-big-amount {
+      font-size: 46px;
+    }
+
+    body.mode-phone .hero-grid {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    body.mode-phone .sheet {
+      padding: 16px 16px 96px;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    body.mode-phone .bento {
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    body.mode-phone .bento .bento-third {
+      grid-column: 1 / -1;
+    }
+
+    body.mode-phone .sheet-split {
+      grid-template-columns: 1fr;
+    }
+
+    body.mode-phone .dock-wrap {
+      display: flex;
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+    }
+
+    /* =========================================================================
+       RESPONSIVE BREAKPOINTS (TABLET & MOBILE <= 850px)
+       ========================================================================= */
+    @media (max-width: 1120px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+      .bento {
+        grid-template-columns: 1fr 1fr;
+      }
+      .bento .bento-third {
+        grid-column: 1 / -1;
+      }
+      .sheet-split {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 850px) {
+      .preview-banner {
+        padding: 4px 8px;
+        gap: 4px;
+      }
+      .preview-banner-left {
+        display: none;
+      }
+      .preview-controls {
+        width: 100%;
+        justify-content: space-between;
+        gap: 4px;
+        flex-wrap: nowrap;
+      }
+      .preview-ctrl-group {
+        padding: 0 5px;
+        min-height: 44px;
+        flex: 1;
+        min-width: 0;
+      }
+      .preview-ctrl-group label {
+        display: none;
+      }
+      .preview-ctrl-group select {
+        font-size: 11px;
+        width: 100%;
+        max-width: none;
+      }
+      .workspace-shell {
+        grid-template-columns: 1fr;
+        padding: 0;
+        gap: 0;
+      }
+      .pc-sidebar {
+        display: none !important;
+      }
+      .app-stage {
+        border-radius: 0;
+        min-height: calc(100vh - 52px);
+        box-shadow: none;
+      }
+      .app-header {
+        padding: 10px 16px 2px;
+      }
+      .mobile-brand-mark {
+        display: inline-flex;
+      }
+      .desktop-context-crumb,
+      .header-quick-add,
+      .brand-month-pill {
+        display: none !important;
+      }
+      .fam-bar-wrap {
+        padding: 4px 16px 2px;
+        gap: 5px;
+      }
+      .fam-bar {
+        gap: 5px;
+        flex-wrap: nowrap;
+      }
+      .fam-pill {
+        padding: 4px 9px;
+        font-size: 11px;
+      }
+      .fam-access-tag {
+        display: none;
+      }
+      .hero {
+        padding: 6px 16px 12px;
+      }
+      .hero-big-amount {
+        font-size: 44px;
+      }
+      .hero-grid {
+        gap: 8px;
+      }
+      .sheet {
+        padding: 15px 15px 104px;
+      }
+      .dock-wrap {
+        display: flex;
+      }
+    }
+
+    @media (max-width: 350px) {
+      .bento {
+        grid-template-columns: 1fr;
+      }
+      .dock-item {
+        padding: 0 8px;
+        min-width: 44px;
+      }
+      .dock-item.on {
+        padding: 0 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =========================================================================
+       EXISTING FAMILIEBLIKK LOADER OVERLAY
+       ========================================================================= -->
+  <div id="fbLoader" class="fb-loader" role="status" aria-live="polite" aria-label="Laster Familieblikk">
+    <div class="fb-loader__card">
+      <div class="fb-loader__mark" aria-hidden="true">
+        <svg class="fb-loader__svg" viewBox="-4 -4 228 228" focusable="false" aria-hidden="true">
+          <g class="fb-loader__rotor">
+            <rect class="fb-loader__tile fb-loader__tile--1" width="100" height="100" rx="28" fill="#13614A"></rect>
+            <rect class="fb-loader__tile fb-loader__tile--2" x="116" width="100" height="100" rx="28" fill="#9CC4A3"></rect>
+            <rect class="fb-loader__tile fb-loader__tile--3" y="116" width="100" height="100" rx="28" fill="#13614A"></rect>
+            <rect class="fb-loader__tile fb-loader__tile--4" x="116" y="116" width="100" height="100" rx="28" fill="#13614A"></rect>
+          </g>
+        </svg>
+      </div>
+      <img src="../../budget/static/budget/loader-logo.png" alt="Familieblikk" width="168" height="39" style="display:block;width:min(168px,62vw);height:auto" onerror="this.style.display='none'">
+      <p style="font-size:13px;font-weight:700;color:#4F5F5A">Oppdaterer familieoversikten…</p>
+      <button class="btn-sec" onclick="setPreviewState('normal')">Lukk loader-forhåndsvisning</button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       TOP DESIGN PREVIEW BAR (FICTIONAL DATA + ROLE/ACCESS & STATE CONTROLS)
+       ========================================================================= -->
+  <aside class="preview-banner" aria-label="Kontroller for designforslag">
+    <div class="preview-banner-left">
+      <span class="preview-pill">Designkandidat · Fiktive data</span>
+      <span class="preview-banner-sub" style="color:#D5ECE0;font-weight:600">
+        Ingen ekte familiedata · Ingenting lagres · Viser reelle tilgangs- og personvernregler
+      </span>
+    </div>
+    <div class="preview-controls">
+      <div class="preview-ctrl-group">
+        <label for="roleSelect">Se som:</label>
+        <select id="roleSelect" onchange="setViewerRole(this.value)" aria-label="Velg pålogget familiemedlem og rolle">
+          <option value="marte_admin">Marte (Forelder · Familieadmin)</option>
+          <option value="jonas_parent">Jonas (Forelder)</option>
+          <option value="sander_youth">Sander 16 år (Eget budsjett)</option>
+          <option value="sander_restricted">Sander (Begrenset: kun Sparing & Kalender)</option>
+        </select>
+      </div>
+      <div class="preview-ctrl-group">
+        <label for="stateSelect">Tilstand:</label>
+        <select id="stateSelect" onchange="setPreviewState(this.value)" aria-label="Velg visningstilstand">
+          <option value="normal">Vanlig måned (Okt 2026)</option>
+          <option value="deficit">Underskudd (Negativt)</option>
+          <option value="empty">Tom måned</option>
+          <option value="offline">Frakoblet (Offline)</option>
+          <option value="error">Valideringsfeil</option>
+          <option value="loader">Loader-visning</option>
+        </select>
+      </div>
+      <div class="preview-ctrl-group">
+        <label for="layoutSelect">Ramme:</label>
+        <select id="layoutSelect" onchange="setLayoutMode(this.value)" aria-label="Velg skjermramme">
+          <option value="auto">Responsiv (PC + Mobil)</option>
+          <option value="phone">Mobilramme (390×844)</option>
+        </select>
+      </div>
+    </div>
+  </aside>
+
+  <!-- =========================================================================
+       RESPONSIVE WORKSPACE SHELL (PC SIDEBAR + MAIN APP STAGE)
+       ========================================================================= -->
+  <div class="workspace-shell">
+
+    <!-- PC LEFT SIDEBAR (232px, with user profile strictly at bottom-left) -->
+    <aside class="pc-sidebar" id="pcSidebar" aria-label="Hovednavigasjon for PC"></aside>
+
+    <!-- MAIN APP STAGE (GREEN UPPER STAGE + CURVED WHITE SHEET) -->
+    <main class="app-stage" id="appStage">
+
+      <!-- TOP HEADER -->
+      <header class="app-header">
+        <div class="brand">
+          <span class="mobile-brand-mark">
+            <svg aria-hidden="true" viewBox="-4 -4 228 228" width="28" height="28">
+              <g transform="rotate(-8 108 108)">
+                <rect width="100" height="100" rx="30" fill="#fff"></rect>
+                <rect x="116" width="100" height="100" rx="30" fill="#9CC4A3"></rect>
+                <rect y="116" width="100" height="100" rx="30" fill="#9CC4A3"></rect>
+                <rect x="116" y="116" width="100" height="100" rx="30" fill="#fff"></rect>
+              </g>
+            </svg>
+            <span>Familieblikk</span>
+          </span>
+          <span class="desktop-context-crumb">Familiens økonomi</span>
+          <span class="brand-month-pill" style="font-size:11px;font-weight:700;color:#C8E3CD;background:rgba(255,255,255,0.1);padding:3px 9px;border-radius:99px">
+            Oktober 2026
+          </span>
+        </div>
+
+        <div class="header-actions" id="headerActions"></div>
+      </header>
+
+      <!-- FAMILY MEMBER / BUDGET AREA SWITCHER (OR CALENDAR PERSON FILTER) -->
+      <div class="fam-bar-wrap" id="memberBarWrap"></div>
+
+      <!-- GREEN HERO SECTION (SHOWN ON OVERSIKT WHEN PERMITTED) -->
+      <section class="hero" id="heroSection" aria-label="Nøkkeltall for valgt budsjettområde"></section>
+
+      <!-- DYNAMIC WHITE CURVED SHEET -->
+      <div class="sheet" id="mainSheet"></div>
+
+      <!-- FLOATING GLASSMORPHIC BOTTOM DOCK (MOBILE & PHONE FRAME) -->
+      <nav class="dock-wrap" aria-label="Hovedmeny mobil" id="bottomDock"></nav>
+
+    </main>
+  </div>
+
+  <!-- =========================================================================
+       MODAL OVERLAYS (+ NY POST, BEREGNING, REGNINGSKORRIGERING, DELING)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this) closeModal()">
+    <div class="modal-sheet" id="modalContent" role="dialog" aria-modal="true" aria-labelledby="modalTitle"></div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       STATE & FICTIONAL DATA WITH REAL FAMILIEBLIKK PRIVACY / ACCESS RULES
+       ========================================================================= */
+    const state = {
+      viewerRole: 'marte_admin', // 'marte_admin' | 'jonas_parent' | 'sander_youth' | 'sander_restricted'
+      previewState: 'normal',    // 'normal' | 'deficit' | 'empty' | 'offline' | 'error' | 'loader'
+      layoutMode: 'auto',        // 'auto' | 'phone'
+      tab: 'oversikt',           // 'oversikt' | 'poster' | 'budsjett' | 'sparing' | 'kalender' | 'mer' | 'restricted_home'
+      subModule: 'regninger',    // 'regninger' | 'gjeld' | 'arsfond' | 'utenlands' | 'matrise' | 'familie' | 'tilpass' | 'varsler' | 'import'
+      area: 'felles',            // 'felles' | 'marte' | 'jonas' | 'sander'
+      heroMode: 'bar',           // 'bar' | 'chart'
+      filter: 'alle',            // 'alle' | 'obs' | 'faste' | 'siste'
+      posterQuery: '',
+      posterStatus: 'alle',
+      budgetWorkspaceTab: 'forbruk', // 'forbruk' | 'arsoversikt' | 'planlegg'
+      calFilter: 'alle',         // 'alle' | 'felles' | 'marte' | 'jonas' | 'sander'
+      calSelectedDay: 22,
+      calcDrawerOpen: false,
+      mobileFabOpen: false,
+      sharingConfirmedByOwner: true,
+      sharingConfirmedByAdmin: false
+    };
+
+    const viewerProfiles = {
+      marte_admin: {
+        id: 'marte_admin',
+        name: 'Marte Lindqvist',
+        initials: 'MA',
+        roleLabel: 'Forelder · Familieadmin',
+        defaultArea: 'felles',
+        allowedModules: ['oversikt', 'poster', 'budsjett', 'sparing', 'handlelister', 'kalender', 'mer'],
+        areaAccess: {
+          felles: { mode: 'write', badge: 'Felles · Rediger' },
+          marte:  { mode: 'write', badge: 'Mitt · Rediger' },
+          sander: { mode: 'read',  badge: 'Kun innsyn', reason: 'Foreldreinnsyn valgt ved opprettelse. Kun leserett — Sander styrer eget budsjett.' },
+          jonas:  { mode: 'none',  badge: '🔒 Privat', reason: 'Jonas sitt private budsjett er låst. Familieadministrator-rollen gir ikke automatisk innsyn i andres private økonomi.' }
+        }
+      },
+      jonas_parent: {
+        id: 'jonas_parent',
+        name: 'Jonas Lindqvist',
+        initials: 'JO',
+        roleLabel: 'Forelder',
+        defaultArea: 'felles',
+        allowedModules: ['oversikt', 'poster', 'budsjett', 'sparing', 'handlelister', 'kalender', 'mer'],
+        areaAccess: {
+          felles: { mode: 'write', badge: 'Felles · Rediger' },
+          jonas:  { mode: 'write', badge: 'Mitt · Rediger' },
+          sander: { mode: 'read',  badge: 'Kun innsyn', reason: 'Foreldreinnsyn valgt ved opprettelse. Kun leserett — Sander styrer eget budsjett.' },
+          marte:  { mode: 'none',  badge: '🔒 Privat', reason: 'Marte sitt private budsjett er ikke delt med deg.' }
+        }
+      },
+      sander_youth: {
+        id: 'sander_youth',
+        name: 'Sander Lindqvist (16)',
+        initials: 'SA',
+        roleLabel: 'Medlem · Eget budsjett',
+        defaultArea: 'sander',
+        allowedModules: ['oversikt', 'poster', 'budsjett', 'sparing', 'handlelister', 'kalender', 'mer'],
+        areaAccess: {
+          sander: { mode: 'write', badge: 'Mitt · Rediger', ownerNotice: 'Foreldreinnsyn: Marte og Jonas har kun leserett. Endring av deling krever bekreftelse fra både deg (eier) og familieadmin.' },
+          felles: { mode: 'none',  badge: '🔒 Foreldre', reason: 'Felles familiebudsjett administreres av foreldrene (Marte og Jonas). Private tall vises ikke her.' },
+          marte:  { mode: 'none',  badge: '🔒 Privat', reason: 'Marte sitt private budsjettområde er låst.' },
+          jonas:  { mode: 'none',  badge: '🔒 Privat', reason: 'Jonas sitt private budsjettområde er låst.' }
+        }
+      },
+      sander_restricted: {
+        id: 'sander_restricted',
+        name: 'Sander (Begrenset tilgang)',
+        initials: 'SA',
+        roleLabel: 'Utvalg: Sparing & Kalender',
+        defaultArea: 'sander',
+        allowedModules: ['restricted_home', 'sparing', 'kalender'],
+        areaAccess: {
+          sander: { mode: 'write', badge: 'Mitt område' },
+          felles: { mode: 'none',  badge: '🔒 Låst', reason: 'Ikke tilgjengelig.' },
+          marte:  { mode: 'none',  badge: '🔒 Låst', reason: 'Ikke tilgjengelig.' },
+          jonas:  { mode: 'none',  badge: '🔒 Låst', reason: 'Ikke tilgjengelig.' }
+        }
+      }
+    };
+
+    const budgetAreas = {
+      felles: {
+        id: 'felles',
+        label: 'Felles',
+        fullTitle: 'Felles familieøkonomi',
+        dotColor: '#9CC4A3',
+        rem: '14 820',
+        perDay: '1 347',
+        paid: '21 380',
+        res: '16 200',
+        incomeReceived: '52 400 kr',
+        incomeExpected: '+38 000 kr',
+        incomeExpectedDate: '25. okt',
+        plannedSavings: '4 500 kr',
+        delta: '+8,4% vs. sept',
+        weeklyTotal: '1 890 kr',
+        weeklyBars: [['M',20,'#DCE5DF'],['T',14,'#DCE5DF'],['O',26,'#DCE5DF'],['T',18,'#DCE5DF'],['F',38,'#13614A'],['L',30,'#9CC4A3'],['S',12,'#DCE5DF']],
+        categories: [
+          { name: 'Mat & dagligvare', used: '8 640 kr', limit: '12 000 kr', pct: 72, color: '#13614A', nextDraft: '12 000 kr', source: 'Faktisk snitt 6 mnd (11 850 kr)' },
+          { name: 'Bolig, lån & strøm', used: '19 400 kr', limit: '22 000 kr', pct: 88, color: '#13614A', nextDraft: '22 400 kr', source: 'Faste regninger + vinterstrøm' },
+          { name: 'Barn, barnehage & fritid', used: '5 280 kr', limit: '6 000 kr', pct: 88, color: '#D9822B', nextDraft: '6 000 kr', source: 'Faste avtaler (SFO/barnehage)' },
+          { name: 'Transport & bil', used: '2 100 kr', limit: '4 500 kr', pct: 46, color: '#9CC4A3', nextDraft: '4 500 kr', source: 'Snitt siste 6 mnd' },
+          { name: 'Kos, restaurant & fri bruk', used: '3 100 kr', limit: '4 000 kr', pct: 77, color: '#13614A', nextDraft: '3 800 kr', source: 'Justerbar ramme' }
+        ],
+        savings: [
+          { title: 'Sommerferie 2027', sub: '28 000 kr av 45 000 kr · +2 000 kr/mnd', pct: 62, icon: '🌴', target: 'Juni 2027' },
+          { title: 'Bufferkonto familie', sub: '40 500 kr av 50 000 kr · +1 500 kr/mnd', pct: 81, icon: '🛡️', target: 'Mars 2027' },
+          { title: 'Konfirmasjon & barn', sub: '14 200 kr av 30 000 kr · +1 000 kr/mnd', pct: 47, icon: '🎓', target: 'Mai 2028' }
+        ],
+        items: [
+          { id: 1, kind: 'obs', initials: 'FE', avStyle: 'background:#FDE8E6;color:#8F1F1B', title: 'Strøm • Tibber', subtitle: 'Forfalt 14. okt • Felleskonto • Bolig & strøm', amount: '1 840 kr', badgeCls: 's ovd', badgeText: 'Forfalt', canPay: true },
+          { id: 2, kind: 'obs', initials: 'JO', avStyle: 'background:#E8F1F5;color:#1D4E68', title: 'Mobilabonnement', subtitle: 'Beløp mangler • Fellesavtale', amount: '—', badgeCls: 's unk', badgeText: 'Ukjent beløp', canSetAmount: true },
+          { id: 3, kind: 'faste', initials: 'MA', avStyle: 'background:#FFF0E5;color:#8C4212', title: 'Barnehage & SFO', subtitle: 'Trekkes 25. okt • Felleskonto • Barn & fritid', amount: '3 230 kr', badgeCls: 's res', badgeText: 'Reservert', canPay: true },
+          { id: 4, kind: 'faste', initials: 'FE', avStyle: 'background:#E7F1EA;color:#0E4A38', title: 'Boliglån DNB', subtitle: 'Betalt 15. okt • Felleskonto • Bolig & lån', amount: '14 500 kr', badgeCls: 's act', badgeText: 'Betalt', canUndo: true },
+          { id: 5, kind: 'siste', initials: 'MA', avStyle: 'background:#E7F1EA;color:#0E4A38', title: 'Rema 1000 Storo', subtitle: '21. okt • Mat & dagligvare', amount: '1 240 kr', badgeCls: 's act', badgeText: 'Faktisk' }
+        ]
+      },
+      marte: {
+        id: 'marte',
+        label: 'Marte',
+        fullTitle: 'Marte · Mitt budsjett',
+        dotColor: '#F4A261',
+        rem: '6 450',
+        perDay: '586',
+        paid: '9 800',
+        res: '7 200',
+        incomeReceived: '23 450 kr',
+        incomeExpected: '+0 kr',
+        incomeExpectedDate: 'Mottatt',
+        plannedSavings: '1 500 kr',
+        delta: '+4,1% vs. sept',
+        weeklyTotal: '740 kr',
+        weeklyBars: [['M',12,'#DCE5DF'],['T',18,'#DCE5DF'],['O',14,'#DCE5DF'],['T',24,'#13614A'],['F',20,'#9CC4A3'],['L',16,'#DCE5DF'],['S',10,'#DCE5DF']],
+        categories: [
+          { name: 'Egne klær & velvære', used: '1 850 kr', limit: '3 000 kr', pct: 62, color: '#13614A', nextDraft: '3 000 kr', source: 'Egen ramme' },
+          { name: 'Lunsj, kaffe & sosialt', used: '1 420 kr', limit: '2 000 kr', pct: 71, color: '#13614A', nextDraft: '2 000 kr', source: 'Snitt 3 mnd' },
+          { name: 'Trening & helse', used: '649 kr', limit: '800 kr', pct: 81, color: '#9CC4A3', nextDraft: '649 kr', source: 'Fast trekk SATS' }
+        ],
+        savings: [
+          { title: 'Marte · Egen buffer & reise', sub: '18 400 kr av 25 000 kr · +1 500 kr/mnd', pct: 74, icon: '✨', target: 'April 2027' }
+        ],
+        items: [
+          { id: 101, kind: 'faste', initials: 'MA', avStyle: 'background:#FFF0E5;color:#8C4212', title: 'SATS Medlemskap', subtitle: 'Trekkes 28. okt • Marte privat', amount: '649 kr', badgeCls: 's res', badgeText: 'Reservert', canPay: true },
+          { id: 102, kind: 'siste', initials: 'MA', avStyle: 'background:#E7F1EA;color:#0E4A38', title: 'Kaffebrenneriet', subtitle: '20. okt • Lunsj & sosialt', amount: '168 kr', badgeCls: 's act', badgeText: 'Faktisk' }
+        ]
+      },
+      jonas: {
+        id: 'jonas',
+        label: 'Jonas',
+        fullTitle: 'Jonas · Privat budsjett',
+        dotColor: '#8ECAE6',
+        rem: '5 920',
+        perDay: '538',
+        paid: '10 180',
+        res: '8 100',
+        incomeReceived: '24 200 kr',
+        incomeExpected: '+0 kr',
+        incomeExpectedDate: 'Mottatt',
+        plannedSavings: '1 200 kr',
+        delta: 'I rute',
+        weeklyTotal: '680 kr',
+        weeklyBars: [['M',14,'#DCE5DF'],['T',12,'#DCE5DF'],['O',22,'#13614A'],['T',16,'#DCE5DF'],['F',26,'#9CC4A3'],['L',18,'#DCE5DF'],['S',8,'#DCE5DF']],
+        categories: [
+          { name: 'Utstyr, løping & hobby', used: '1 900 kr', limit: '2 800 kr', pct: 68, color: '#13614A', nextDraft: '2 800 kr', source: 'Egen ramme' },
+          { name: 'Kantine & transport', used: '1 120 kr', limit: '1 800 kr', pct: 62, color: '#9CC4A3', nextDraft: '1 800 kr', source: 'Snitt 6 mnd' }
+        ],
+        savings: [
+          { title: 'Jonas · Sykkel & utstyr', sub: '11 200 kr av 18 000 kr · +1 200 kr/mnd', pct: 62, icon: '🚴', target: 'Mai 2027' }
+        ],
+        items: [
+          { id: 201, kind: 'siste', initials: 'JO', avStyle: 'background:#E8F1F5;color:#1D4E68', title: 'Anton Sport', subtitle: '19. okt • Hobby & løping', amount: '799 kr', badgeCls: 's act', badgeText: 'Faktisk' }
+        ]
+      },
+      sander: {
+        id: 'sander',
+        label: 'Sander (16)',
+        fullTitle: 'Sander · Ungdomsbudsjett',
+        dotColor: '#E9C46A',
+        rem: '2 450',
+        perDay: '222',
+        paid: '1 400',
+        res: '900',
+        incomeReceived: '4 750 kr',
+        incomeExpected: '+1 200 kr',
+        incomeExpectedDate: '27. okt (Helgejobb)',
+        plannedSavings: '600 kr',
+        delta: 'I rute',
+        weeklyTotal: '390 kr',
+        weeklyBars: [['M',8,'#DCE5DF'],['T',10,'#DCE5DF'],['O',12,'#DCE5DF'],['T',8,'#DCE5DF'],['F',24,'#13614A'],['L',22,'#9CC4A3'],['S',10,'#DCE5DF']],
+        categories: [
+          { name: 'Kino, gaming & venner', used: '820 kr', limit: '1 500 kr', pct: 55, color: '#13614A', nextDraft: '1 500 kr', source: 'Egen ramme' },
+          { name: 'Klær & sko', used: '580 kr', limit: '1 000 kr', pct: 58, color: '#9CC4A3', nextDraft: '1 000 kr', source: 'Egen ramme' }
+        ],
+        savings: [
+          { title: 'Førerkort & lett-MC', sub: '12 600 kr av 20 000 kr · +600 kr/mnd', pct: 63, icon: '🛵', target: 'August 2027' }
+        ],
+        items: [
+          { id: 301, kind: 'faste', initials: 'SA', avStyle: 'background:#FFF6E8;color:#7A4300', title: 'Spotify Duo / Gaming', subtitle: 'Trekkes 26. okt • Sander eget kort', amount: '149 kr', badgeCls: 's res', badgeText: 'Reservert', canPay: true },
+          { id: 302, kind: 'siste', initials: 'SA', avStyle: 'background:#FFF6E8;color:#7A4300', title: 'ODEON Kino Oslo', subtitle: '18. okt • Venner & fritid', amount: '240 kr', badgeCls: 's act', badgeText: 'Faktisk' }
+        ]
+      }
+    };
+
+    const calendarEvents = [
+      { id: 1, day: 22, time: '16:30–18:00', title: 'Foreldremøte & høstdugnad i barnehagen', scope: 'felles', owner: 'Felles', rsvpMarte: 'Passer', rsvpJonas: 'Passer', rsvpSander: 'Ikke relevant', recurrence: 'Engangsavtale', pushSent: true },
+      { id: 2, day: 22, time: '19:00–20:30', title: 'Fotballtrening G16 – Kunstgresset', scope: 'sander', owner: 'Sander', rsvpMarte: 'Passer', rsvpJonas: 'Venter svar', rsvpSander: 'Passer', recurrence: 'Hver tirsdag og torsdag', pushSent: true },
+      { id: 3, day: 25, time: 'Hele dagen', title: 'Lønnsinngang & trekk Barnehage/SFO (3 230 kr)', scope: 'felles', owner: 'Felles', rsvpMarte: 'Passer', rsvpJonas: 'Passer', rsvpSander: '—', recurrence: 'Den 25. hver måned', pushSent: false },
+      { id: 4, day: 28, time: '17:30–19:00', title: 'Middag hos besteforeldre', scope: 'felles', owner: 'Marte', rsvpMarte: 'Passer', rsvpJonas: 'Passer', rsvpSander: 'Passer', recurrence: 'Siste søndag i måneden', pushSent: true }
+    ];
+
+    const recurringBills = [
+      { id: 'b1', name: 'Strøm • Tibber', category: 'Bolig, lån & strøm', due: '14. okt', amount: '1 840 kr', status: 'Forfalt', statusCls: 's ovd', historyNote: 'Korrigert 10. okt fra 1 650 kr til 1 840 kr (kun oktober-forekomst)' },
+      { id: 'b2', name: 'Barnehage & SFO', category: 'Barn, barnehage & fritid', due: '25. okt', amount: '3 230 kr', status: 'Reservert', statusCls: 's res', historyNote: 'Fast månedlig avtale · 3 230 kr' },
+      { id: 'b3', name: 'Boliglån DNB', category: 'Bolig, lån & strøm', due: '15. okt', amount: '14 500 kr', status: 'Betalt', statusCls: 's act', historyNote: 'Betalt 15. okt av Marte · Erstattet reservasjon én gang' },
+      { id: 'b4', name: 'Hytteforsikring (hoppet over i okt)', category: 'Bolig, lån & strøm', due: '20. okt', amount: '0 kr (Avlyst i okt)', status: 'Avlyst i okt', statusCls: 's unk', historyNote: 'Enkeltforekomst avlyst 8. okt · Kan gjenopprettes uten duplikat' }
+    ];
+
+    /* =========================================================================
+       MODE & ACCESS HELPERS
+       ========================================================================= */
+    function getViewer() {
+      return viewerProfiles[state.viewerRole];
+    }
+
+    function getCurrentAreaAccess() {
+      const viewer = getViewer();
+      return viewer.areaAccess[state.area] || { mode: 'none', badge: '🔒 Låst', reason: 'Ingen tilgang.' };
+    }
+
+    function canWriteCurrentArea() {
+      if (state.previewState === 'offline') return false;
+      return getCurrentAreaAccess().mode === 'write';
+    }
+
+    function setViewerRole(roleId) {
+      state.viewerRole = roleId;
+      const viewer = getViewer();
+      state.area = viewer.defaultArea;
+      if (roleId === 'sander_restricted') {
+        state.tab = 'restricted_home';
+      } else if (state.tab === 'restricted_home') {
+        state.tab = 'oversikt';
+      }
+      render();
+    }
+
+    function setPreviewState(st) {
+      state.previewState = st;
+      document.getElementById(' stateSelect'?.trim() || 'stateSelect').value = st;
+      const loader = document.getElementById('fbLoader');
+      if (st === 'loader') {
+        loader.classList.add('active');
+      } else {
+        loader.classList.remove('active');
+      }
+      render();
+    }
+
+    function setLayoutMode(mode) {
+      state.layoutMode = mode;
+      document.body.classList.toggle('mode-phone', mode === 'phone');
+      render();
+    }
+
+    function selectTab(tabId, subMod) {
+      const viewer = getViewer();
+      if (!viewer.allowedModules.includes(tabId)) {
+        state.tab = 'restricted_home';
+      } else {
+        state.tab = tabId;
+        state.subModule = subMod || null;
+      }
+      render();
+    }
+
+    function toggleHeroMode() {
+      state.heroMode = state.heroMode === 'bar' ? 'chart' : 'bar';
+      render();
+    }
+
+    /* =========================================================================
+       MODALS (+ NY POST MED INTEGRERT KAMERA, MOBIL HURTIGMENY, REGNINGSKORRIGERING)
+       ========================================================================= */
+    function openQuickAddModal(captureMode = 'manual', defaultType = 'act') {
+      if (!canWriteCurrentArea()) return;
+      const areaObj = budgetAreas[state.area];
+      const modal = document.getElementById('modalContent');
+      modal.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div>
+            <span class="section-eyebrow">Ny registrering · ${areaObj.fullTitle}</span>
+            <h2 id="modalTitle" style="font-size:20px;font-weight:800;margin-top:2px">${defaultType === 'res' ? 'Legg til ny regning' : 'Legg til ny post'}</h2>
+          </div>
+          <button onclick="closeModal()" class="btn-sec" style="width:44px;height:44px;padding:0" aria-label="Lukk">✕</button>
+        </div>
+        <div class="pills" role="tablist" aria-label="Registreringsmåte" style="margin-bottom:14px">
+          <button type="button" class="pill ${captureMode === 'manual' ? 'on' : ''}" onclick="openQuickAddModal('manual', '${defaultType}')">✍️ Fyll inn manuelt</button>
+          <button type="button" class="pill ${captureMode === 'camera' ? 'on' : ''}" onclick="openQuickAddModal('camera', '${defaultType}')">📸 Skann kvittering / faktura</button>
+        </div>
+        ${state.previewState === 'error' ? `
+          <div class="access-banner offline-warn" style="margin-bottom:12px">
+            <b>Valideringsfeil:</b> Beløp må være et gyldig tall større enn 0 kr, og tittel kan ikke stå tom.
+          </div>
+        ` : ''}
+        ${captureMode === 'camera' ? `
+          <div style="display:grid;gap:12px">
+            <div class="c" style="border:1.5px dashed var(--green-pri);background:var(--mint-light);text-align:center;padding:18px">
+              <div style="font-size:26px">📷</div>
+              <b style="display:block;margin-top:4px;color:var(--green-dark)">Skann kvittering eller faktura med kamera</b>
+              <p class="l" style="margin-top:4px">Ta et tydelig bilde. Serveren foreslår beløp, dato og betalingsmottaker og sletter bildet automatisk etter behandling.</p>
+            </div>
+            <div>
+              <label class="l" for="newTitle">Foreslått betalingsmottaker / butikk</label>
+              <input id="newTitle" class="inp" value="Rema 1000 Storo" />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <label class="l" for="newAmount">Foreslått beløp (kr)</label>
+                <input id="newAmount" type="number" class="inp" value="642" />
+              </div>
+              <div>
+                <label class="l" for="newType">Posttype & status</label>
+                <select id="newType" class="inp">
+                  <option value="act" ${defaultType === 'act' ? 'selected' : ''}>Faktisk utgift (Betalt)</option>
+                  <option value="res" ${defaultType === 'res' ? 'selected' : ''}>Fast regning (Reservert)</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <label class="l" for="newDate">Dato</label>
+                <input id="newDate" type="date" class="inp" value="2026-10-23" />
+              </div>
+              <div>
+                <label class="l" for="newCat">Kategori i ${areaObj.label}</label>
+                <select id="newCat" class="inp">
+                  ${areaObj.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+              <button class="btn-sec" onclick="closeModal()">Avbryt</button>
+              <button class="btn-pri" onclick="saveNewItem()">Bekreft og bokfør i ${areaObj.label}</button>
+            </div>
+          </div>
+        ` : `
+          <div style="display:grid;gap:12px">
+            <div>
+              <label class="l" for="newTitle">Tittel / mottaker</label>
+              <input id="newTitle" class="inp" placeholder="f.eks. Rema 1000, Tibber eller Lønn" />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <label class="l" for="newAmount">Beløp (kr)</label>
+                <input id="newAmount" type="number" class="inp" placeholder="450" />
+              </div>
+              <div>
+                <label class="l" for="newType">Posttype & status</label>
+                <select id="newType" class="inp">
+                  <option value="act" ${defaultType === 'act' ? 'selected' : ''}>Faktisk utgift (Betalt)</option>
+                  <option value="res" ${defaultType === 'res' ? 'selected' : ''}>Fast regning (Reservert)</option>
+                  <option value="inc_act">Mottatt inntekt (Øker fri bruk)</option>
+                  <option value="inc_exp">Forventet inntekt (Kun plan)</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <label class="l" for="newDate">Dato</label>
+                <input id="newDate" type="date" class="inp" value="2026-10-23" />
+              </div>
+              <div>
+                <label class="l" for="newCat">Kategori i ${areaObj.label}</label>
+                <select id="newCat" class="inp">
+                  ${areaObj.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+              <button class="btn-sec" onclick="closeModal()">Avbryt</button>
+              <button class="btn-pri" onclick="saveNewItem()">Lagre post i ${areaObj.label}</button>
+            </div>
+          </div>
+        `}
+      `;
+      document.getElementById('modalBackdrop').classList.add('open');
+    }
+
+    function toggleMobileQuickMenu(ev) {
+      if (ev) ev.stopPropagation();
+      state.mobileFabOpen = !state.mobileFabOpen;
+      renderBottomDock();
+    }
+
+    document.addEventListener('click', ev => {
+      if (state.mobileFabOpen && !ev.target.closest('#bottomDock')) {
+        state.mobileFabOpen = false;
+        renderBottomDock();
+      }
+    });
+
+    function openCalendarEventModal() {
+      const paddedDay = String(state.calSelectedDay || 22).padStart(2, '0');
+      const defaultDate = `2026-10-${paddedDay}`;
+      const modal = document.getElementById('modalContent');
+      modal.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div>
+            <span class="section-eyebrow">Felles familiekalender · Oktober 2026</span>
+            <h2 id="modalTitle" style="font-size:20px;font-weight:800;margin-top:2px">Ny familieavtale</h2>
+          </div>
+          <button onclick="closeModal()" class="btn-sec" style="width:44px;height:44px;padding:0" aria-label="Lukk">✕</button>
+        </div>
+        <div style="display:grid;gap:12px">
+          <div>
+            <label class="l" for="calTitle">Hva skjer? (Tittel på avtale)</label>
+            <input id="calTitle" class="inp" placeholder="f.eks. Tannlege, Fotballkamp G16 eller Søndagsmiddag" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label class="l" for="calStartDate">Startdato</label>
+              <input id="calStartDate" type="date" class="inp" value="${defaultDate}" onchange="const end=document.getElementById('calEndDate');if(end&&end.value<this.value)end.value=this.value;" />
+            </div>
+            <div>
+              <label class="l" for="calEndDate">Sluttdato</label>
+              <input id="calEndDate" type="date" class="inp" value="${defaultDate}" />
+            </div>
+          </div>
+          <div class="c" style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <label for="calAllDay" style="font-size:13px;font-weight:700;cursor:pointer">Heldag (varer hele dagen)</label>
+            <input id="calAllDay" type="checkbox" style="width:20px;height:20px;accent-color:var(--green-pri)" onchange="document.getElementById('calTimeRow').style.display=this.checked?'none':'grid'" />
+          </div>
+          <div id="calTimeRow" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label class="l" for="calStartTime">Fra klokken</label>
+              <input id="calStartTime" type="time" class="inp" value="17:30" />
+            </div>
+            <div>
+              <label class="l" for="calEndTime">Til klokken</label>
+              <input id="calEndTime" type="time" class="inp" value="19:00" />
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label class="l" for="calScope">Hvem gjelder avtalen for?</label>
+              <select id="calScope" class="inp">
+                <option value="felles">Felles familieavtale (Alle)</option>
+                <option value="marte">Marte</option>
+                <option value="jonas">Jonas</option>
+                <option value="sander">Sander (16)</option>
+              </select>
+            </div>
+            <div>
+              <label class="l" for="calRecurrence">Gjentakelse</label>
+              <select id="calRecurrence" class="inp">
+                <option value="Engangsavtale">Engangsavtale</option>
+                <option value="Hver uke">Hver uke</option>
+                <option value="Annenhver uke">Annenhver uke</option>
+                <option value="Hver måned">Hver måned</option>
+              </select>
+            </div>
+          </div>
+          <div class="c" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div>
+              <b style="font-size:13px">🔔 Send Web Push-varsel til deltakere</b>
+              <div class="l">Ber familiemedlemmer svare Passer / Passer ikke på mobil og PC</div>
+            </div>
+            <input id="calPush" type="checkbox" checked style="width:20px;height:20px;accent-color:var(--green-pri)" />
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+            <button class="btn-sec" onclick="closeModal()">Avbryt</button>
+            <button class="btn-pri" onclick="saveNewCalendarEvent()">Lagre avtale</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('modalBackdrop').classList.add('open');
+    }
+
+    function saveNewCalendarEvent() {
+      const title = (document.getElementById('calTitle')?.value || '').trim() || 'Ny familieavtale';
+      const startDateVal = document.getElementById('calStartDate')?.value || '2026-10-22';
+      const parsedDay = parseInt(startDateVal.split('-')[2] || state.calSelectedDay || 22, 10);
+      const day = Math.min(31, Math.max(1, isNaN(parsedDay) ? 22 : parsedDay));
+      const allDay = Boolean(document.getElementById('calAllDay')?.checked);
+      const startTime = document.getElementById('calStartTime')?.value || '17:30';
+      const endTime = document.getElementById('calEndTime')?.value || '19:00';
+      const time = allDay ? 'Hele dagen' : `${startTime}–${endTime}`;
+      const scope = document.getElementById('calScope')?.value || 'felles';
+      const recurrence = document.getElementById('calRecurrence')?.value || 'Engangsavtale';
+      const pushSent = Boolean(document.getElementById('calPush')?.checked);
+      const ownerMap = { felles: 'Felles', marte: 'Marte', jonas: 'Jonas', sander: 'Sander' };
+      calendarEvents.unshift({
+        id: Date.now(),
+        day,
+        time,
+        title,
+        scope,
+        owner: ownerMap[scope] || 'Felles',
+        rsvpMarte: 'Passer',
+        rsvpJonas: 'Venter svar',
+        rsvpSander: 'Venter svar',
+        recurrence,
+        pushSent
+      });
+      state.calSelectedDay = day;
+      closeModal();
+      render();
+    }
+
+    function saveNewItem() {
+      if (!canWriteCurrentArea()) return;
+      const areaObj = budgetAreas[state.area];
+      const title = (document.getElementById('newTitle')?.value || '').trim() || 'Ny registrert post';
+      const amt = (document.getElementById('newAmount')?.value || '').trim() || '450';
+      const type = document.getElementById('newType')?.value || 'act';
+      const cat = document.getElementById('newCat')?.value || areaObj.categories[0].name;
+      const viewer = getViewer();
+
+      const badgeMap = {
+        act: { cls: 's act', txt: 'Faktisk' },
+        res: { cls: 's res', txt: 'Reservert' },
+        inc_act: { cls: 's act', txt: 'Mottatt inntekt' },
+        inc_exp: { cls: 's exp', txt: 'Forventet inntekt' }
+      }[type];
+
+      areaObj.items.unshift({
+        id: Date.now(),
+        kind: type === 'res' ? 'faste' : 'siste',
+        initials: viewer.initials,
+        avStyle: 'background:#E7F1EA;color:#0E4A38',
+        title: title,
+        subtitle: `Lagt til nå • ${cat}`,
+        amount: `${amt} kr`,
+        badgeCls: badgeMap.cls,
+        badgeText: badgeMap.txt
+      });
+      closeModal();
+      render();
+    }
+
+    function openBillCorrectionModal(billId) {
+      const bill = recurringBills.find(b => b.id === billId) || recurringBills[0];
+      const writable = canWriteCurrentArea();
+      const modal = document.getElementById('modalContent');
+      modal.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <span class="section-eyebrow">Trygg regningskorrigering · Stage 1</span>
+            <h2 id="modalTitle" style="font-size:20px;font-weight:800;margin-top:2px">${bill.name}</h2>
+          </div>
+          <button onclick="closeModal()" class="btn-sec" style="width:44px;height:44px;padding:0" aria-label="Lukk">✕</button>
+        </div>
+        <p class="l" style="margin-bottom:14px">
+          Velg om du vil korrigere kun oktober-forekomsten, hoppe over denne måneden uten å slette serien, eller endre fast avtale fremover.
+        </p>
+        <div class="c" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <b>Nåværende oktober-forekomst</b>
+            <span class="${bill.statusCls}">${bill.status}</span>
+          </div>
+          <div class="l" style="margin-top:4px">Forfall: ${bill.due} · Beløp: ${bill.amount} · Kategori: ${bill.category}</div>
+          <div style="margin-top:8px;font-size:12px;color:#0E4A38;font-weight:600">Revisionsspor: ${bill.historyNote}</div>
+        </div>
+        <div style="display:grid;gap:10px">
+          <div>
+            <label class="l" for="corrAmt">Nytt beløp kun for oktober (kr)</label>
+            <input id="corrAmt" class="inp" value="1920" ${writable ? '' : 'disabled'} />
+          </div>
+          <div>
+            <label class="l" for="corrScope">Handlingstype</label>
+            <select id="corrScope" class="inp" ${writable ? '' : 'disabled'}>
+              <option>Korriger kun oktober 2026 (beholder fast serie uendret)</option>
+              <option>Hopp over / avlys kun oktober 2026 (frigjør reservasjon)</option>
+              <option>Angre feilregistrert betaling (gjenåpner regning som ubetalt)</option>
+              <option>Registrer refusjon som egen inntektspost (beholder historisk utgift)</option>
+              <option>Endre fast avtale fra og med november 2026</option>
+            </select>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">
+            <button class="btn-sec" onclick="closeModal()">Lukk</button>
+            <button class="btn-pri" ${writable ? '' : 'disabled'} onclick="closeModal()">Lagre korrigering</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('modalBackdrop').classList.add('open');
+    }
+
+    function openSharingRulesModal() {
+      const modal = document.getElementById('modalContent');
+      modal.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <span class="section-eyebrow">Personvern & tilgangskontroll</span>
+            <h2 id="modalTitle" style="font-size:20px;font-weight:800;margin-top:2px">Slik fungerer separate budsjetter</h2>
+          </div>
+          <button onclick="closeModal()" class="btn-sec" style="width:44px;height:44px;padding:0" aria-label="Lukk">✕</button>
+        </div>
+        <div style="display:grid;gap:10px;font-size:13px;line-height:1.45">
+          <div class="c">
+            <b>1. Eksplisitt valg ved opprettelse</b>
+            <p class="l" style="margin-top:4px">
+              Når et familiemedlem opprettes, velges enten <b>Helt privat</b> eller <b>Navngitt foreldreinnsyn (kun leserett)</b>.
+            </p>
+          </div>
+          <div class="c">
+            <b>2. Familieadmin gir ikke automatisk finansinnsyn</b>
+            <p class="l" style="margin-top:4px">
+              Marte er familieadministrator, men kan <b>ikke</b> åpne Jonas sitt private budsjett uten at Jonas har gitt innsyn.
+            </p>
+          </div>
+          <div class="c">
+            <b>3. To-personers bekreftelse ved senere endring</b>
+            <p class="l" style="margin-top:4px">
+              Senere endring av hvem som har innsyn krever bekreftelse fra <b>både budsjetteier (f.eks. Sander)</b> og <b>familieadministrator (Marte)</b>.
+            </p>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <span class="s act">✓ Bekreftet av eier (Sander)</span>
+              <span class="s ${state.sharingConfirmedByAdmin ? 'act' : 'wait'}">
+                ${state.sharingConfirmedByAdmin ? '✓ Bekreftet av familieadmin (Marte)' : '⏳ Venter på familieadmin (Marte)'}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+          <button class="btn-sec" onclick="state.sharingConfirmedByAdmin=!state.sharingConfirmedByAdmin;openSharingRulesModal()">
+            ${state.sharingConfirmedByAdmin ? 'Tilbakestill admin-bekreftelse' : 'Simuler admin-bekreftelse'}
+          </button>
+          <button class="btn-pri" onclick="closeModal()">Forstått</button>
+        </div>
+      `;
+      document.getElementById('modalBackdrop').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('modalBackdrop').classList.remove('open');
+    }
+
+    /* =========================================================================
+       RENDER PC LEFT SIDEBAR (232px, PROFILE AT BOTTOM-LEFT)
+       ========================================================================= */
+    function renderPcSidebar() {
+      const viewer = getViewer();
+      const sidebar = document.getElementById('pcSidebar');
+      const isRestricted = state.viewerRole === 'sander_restricted';
+
+      const mainLinks = isRestricted ? [
+        { id: 'restricted_home', label: 'Din startside', icon: '<path d="M3 11l9-8 9 8v9H3z"></path>' },
+        { id: 'sparing', label: 'Sparing', icon: '<path d="M12 4a8 8 0 100 16 8 8 0 000-16zM12 8v8"></path>' },
+        { id: 'kalender', label: 'Kalender', icon: '<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path>' }
+      ] : [
+        { id: 'oversikt',     label: 'Oversikt',     icon: '<path d="M3 11l9-8 9 8v9H3z"></path>' },
+        { id: 'poster',       label: 'Poster',       icon: '<path d="M6 3h12v18H6zM9 8h6M9 12h6"></path>' },
+        { id: 'budsjett',     label: 'Budsjett & Plan', icon: '<path d="M5 20V11M12 20V4M19 20v-6"></path>' },
+        { id: 'sparing',      label: 'Sparing',      icon: '<path d="M12 4a8 8 0 100 16 8 8 0 000-16zM12 8v8"></path>' },
+        { id: 'handlelister', label: 'Handlelister', icon: '<path d="M9 5h11M9 12h11M9 19h11M4 5l1.5 1.5L8 4M4 12l1.5 1.5L8 11M4 19l1.5 1.5L8 18"></path>' },
+        { id: 'kalender',     label: 'Kalender',     icon: '<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path>' },
+        { id: 'mer',          label: 'Mer · Moduler', icon: '<path d="M4 6h16M4 12h16M4 18h16"></path>' }
+      ];
+
+      const subModules = [
+        { sub: 'regninger', label: 'Regninger & historikk', badge: '1' },
+        { sub: 'gjeld',     label: 'Gjeld & strategi' },
+        { sub: 'arsfond',   label: 'Årsutgifter (Fond)' },
+        { sub: 'familie',   label: 'Familie & tilgang' },
+        { sub: 'varsler',   label: 'Varsler & Web Push' }
+      ];
+
+      sidebar.innerHTML = `
+        <div class="pc-brand">
+          <img src="../../budget/static/budget/icon.svg" alt="" width="34" height="34" style="border-radius:10px">
+          <div>
+            <div class="pc-brand-title">Familieblikk</div>
+            <div class="pc-brand-sub">Oktober 2026 · NOK</div>
+          </div>
+        </div>
+
+        <div class="pc-sidebar-scroll">
+        <div class="pc-nav-section-label">Hovedmeny</div>
+        <div class="pc-nav-list">
+          ${mainLinks.map(item => {
+            const isMainOn = item.id === 'mer'
+              ? (state.tab === 'mer' && !state.subModule)
+              : (state.tab === item.id);
+            return `
+            <button class="pc-nav-btn ${isMainOn ? 'on' : ''}" onclick="selectTab('${item.id}')">
+              <span class="pc-nav-btn-left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${item.icon}</svg>
+                <span>${item.label}</span>
+              </span>
+            </button>
+          `;
+          }).join('')}
+        </div>
+
+        ${!isRestricted ? `
+          <div class="pc-nav-section-label" style="margin-top:8px">Planer & moduler</div>
+          <div class="pc-nav-list">
+            ${subModules.map(m => `
+              <button class="pc-nav-btn ${state.tab === 'mer' && state.subModule === m.sub ? 'on' : ''}" onclick="selectTab('mer', '${m.sub}')">
+                <span class="pc-nav-btn-left">
+                  <span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>
+                  <span>${m.label}</span>
+                </span>
+                ${m.badge ? `<span class="pc-nav-badge">${m.badge}</span>` : ''}
+              </button>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="c" style="margin-top:14px;padding:12px;font-size:12px">
+            <b>Begrenset modultilgang</b>
+            <p class="l" style="margin-top:4px">
+              Økonomisider og totalbeløp er skjult for denne profilen i tråd med medlemsinnstillingene.
+            </p>
+          </div>
+        `}
+        </div>
+
+        <!-- BINDING REQUIREMENT: Desktop profile strictly at the bottom-left -->
+        <div class="pc-sidebar-profile" data-testid="desktop-bottom-left-profile">
+          <div class="pc-profile-card">
+            <div class="pc-profile-av">${viewer.initials}</div>
+            <div class="pc-profile-meta">
+              <div class="pc-profile-name">${viewer.name}</div>
+              <div class="pc-profile-role">${viewer.roleLabel}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* =========================================================================
+       RENDER HEADER ACTIONS & FAMILY / BUDGET AREA BAR
+       ========================================================================= */
+    function renderHeaderAndMemberBar() {
+      const viewer = getViewer();
+      const access = getCurrentAreaAccess();
+      const writable = canWriteCurrentArea();
+      const isRestricted = state.viewerRole === 'sander_restricted';
+
+      // Header right actions
+      const headerActions = document.getElementById('headerActions');
+      headerActions.innerHTML = `
+        ${state.tab === 'oversikt' && access.mode !== 'none' && !isRestricted ? `
+          <button class="chip-btn" id="heroToggleBtn" onclick="toggleHeroMode()">
+            ${state.heroMode === 'bar' ? '📈 Graf' : '📊 Fordeling'}
+          </button>
+        ` : ''}
+        ${state.tab === 'kalender' ? `
+          <button class="chip-btn cta-light header-quick-add" onclick="openCalendarEventModal()">+ Ny familieavtale</button>
+        ` : (!isRestricted && writable ? `
+          <button class="chip-btn cta-light header-quick-add" onclick="openQuickAddModal()">+ Ny post</button>
+        ` : '')}
+        <button class="icon-btn" aria-label="Varsler og hendelser" onclick="selectTab('${isRestricted ? 'kalender' : 'mer'}', 'varsler')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 17V11a6 6 0 1112 0v6l1.5 2h-15zM10 21h4"></path>
+          </svg>
+          <span class="notif-dot"></span>
+        </button>
+      `;
+
+      // Member / Budget Area Switcher OR Shared Household Calendar Switcher
+      const memberBarWrap = document.getElementById('memberBarWrap');
+      if (state.tab === 'kalender') {
+        const calMembers = [
+          { id: 'alle',   label: 'Alle i familien', color: '#FFFFFF' },
+          { id: 'felles', label: 'Felles avtaler',  color: '#9CC4A3' },
+          { id: 'marte',  label: 'Marte',           color: '#F4A261' },
+          { id: 'jonas',  label: 'Jonas',           color: '#8ECAE6' },
+          { id: 'sander', label: 'Sander (16)',     color: '#E9C46A' }
+        ];
+        memberBarWrap.innerHTML = `
+          <div class="fam-bar" role="tablist" aria-label="Kalenderfilter (Felles for hele husstanden)">
+            ${calMembers.map(item => `
+              <button class="fam-pill ${state.calFilter === item.id ? 'on' : ''}" onclick="state.calFilter='${item.id}';render()">
+                <span class="dot" style="background:${item.color}"></span>
+                <span>${item.label}</span>
+              </button>
+            `).join('')}
+          </div>
+          <span style="font-size:11px;font-weight:700;color:#C8E3CD">Kalenderen er alltid felles</span>
+        `;
+        return;
+      }
+
+      if (isRestricted) {
+        memberBarWrap.innerHTML = `
+          <div class="fam-bar">
+            <span class="fam-pill on">
+              <span class="dot" style="background:#E9C46A"></span>
+              <span>${viewer.name} · Utvalgte moduler (Sparing & Kalender)</span>
+            </span>
+          </div>
+        `;
+        return;
+      }
+
+      const areaOrder = ['felles', 'marte', 'jonas', 'sander'];
+      memberBarWrap.innerHTML = `
+        <div class="fam-bar" role="tablist" aria-label="Velg budsjettområde (følger tilgangsregler)">
+          ${areaOrder.map(areaId => {
+            const area = budgetAreas[areaId];
+            const acc = viewer.areaAccess[areaId] || { mode: 'none', badge: '🔒 Låst' };
+            const isLocked = acc.mode === 'none';
+            const isRead = acc.mode === 'read';
+            return `
+              <button
+                class="fam-pill ${state.area === areaId ? 'on' : ''} ${isLocked ? 'locked' : ''}"
+                onclick="state.area='${areaId}';render()"
+                title="${acc.reason || area.fullTitle}"
+              >
+                <span class="dot" style="background:${area.dotColor}"></span>
+                <span>${area.label}${isLocked ? ' 🔒' : (isRead ? ' 👁️' : '')}</span>
+                <span class="fam-access-tag">${acc.badge}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+        <button class="chip-btn header-quick-add" onclick="openSharingRulesModal()" style="min-height:44px;padding:6px 12px;font-size:11px">
+          🔒 Tilgangsregler
+        </button>
+      `;
+    }
+
+    /* =========================================================================
+       RENDER GREEN HERO SECTION (OVERSIKT ONLY, WHEN ACCESS IS PERMITTED)
+       ========================================================================= */
+    function renderHero() {
+      const heroEl = document.getElementById('heroSection');
+      const access = getCurrentAreaAccess();
+      const isRestricted = state.viewerRole === 'sander_restricted';
+
+      if (state.tab !== 'oversikt' || isRestricted || access.mode === 'none') {
+        heroEl.style.display = 'none';
+        heroEl.innerHTML = '';
+        return;
+      }
+
+      heroEl.style.display = 'block';
+      const area = budgetAreas[state.area];
+      const isDeficit = state.previewState === 'deficit';
+      const isEmpty = state.previewState === 'empty';
+
+      const displayRem = isEmpty ? '0' : (isDeficit ? '−2 840' : area.rem);
+      const displayPerDay = isEmpty ? '0' : (isDeficit ? '0' : area.perDay);
+      const displayDelta = isEmpty ? 'Ingen poster ennå' : (isDeficit ? 'Over månedsgrense' : area.delta);
+
+      heroEl.innerHTML = `
+        <div class="hero-grid">
+          <div>
+            <div class="hero-eyebrow-row">
+              <div class="hero-eyebrow">
+                Igjen å bruke • oktober (${area.fullTitle})
+                ${access.mode === 'read' ? ' · KUN INNSYN' : ''}
+              </div>
+              <span class="hero-delta-badge" style="${isDeficit ? 'background:#FDE8E6;color:#8F1F1B;border-color:#FDE8E6' : ''}">
+                ${displayDelta}
+              </span>
+            </div>
+
+            <div class="hero-main-numbers">
+              <div class="hero-big-amount" style="${isDeficit ? 'color:#FDE8E6' : ''}">
+                ${displayRem} <span class="kr">kr</span>
+              </div>
+              <div class="hero-per-day">
+                <b>${displayPerDay} kr</b> / dag<br>
+                <span>11 dager igjen av okt</span>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+              <button class="chip-btn" onclick="state.calcDrawerOpen=!state.calcDrawerOpen;render()" style="min-height:44px;padding:6px 12px;font-size:11px">
+                ${state.calcDrawerOpen ? '▴ Skjul utregning' : '▾ Slik beregnes beløpet'}
+              </button>
+              <span style="font-size:11px;color:#D5ECE0;font-weight:600">
+                Mottatt inntekt: <b style="color:#fff">${isEmpty ? '0 kr' : area.incomeReceived}</b> · Forventet (${area.incomeExpectedDate}) holdes utenfor til mottatt
+              </span>
+            </div>
+
+            ${state.calcDrawerOpen ? `
+              <div style="margin-top:10px;background:rgba(6,26,46,0.28);border:1px solid rgba(156,196,163,0.35);border-radius:16px;padding:12px 14px;font-size:12px">
+                <div style="font-weight:800;margin-bottom:6px;color:#E7F1EA">Faktisk beregning (ingen dobbeltføring):</div>
+                <div style="display:grid;grid-template-columns:1fr auto;gap:4px;color:#D5ECE0">
+                  <span>+ Mottatt inntekt i oktober</span><b style="color:#fff">${area.incomeReceived}</b>
+                  <span>− Betalte utgifter & regninger</span><b style="color:#fff">−${area.paid} kr</b>
+                  <span>− Reserverte ubetalte regninger & fast sparing (${area.plannedSavings})</span><b style="color:#fff">−${area.res} kr</b>
+                  <span style="border-top:1px solid rgba(255,255,255,0.2);padding-top:4px;font-weight:800;color:#fff">= Igjen å bruke nå</span>
+                  <b style="border-top:1px solid rgba(255,255,255,0.2);padding-top:4px;color:#9CC4A3">${displayRem} kr</b>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <div>
+            ${state.heroMode === 'bar' ? `
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:#C8E3CD;margin-bottom:4px">
+                  <span>Fordeling av mottatt inntekt (${area.incomeReceived})</span>
+                  <span>Betalt · Reservert · Fri bruk</span>
+                </div>
+                <div class="seg">
+                  <div style="flex:40.8;background:#fff;color:#0E4A38;border-radius:10px 4px 4px 10px">${isEmpty ? '0' : area.paid}</div>
+                  <div class="hat" style="flex:30.9;border-radius:4px;justify-content:center;color:#fff;font-size:11px">${isEmpty ? '0' : area.res}</div>
+                  <div style="flex:28.3;background:${isDeficit ? '#FDE8E6' : '#9CC4A3'};color:${isDeficit ? '#8F1F1B' : '#0A3A2C'};border-radius:4px 10px 10px 4px">${displayRem}</div>
+                </div>
+                <div class="seg-legend">
+                  <span style="flex:40.8">Betalt (${area.paid} kr)</span>
+                  <span style="flex:30.9">Reservert faste (${area.res} kr)</span>
+                  <span style="flex:28.3">Fri bruk (${displayRem} kr)</span>
+                </div>
+              </div>
+            ` : `
+              <div class="hero-chart-box">
+                <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:#C8E3CD;margin-bottom:4px">
+                  <span>Utvikling mot budsjett (1.–22. okt)</span>
+                  <span>Snitt: −12% lavere enn ramme</span>
+                </div>
+                <svg viewBox="0 0 320 56" width="100%" height="56" style="overflow:visible;margin-top:8px" role="img" aria-label="Utviklingsgraf mot budsjett">
+                  <path d="M0,44 Q80,34 160,26 T320,12" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.6" stroke-dasharray="4 3"/>
+                  <path d="M0,48 C50,44 85,20 135,30 C185,40 220,14 265,18 C290,20 305,15 320,13" fill="none" stroke="#9CC4A3" stroke-width="3" stroke-linecap="round"/>
+                  <circle cx="228" cy="15" r="4.5" fill="#fff" stroke="#13614A" stroke-width="2"/>
+                </svg>
+                <div style="position:absolute;left:140px;top:28px;background:#fff;color:#0E4A38;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+                  Helgehandel 2 450 kr
+                </div>
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    /* =========================================================================
+       RENDER WHITE SHEET CONTENT FOR ACTIVE TAB / MODULE
+       ========================================================================= */
+    function renderSheet() {
+      const sheetEl = document.getElementById('mainSheet');
+      const viewer = getViewer();
+      const access = getCurrentAreaAccess();
+
+      // Top status banners inside the white sheet (Offline, Read-Only Parent View, Owner Sharing Info)
+      let bannersHtml = '';
+      if (state.previewState === 'offline') {
+        bannersHtml += `
+          <div class="access-banner offline-warn">
+            <div>
+              <b>Ingen nettforbindelse (Frakoblet modus)</b>
+              <div style="font-size:12px">Du kan lese tall og historikk, men lagring av endringer krever internett.</div>
+            </div>
+            <span class="s ovd">Skrivebeskyttet</span>
+          </div>
+        `;
+      }
+      if (state.tab !== 'kalender' && state.viewerRole !== 'sander_restricted') {
+        if (access.mode === 'read') {
+          bannersHtml += `
+            <div class="access-banner readonly" data-testid="parent-readonly-banner">
+              <div>
+                <b>Foreldreinnsyn (Kun leserett) · ${budgetAreas[state.area].fullTitle}</b>
+                <div style="font-size:12px">${access.reason}</div>
+              </div>
+              <span class="s wait">Kun leserett</span>
+            </div>
+          `;
+        } else if (access.ownerNotice) {
+          bannersHtml += `
+            <div class="access-banner owner-info">
+              <div>
+                <b>Ditt eget budsjettområde (${budgetAreas[state.area].fullTitle})</b>
+                <div style="font-size:12px">${access.ownerNotice}</div>
+              </div>
+              <button class="btn-sec" onclick="openSharingRulesModal()">Se delingsstatus</button>
+            </div>
+          `;
+        }
+      }
+
+      // 1. Restricted Member Home (spec-member-module-access.md / restricted_home.html)
+      if (state.tab === 'restricted_home') {
+        sheetEl.innerHTML = bannersHtml + `
+          <div style="max-width:760px">
+            <span class="section-eyebrow">Tilpasset tilgang · Utvalg av moduler</span>
+            <h1 style="font-size:24px;font-weight:800;margin-top:4px;margin-bottom:6px">Din startside, ${viewer.name}</h1>
+            <p class="l" style="margin-bottom:18px">
+              Familieadministrator har gitt deg tilgang til <b>Sparing</b> og <b>Kalender</b>. Øvrige budsjettmoduler og familiens totalbeløp er skjult.
+            </p>
+            <div class="bento" style="grid-template-columns:1fr 1fr">
+              <div class="c" style="display:flex;flex-direction:column;justify-content:space-between;gap:12px">
+                <div>
+                  <span class="s res">Tilgjengelig modul</span>
+                  <h2 style="font-size:18px;font-weight:800;margin-top:8px">🛵 Sparemål</h2>
+                  <p class="l" style="margin-top:4px">Følg ditt eget sparemål (Førerkort & lett-MC) og registrer ekstra innskudd.</p>
+                </div>
+                <button class="btn-pri" onclick="selectTab('sparing')">Åpne Sparing →</button>
+              </div>
+              <div class="c" style="display:flex;flex-direction:column;justify-content:space-between;gap:12px">
+                <div>
+                  <span class="s act">Felles for familien</span>
+                  <h2 style="font-size:18px;font-weight:800;margin-top:8px">📅 Familiekalender</h2>
+                  <p class="l" style="margin-top:4px">Se ukens avtaler, fotballtrening og svar Passer / Passer ikke.</p>
+                </div>
+                <button class="btn-pri" onclick="selectTab('kalender')">Åpne Kalender →</button>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // 2. Locked Budget Area Enforcement (spec-financial-areas.md: Never leak private numbers!)
+      if (state.tab !== 'kalender' && access.mode === 'none') {
+        const area = budgetAreas[state.area];
+        sheetEl.innerHTML = `
+          <div class="c" data-testid="privacy-locked-view" style="max-width:680px;margin:12px auto;padding:28px 24px;text-align:center">
+            <div style="width:56px;height:56px;border-radius:18px;background:#FFF6E8;color:#7A4300;display:grid;place-items:center;font-size:26px;margin:0 auto 12px">
+              🔒
+            </div>
+            <span class="s wait">Privat budsjettområde · Ingen innsyn</span>
+            <h1 style="font-size:22px;font-weight:800;margin-top:10px">${area.fullTitle} er låst</h1>
+            <p class="l" style="margin-top:8px;font-size:14px;max-width:520px;margin-inline:auto">
+              ${access.reason}
+            </p>
+            <div class="c" style="background:#fff;margin-top:16px;text-align:left;font-size:12px">
+              <b>Personvernregel i Familieblikk:</b>
+              <ul style="margin:6px 0 0 18px;padding:0;color:#4F5F5A;line-height:1.5">
+                <li>Private tall, kategorier og poster lastes aldri inn for medlemmer uten eksplisitt leserett.</li>
+                <li>Familieadministrator-rollen gir <b>ikke</b> automatisk tilgang til andres private økonomi.</li>
+                <li>Endring av deling krever bekreftelse fra <b>både budsjetteier og familieadministrator</b>.</li>
+              </ul>
+            </div>
+            <div style="display:flex;justify-content:center;gap:10px;margin-top:18px;flex-wrap:wrap">
+              <button class="btn-pri" onclick="state.area='${viewer.defaultArea}';render()">
+                Gå tilbake til ${budgetAreas[viewer.defaultArea].fullTitle}
+              </button>
+              <button class="btn-sec" onclick="openSharingRulesModal()">Se regler for deling</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const area = budgetAreas[state.area];
+      const writable = canWriteCurrentArea();
+
+      // 3. OVERSIKT TAB
+      if (state.tab === 'oversikt') {
+        if (state.previewState === 'empty') {
+          sheetEl.innerHTML = bannersHtml + `
+            <div class="c" style="text-align:center;padding:32px 20px">
+              <h2 style="font-size:20px;font-weight:800">Ingen poster registrert i oktober ennå</h2>
+              <p class="l" style="margin-top:6px;max-width:460px;margin-inline:auto">
+                Start måneden ved å legge til mottatt inntekt, faste regninger eller første utgiftspost i ${area.fullTitle}.
+              </p>
+              <div style="margin-top:16px">
+                <button class="btn-pri" ${writable ? '' : 'disabled'} onclick="openQuickAddModal()">+ Legg til første post</button>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        const visibleItems = state.filter === 'alle'
+          ? area.items
+          : area.items.filter(i => i.kind === state.filter);
+
+        sheetEl.innerHTML = bannersHtml + `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="section-eyebrow">Oversikt & kontroll • ${area.fullTitle}</span>
+            <span style="font-size:12px;font-weight:800;color:var(--green-pri)">Uke 43 · Oktober 2026</span>
+          </div>
+
+          <!-- BENTO ANALYTICS GRID (3 cards on PC, 2+1 on Phone) -->
+          <div class="bento">
+            <!-- Card 1: Daglig bruk (Siste 7 dager) -->
+            <div class="c" style="display:flex;flex-direction:column;justify-content:space-between">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+                <div>
+                  <div style="font-size:14px;font-weight:800">Daglig bruk</div>
+                  <div class="l" style="font-size:11px">Siste 7 dager</div>
+                </div>
+                <span style="background:var(--green-mid);color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:8px">${area.weeklyTotal}</span>
+              </div>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;height:58px;gap:6px;margin-top:12px">
+                ${area.weeklyBars.map(([d, h, col]) => `
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                    <div style="width:100%;height:${h}px;background:${col};border-radius:5px"></div>
+                    <span style="font-size:10px;font-weight:700;color:#4F5F5A">${d}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Card 2: Smart budsjett (Hovedposter) -->
+            <div class="c" style="display:flex;flex-direction:column;justify-content:space-between">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:14px;font-weight:800">Smart budsjett</div>
+                  <div class="l" style="font-size:11px">${area.categories.length} kategorier</div>
+                </div>
+                <button class="btn-sec" style="min-height:44px;padding:4px 10px;font-size:11px" onclick="selectTab('budsjett')">Alle →</button>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                ${area.categories.slice(0, 3).map(cat => `
+                  <div>
+                    <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700">
+                      <span>${cat.name}</span>
+                      <span style="${cat.pct >= 85 ? 'color:#7A4300' : ''}">${cat.pct}%</span>
+                    </div>
+                    <div class="bar"><i style="width:${cat.pct}%;background:${cat.color}"></i></div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Card 3: Inntekt & Sparemål-puls (Separates Faktisk vs. Forventet!) -->
+            <div class="c bento-third" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div class="l" style="font-size:11px;text-transform:uppercase">Inntekt oktober</div>
+                  <div style="font-size:16px;font-weight:800;margin-top:2px">
+                    ${area.incomeReceived} <span class="s act">Faktisk</span>
+                  </div>
+                </div>
+                <div style="text-align:right">
+                  <div class="l" style="font-size:11px">Forventet (ikke i fri bruk)</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--green-pri);margin-top:2px">
+                    ${area.incomeExpected} <span class="s exp">${area.incomeExpectedDate}</span>
+                  </div>
+                </div>
+              </div>
+              <div style="border-top:1px solid var(--border);padding-top:8px;display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div class="l" style="font-size:11px">Planlagt sparing denne mnd</div>
+                  <b style="font-size:13px">${area.plannedSavings} (reservert én gang)</b>
+                </div>
+                <button class="btn-sec" style="min-height:44px;padding:4px 10px;font-size:11px" onclick="selectTab('sparing')">Sparing →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TWO-COLUMN SPLIT ON DESKTOP: ATTENTION/ITEMS + FORBRUK/PLANLEGGING WORKSPACE -->
+          <div class="sheet-split">
+            <!-- Left column: Trenger oppmerksomhet & poster -->
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+                <span class="section-eyebrow">Trenger oppmerksomhet & poster</span>
+                <div class="pills">
+                  ${[['alle','Alle'],['obs','Obs'],['faste','Faste'],['siste','Siste']].map(([id,lbl]) => `
+                    <button class="pill ${state.filter===id?'on':''}" onclick="state.filter='${id}';render()">${lbl}</button>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="c" style="background:#FFFFFF">
+                ${visibleItems.map(item => `
+                  <div class="row">
+                    <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+                      <div class="av" style="${item.avStyle}">${item.initials}</div>
+                      <div style="min-width:0">
+                        <b style="font-size:14px;display:block">${item.title}</b>
+                        <div class="l">${item.subtitle}</div>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <div style="text-align:right">
+                        <b style="font-size:14px">${item.amount}</b><br>
+                        <span class="${item.badgeCls}">${item.badgeText}</span>
+                      </div>
+                      ${item.canPay || item.canSetAmount ? `
+                        <button class="btn-sec" ${writable ? '' : 'disabled'} onclick="openBillCorrectionModal('b1')" title="${writable ? 'Korriger eller betal' : 'Kun leserett'}">
+                          ${item.canSetAmount ? 'Sett beløp' : 'Håndter'}
+                        </button>
+                      ` : ''}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Right column: Kompakt Forbruk / Årsoversikt / Planlegg neste måned -->
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+                <span class="section-eyebrow">Analyse & planlegging</span>
+                <div class="pills">
+                  ${[['forbruk','Forbruk'],['arsoversikt','Årstrend'],['planlegg','Planlegg nov']].map(([id,lbl]) => `
+                    <button class="pill ${state.budgetWorkspaceTab===id?'on':''}" onclick="state.budgetWorkspaceTab='${id}';render()">${lbl}</button>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="c">
+                ${state.budgetWorkspaceTab === 'forbruk' ? `
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <b>Utgifter per kategori (Beløp først)</b>
+                    <span class="s res">Kun utgifter</span>
+                  </div>
+                  <p class="l" style="margin-bottom:10px">Inntekt holdes adskilt fra utgiftsgrafen slik at totalene aldri blandes.</p>
+                  ${area.categories.map(c => `
+                    <div style="margin-bottom:10px">
+                      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700">
+                        <span>${c.name}</span>
+                        <span>${c.used} av ${c.limit}</span>
+                      </div>
+                      <div class="bar" style="height:8px"><i style="width:${c.pct}%;background:${c.color}"></i></div>
+                    </div>
+                  `).join('')}
+                ` : state.budgetWorkspaceTab === 'arsoversikt' ? `
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <b>Månedlig utvikling 2026 (Mai–Okt)</b>
+                    <span class="s act">6 mnd med data</span>
+                  </div>
+                  <p class="l" style="margin-bottom:10px">Måneder uten historikk (Jan–Apr) vises som «Ingen data», aldri som 0 kr.</p>
+                  <div style="display:flex;align-items:flex-end;justify-content:space-between;height:96px;gap:8px;padding-top:12px">
+                    ${[['Mai',68,'36,2k'],['Jun',78,'41,0k'],['Jul',92,'48,4k'],['Aug',74,'38,9k'],['Sep',70,'36,8k'],['Okt',73,'38,5k']].map(([m,h,v]) => `
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                        <span style="font-size:10px;font-weight:700;color:#0E4A38">${v}</span>
+                        <div style="width:100%;height:${h}px;background:${m==='Okt'?'#13614A':'#9CC4A3'};border-radius:6px"></div>
+                        <span style="font-size:10px;font-weight:700;color:#4F5F5A">${m}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : `
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <b>Utkast: Planlegg november 2026</b>
+                    <span class="s exp">Utkast</span>
+                  </div>
+                  <p class="l" style="margin-bottom:10px">Bygger på faste regninger og faktisk snitt (aldri dobbelttelling).</p>
+                  ${area.categories.slice(0, 3).map(c => `
+                    <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                      <div>
+                        <b style="font-size:13px">${c.name}</b>
+                        <div class="l" style="font-size:11px">Kilde: ${c.source}</div>
+                      </div>
+                      <b style="font-size:13px;color:var(--green-pri)">${c.nextDraft}</b>
+                    </div>
+                  `).join('')}
+                  <div style="margin-top:12px;display:flex;justify-content:flex-end">
+                    <button class="btn-pri" ${writable ? '' : 'disabled'} onclick="selectTab('budsjett')">Åpne full planlegger →</button>
+                  </div>
+                `}
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // 4. POSTER TAB (WITH SEARCH, STATUS FILTERS, HISTORY & CSV)
+      if (state.tab === 'poster') {
+        const filtered = area.items.filter(item => {
+          const q = state.posterQuery.toLowerCase();
+          const matchQ = !q || item.title.toLowerCase().includes(q) || item.subtitle.toLowerCase().includes(q);
+          const matchS = state.posterStatus === 'alle' || item.kind === state.posterStatus;
+          return matchQ && matchS;
+        });
+
+        sheetEl.innerHTML = bannersHtml + `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+            <div>
+              <span class="section-eyebrow">Transaksjoner, regninger & historikk</span>
+              <h1 style="font-size:24px;font-weight:800;margin-top:2px">Alle poster • ${area.fullTitle}</h1>
+              <p class="l">Viser ${filtered.length} poster i valgt utvalg · Eksport og CSV følger nøyaktig dette området</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn-sec" onclick="openBillCorrectionModal('b1')">📋 Revisjonshistorikk & CSV</button>
+              <button class="btn-pri" ${writable ? '' : 'disabled'} onclick="openQuickAddModal()">+ Ny post</button>
+            </div>
+          </div>
+
+          <div class="c" style="margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+            <input
+              type="search"
+              class="inp"
+              style="max-width:340px;margin-top:0;background:#fff"
+              placeholder="Søk automatisk etter mottaker, kategori eller notat…"
+              value="${state.posterQuery}"
+              oninput="state.posterQuery=this.value;render()"
+              aria-label="Søk i poster"
+            />
+            <div class="pills">
+              ${[['alle','Alle'],['obs','Obs / Forfalt'],['faste','Faste regninger'],['siste','Faktiske kjøp']].map(([id,lbl]) => `
+                <button class="pill ${state.posterStatus===id?'on':''}" onclick="state.posterStatus='${id}';render()">${lbl}</button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="c" style="background:#FFFFFF">
+            ${filtered.map(item => `
+              <div class="row">
+                <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+                  <div class="av" style="${item.avStyle}">${item.initials}</div>
+                  <div>
+                    <b style="font-size:14px">${item.title}</b>
+                    <div class="l">${item.subtitle}</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="text-align:right">
+                    <b style="font-size:14px">${item.amount}</b><br>
+                    <span class="${item.badgeCls}">${item.badgeText}</span>
+                  </div>
+                  <button class="btn-sec" ${writable ? '' : 'disabled'} onclick="openBillCorrectionModal('b1')">
+                    ${writable ? 'Korriger / Detaljer' : 'Kun innsyn'}
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        return;
+      }
+
+      // 5. BUDSJETT & PLANLEGGING TAB
+      if (state.tab === 'budsjett') {
+        sheetEl.innerHTML = bannersHtml + `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+            <div>
+              <span class="section-eyebrow">Kategorirammer, årstrend & neste måned</span>
+              <h1 style="font-size:24px;font-weight:800;margin-top:2px">Budsjett • ${area.fullTitle}</h1>
+              <p class="l">Mottatt inntekt: ${area.incomeReceived} · Forventet: ${area.incomeExpected} (${area.incomeExpectedDate})</p>
+            </div>
+            <div class="pills">
+              ${[['forbruk','Kategorier (Okt)'],['arsoversikt','Årsoversikt'],['planlegg','Planlegg november']].map(([id,lbl]) => `
+                <button class="pill ${state.budgetWorkspaceTab===id?'on':''}" onclick="state.budgetWorkspaceTab='${id}';render()">${lbl}</button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">
+            ${area.categories.map(cat => `
+              <div class="c">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                  <b style="font-size:15px">${cat.name}</b>
+                  <span class="s ${cat.pct >= 85 ? 'wait' : 'res'}">${cat.pct}% brukt</span>
+                </div>
+                <div class="l" style="margin-top:4px">Brukt og reservert: <b>${cat.used}</b> av ramme <b>${cat.limit}</b></div>
+                <div class="bar" style="height:8px;margin-top:10px"><i style="width:${cat.pct}%;background:${cat.color}"></i></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:12px">
+                  <span class="l">Forslag november: <b>${cat.nextDraft}</b> (${cat.source})</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        return;
+      }
+
+      // 6. SPARING TAB
+      if (state.tab === 'sparing') {
+        sheetEl.innerHTML = bannersHtml + `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+            <div>
+              <span class="section-eyebrow">Sparemål & buffer · Reserveres én gang</span>
+              <h1 style="font-size:24px;font-weight:800;margin-top:2px">Sparemål • ${area.fullTitle}</h1>
+              <p class="l">Fast månedlig sparing (${area.plannedSavings}) er reservert i tilgjengelig beløp · Ekstra innskudd trekkes direkte</p>
+            </div>
+            <button class="btn-pri" ${writable ? '' : 'disabled'} onclick="openQuickAddModal()">+ Ekstra innskudd</button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px">
+            ${area.savings.map(goal => `
+              <div class="c" style="display:flex;gap:14px;align-items:center">
+                <div style="width:48px;height:48px;border-radius:16px;background:#fff;display:grid;place-items:center;font-size:24px;flex-shrink:0">
+                  ${goal.icon}
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <b style="font-size:15px">${goal.title}</b>
+                    <span class="s res">${goal.pct}%</span>
+                  </div>
+                  <div class="l" style="margin-top:2px">${goal.sub}</div>
+                  <div class="bar" style="height:8px;margin-top:8px"><i style="width:${goal.pct}%;background:#13614A"></i></div>
+                  <div class="l" style="margin-top:6px;font-size:11px">Måldato: ${goal.target}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        return;
+      }
+
+      // 7. HANDLELISTER TAB (FIRST-CLASS SHARED SHOPPING WORKSPACE WITH INTEGRATED CAMERA RECEIPT SCAN)
+      if (state.tab === 'handlelister') {
+        sheetEl.innerHTML = bannersHtml + `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+            <div>
+              <span class="section-eyebrow">Felles i familien · Oppdateres fortløpende</span>
+              <h1 style="font-size:24px;font-weight:800;margin-top:2px">Handlelister</h1>
+              <p class="l">Del varer og kryss av i butikken. Påvirker ikke budsjettet før handleturen eksplisitt fullføres eller kvittering skannes.</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn-sec" ${writable ? '' : 'disabled'} onclick="openQuickAddModal('camera','act')">📸 Skann kvittering for handletur</button>
+              <button class="btn-pri" ${writable ? '' : 'disabled'} onclick="openQuickAddModal('manual','act')">Fullfør handletur til ${area.label}</button>
+            </div>
+          </div>
+
+          <div class="sheet-split" style="margin-top:8px">
+            <div class="c" style="background:#FFFFFF">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+                <div>
+                  <b style="font-size:16px">🛒 Ukehandel familie</b>
+                  <div class="l">Aktiv fellesliste · Alle i familien ser avkryssing i sanntid</div>
+                </div>
+                <span class="s act">3 av 5 kjøpt</span>
+              </div>
+              <div class="row">
+                <div><b>Lettmelk 1,75L × 2</b><div class="l">Lagt til av Marte · Krysset av i butikk</div></div>
+                <span class="s act">✓ Kjøpt</span>
+              </div>
+              <div class="row">
+                <div><b>Grovbrød & havregryn</b><div class="l">Lagt til av Jonas · Krysset av i butikk</div></div>
+                <span class="s act">✓ Kjøpt</span>
+              </div>
+              <div class="row">
+                <div><b>Epler, bananer & klementiner</b><div class="l">Lagt til av Sander · Krysset av i butikk</div></div>
+                <span class="s act">✓ Kjøpt</span>
+              </div>
+              <div class="row">
+                <div><b>Kyllingfilet & grønnsaker</b><div class="l">Lagt til av Marte · Middag torsdag</div></div>
+                <span class="s res">Gjenstår</span>
+              </div>
+              <div class="row">
+                <div><b>Oppvaskmaskintabletter</b><div class="l">Lagt til av Jonas · Husholdning</div></div>
+                <span class="s res">Gjenstår</span>
+              </div>
+            </div>
+
+            <div style="display:grid;gap:12px">
+              <div class="c" style="border:1.5px dashed var(--green-pri);background:var(--mint-light)">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+                  <b style="font-size:15px;color:var(--green-dark)">📸 Ferdig å handle? Skann kvitteringen direkte</b>
+                  <span class="s res">Knyttes til listen</span>
+                </div>
+                <p class="l" style="margin-bottom:10px">
+                  Ta bilde av kvitteringen rett etter handleturen. Vi foreslår beløp, dato og butikk på egen server, sletter bildet etter OCR og kobler kjøpet direkte til denne handlelisten.
+                </p>
+                <button class="btn-pri" ${writable ? '' : 'disabled'} onclick="openQuickAddModal('camera','act')">📷 Ta bilde av kvittering</button>
+              </div>
+
+              <div class="c" style="background:#FFFFFF">
+                <b style="font-size:15px">Fullførte handleturer & koblet kvittering</b>
+                <div class="row" style="margin-top:6px">
+                  <div>
+                    <b>Rema 1000 Storo · 21. okt</b>
+                    <div class="l">8 varer kjøpt · Kvittering skannet & bokført i ${area.fullTitle}</div>
+                  </div>
+                  <div style="text-align:right">
+                    <b>1 240 kr</b><br>
+                    <span class="s act">Bokført</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // 8. KALENDER TAB (SHARED HOUSEHOLD CALENDAR WITH RSVP & WEB PUSH)
+      if (state.tab === 'kalender') {
+        const filteredEvents = state.calFilter === 'alle'
+          ? calendarEvents
+          : calendarEvents.filter(e => e.scope === state.calFilter);
+
+        sheetEl.innerHTML = bannersHtml + `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+            <div>
+              <span class="section-eyebrow">Felles familiekalender & forfall · Oktober 2026</span>
+              <h1 style="font-size:24px;font-weight:800;margin-top:2px">Kalender & avtaler</h1>
+              <p class="l">Felles på tvers av familien · Støtter svar (Passer / Passer ikke) og Web Push-varsling</p>
+            </div>
+            <button class="btn-pri" onclick="openCalendarEventModal()">+ Ny familieavtale</button>
+          </div>
+
+          <div class="sheet-split" style="margin-top:8px">
+            <!-- Compact Month Week Strip / Grid -->
+            <div class="c">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <b>Uke 43–44 · Oktober 2026</b>
+                <span class="s act">Web Push aktiv</span>
+              </div>
+              <div class="cal-grid">
+                ${[19,20,21,22,23,24,25,26,27,28,29,30,31,1].map(d => `
+                  <button class="cal-cell ${state.calSelectedDay===d?'sel':''}" onclick="state.calSelectedDay=${d};render()">
+                    <span>${d}</span>
+                    <span style="width:6px;height:6px;border-radius:50%;background:${[22,25,28].includes(d)?'#13614A':'transparent'}"></span>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Agenda & RSVP list -->
+            <div style="display:grid;gap:10px">
+              ${filteredEvents.map(ev => `
+                <div class="c" style="background:#FFFFFF">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                    <div>
+                      <span class="s res">${ev.day}. okt · ${ev.time}</span>
+                      <b style="font-size:15px;display:block;margin-top:6px">${ev.title}</b>
+                      <div class="l" style="margin-top:2px">${ev.recurrence} · Ansvar: ${ev.owner}</div>
+                    </div>
+                    <span class="s ${ev.pushSent ? 'act' : 'exp'}">${ev.pushSent ? '🔔 Push sendt' : 'Planlagt'}</span>
+                  </div>
+                  <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                    <div style="font-size:11px;font-weight:700;color:#4F5F5A">
+                      Marte: <b style="color:#0E4A38">${ev.rsvpMarte}</b> · Jonas: <b style="color:#7A4300">${ev.rsvpJonas}</b> · Sander: <b>${ev.rsvpSander}</b>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                      <button class="btn-sec" style="min-height:44px;padding:4px 12px" onclick="ev.rsvpJonas='Passer';render()">✓ Passer</button>
+                      <button class="btn-sec" style="min-height:44px;padding:4px 12px" onclick="ev.rsvpJonas='Passer ikke';render()">✕ Passer ikke</button>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // 8. MER (ALLE MODULER: REGNINGER, GJELD, ÅRSUTGIFTER, UTENLANDS, MATRISE, FAMILIE & TILGANG, TILPASS, VARSLER)
+      const subModuleTitles = {
+        skann: '📸 Skann kvittering eller faktura',
+        handlelister: '🛒 Felles handlelister',
+        regninger: '🧾 Regninger & historikk',
+        familie: '👨‍👩‍👦 Familie, budsjetter & tilgang',
+        gjeld: '📉 Gjeld & strategi',
+        arsfond: '🗓️ Årsutgifter (Fond)',
+        utenlands: '🌍 Sendt utenlands',
+        matrise: '📊 Årsoversikt (Matrise)',
+        tilpass: '⚙️ Tilpass appen',
+        varsler: '🔔 Varsler & Web Push'
+      };
+
+      let subHtml = '';
+      if (!state.subModule) {
+        subHtml = `
+          <div class="mer-groups">
+            <div>
+              <div class="mer-group-title">Økonomi og planer</div>
+              <div class="mer-group-card">
+                <button class="mer-row" onclick="selectTab('mer','regninger')">
+                  <div class="mer-row-main">
+                    <div class="mer-row-icon">🧾</div>
+                    <div class="mer-row-body">
+                      <b>Regninger & historikk</b>
+                      <span>Betalte, forfalte og kommende · Enkeltforekomst-korrigering</span>
+                    </div>
+                  </div>
+                  <div class="mer-row-end">
+                    <span class="s ovd">1 forfalt</span>
+                    <span class="mer-row-chev" aria-hidden="true">›</span>
+                  </div>
+                </button>
+                <button class="mer-row" onclick="selectTab('mer','gjeld')">
+                  <div class="mer-row-main">
+                    <div class="mer-row-icon">📉</div>
+                    <div class="mer-row-body">
+                      <b>Gjeld & strategi</b>
+                      <span>Månedsplan og Snøball / Avalanche nedbetalingsanslag</span>
+                    </div>
+                  </div>
+                  <div class="mer-row-end">
+                    <span class="s res">2 lån</span>
+                    <span class="mer-row-chev" aria-hidden="true">›</span>
+                  </div>
+                </button>
+                <button class="mer-row" onclick="selectTab('mer','arsfond')">
+                  <div class="mer-row-main">
+                    <div class="mer-row-icon">🗓️</div>
+                    <div class="mer-row-body">
+                      <b>Årsutgifter (Fond)</b>
+                      <span>Avsetninger til større utgifter (2 150 kr/mnd)</span>
+                    </div>
+                  </div>
+                  <div class="mer-row-end">
+                    <span class="mer-row-chev" aria-hidden="true">›</span>
+                  </div>
+                </button>
+                <button class="mer-row" onclick="selectTab('mer','utenlands')">
+                  <div class="mer-row-main">
+                    <div class="mer-row-icon">🌍</div>
+                    <div class="mer-row-body">
+                      <b>Sendt utenlands</b>
+                      <span>Mottakere, registrerte overføringer og valutakurs</span>
+                    </div>
+                  </div>
+                  <div class="mer-row-end">
+                    <span class="mer-row-chev" aria-hidden="true">›</span>
+                  </div>
+                </button>
+                <button class="mer-row" onclick="selectTab('mer','matrise')">
+                  <div class="mer-row-main">
+                    <div class="mer-row-icon">📊</div>
+                    <div class="mer-row-body">
+                      <b>Årsoversikt (Matrise)</b>
+                      <span>Måned for måned (Jan–Des) og kategorier gjennom året</span>
+                    </div>
+                  </div>
+                  <div class="mer-row-end">
+                    <span class="mer-row-chev" aria-hidden="true">›</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <div class="mer-group-title">Familien og appen</div>
+              <div class="mer-group-card">
+                <button class="mer-row" onclick="selectTab('mer','familie')">
+                  <div class="mer-row-main">
+                    <div class="mer-row-icon">👨‍👩‍👦</div>
+                    <div class="mer-row-body">
+                      <b>Familie, budsjetter & tilgang</b>
+                      <span>Medlemmer, separate budsjettområder og delingsregler</span>
+                    </div>
+                  </div>
+                  <div class="mer-row-end">
+                    <span class="s act">4 områder</span>
+                    <span class="mer-row-chev" aria-hidden="true">›</span>
+                  </div>
+                </button>
+                <button class="mer-row" onclick="selectTab('handlelister')">
+                  <div class="mer-row-main">
+                    <div class="mer-row-icon">🛒</div>
+                    <div class="mer-row-body">
+                      <b>Felles handlelister</b>
+                      <span>Del varer, skann kvittering og bekreft handleturer</span>
+                    </div>
+                  </div>
+                  <div class="mer-row-end">
+                    <span class="s res">3 av 5</span>
+                    <span class="mer-row-chev" aria-hidden="true">›</span>
+                  </div>
+                </button>
+                <button class="mer-row" onclick="selectTab('mer','varsler')">
+                  <div class="mer-row-main">
+                    <div class="mer-row-icon">🔔</div>
+                    <div class="mer-row-body">
+                      <b>Varsler & Web Push</b>
+                      <span>Kalendervarsler, svar og enhetens push-innstillinger</span>
+                    </div>
+                  </div>
+                  <div class="mer-row-end">
+                    <span class="s act">Aktiv</span>
+                    <span class="mer-row-chev" aria-hidden="true">›</span>
+                  </div>
+                </button>
+                <button class="mer-row" onclick="selectTab('mer','tilpass')">
+                  <div class="mer-row-main">
+                    <div class="mer-row-icon">⚙️</div>
+                    <div class="mer-row-body">
+                      <b>Tilpass appen</b>
+                      <span>Velg hvilke moduler som vises i ${area.fullTitle}</span>
+                    </div>
+                  </div>
+                  <div class="mer-row-end">
+                    <span class="mer-row-chev" aria-hidden="true">›</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (state.subModule === 'skann') {
+        subHtml = `
+          <div class="sheet-split" style="margin-top:0">
+            <div class="c" style="background:#FFFFFF">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+                <b style="font-size:16px">📸 Skann kvittering eller faktura (${area.fullTitle})</b>
+                <span class="s res">Midlertidig bilde · Slettes etter OCR</span>
+              </div>
+              <p class="l" style="margin-bottom:12px">
+                Ta et tydelig bilde med kameraet eller velg bilde. Familiens egen server foreslår beløp, dato og betalingsmottaker, og sletter bildet automatisk etter tekstgjenkjenning. Ingenting bokføres uten din bekreftelse.
+              </p>
+              <div class="c" style="border:1.5px dashed var(--mint);background:var(--mint-light);text-align:center;padding:20px">
+                <div style="font-size:26px">📷</div>
+                <b style="display:block;margin-top:4px;color:var(--green-dark)">Kamera klart for kvittering / faktura</b>
+                <p class="l" style="margin-top:4px">Ha alle kanter innenfor bildet, hold kameraet rett og bruk jevnt lys (JPEG/PNG, maks 10 MiB).</p>
+                <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">
+                  <button class="btn-pri" ${writable ? '' : 'disabled'} onclick="openQuickAddModal('scan','act')">Ta bilde / Skann nå</button>
+                  <button class="btn-sec" ${writable ? '' : 'disabled'} onclick="openQuickAddModal('manual','act')">Fyll inn manuelt</button>
+                </div>
+              </div>
+            </div>
+            <div class="c" style="background:#FFFFFF">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+                <b style="font-size:16px">1. Gjennomgå og bekreft skannet utkast</b>
+                <span class="s wait">Krever gjennomgang</span>
+              </div>
+              <p class="l" style="margin-bottom:10px">
+                Bildet er slettet etter lokal OCR. Kontroller foreslåtte felt mot kvitteringen før du lagrer eller bokfører:
+              </p>
+              <div style="display:grid;gap:10px">
+                <div>
+                  <label class="l">Foreslått betalingsmottaker / butikk</label>
+                  <input class="inp" value="Rema 1000 Storo" ${writable ? '' : 'disabled'} />
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                  <div>
+                    <label class="l">Foreslått beløp (kr)</label>
+                    <input class="inp" value="642,50" ${writable ? '' : 'disabled'} />
+                  </div>
+                  <div>
+                    <label class="l">Dokumentdato</label>
+                    <input class="inp" value="22.10.2026" ${writable ? '' : 'disabled'} />
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:4px">
+                  <button class="btn-sec" ${writable ? '' : 'disabled'}>Lagre utkast uten bokføring</button>
+                  <button class="btn-pri" ${writable ? '' : 'disabled'} onclick="openQuickAddModal('scan','act')">Bekreft og bokfør</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (state.subModule === 'handlelister') {
+        subHtml = `
+          <div class="sheet-split" style="margin-top:0">
+            <div class="c" style="background:#FFFFFF">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+                <div>
+                  <b style="font-size:16px">🛒 Ukehandel familie (Delt i hele husstanden)</b>
+                  <div class="l">Avkryssing deles med familien uten å bokføre. Utgift opprettes først når handleturen bekreftes.</div>
+                </div>
+                <span class="s act">3 av 5 kjøpt</span>
+              </div>
+              <div class="row">
+                <div><b>Lettmelk 1,75L × 2</b><div class="l">Lagt til av Marte · Krysset av i butikk</div></div>
+                <span class="s act">✓ Kjøpt</span>
+              </div>
+              <div class="row">
+                <div><b>Grovbrød & havregryn</b><div class="l">Lagt til av Jonas · Krysset av i butikk</div></div>
+                <span class="s act">✓ Kjøpt</span>
+              </div>
+              <div class="row">
+                <div><b>Kyllingfilet & grønnsaker</b><div class="l">Lagt til av Marte · Gjenstår på listen</div></div>
+                <span class="s res">Gjenstår</span>
+              </div>
+              <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px">
+                <button class="btn-sec" onclick="selectTab('handlelister')">📸 Åpne i Handlelister</button>
+                <button class="btn-pri" ${writable ? '' : 'disabled'} onclick="openQuickAddModal('scan','act')">Fullfør handletur til ${area.label}</button>
+              </div>
+            </div>
+            <div class="c">
+              <b style="font-size:16px">Fullførte handleturer & kvitteringer</b>
+              <p class="l" style="margin-top:4px;margin-bottom:10px">
+                Hver fullført handletur kobles til én bekreftet utgiftspost i valgt budsjettområde med full revisjonshistorikk.
+              </p>
+              <div class="row">
+                <div>
+                  <b>Rema 1000 Storo · 21. okt</b>
+                  <div class="l">8 varer kjøpt · Bokført i ${area.fullTitle}</div>
+                </div>
+                <div style="text-align:right">
+                  <b>1 240 kr</b><br>
+                  <span class="s act">Bokført</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (state.subModule === 'regninger') {
+        subHtml = `
+          <div class="c" style="background:#FFFFFF">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+              <div>
+                <b style="font-size:16px">Faste og variable regninger (${area.fullTitle})</b>
+                <div class="l">Støtter enkeltforekomst-korrigering, avlysning uten duplikat, angre betaling vs. refusjon og seriearkiv</div>
+              </div>
+              <button class="btn-pri" ${writable ? '' : 'disabled'} onclick="openBillCorrectionModal('b1')">Korriger regning</button>
+            </div>
+            ${recurringBills.map(b => `
+              <div class="row">
+                <div>
+                  <b style="font-size:14px">${b.name}</b>
+                  <div class="l">Forfall ${b.due} · ${b.category}</div>
+                  <div style="font-size:11px;color:#0E4A38;font-weight:600;margin-top:2px">${b.historyNote}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="text-align:right">
+                    <b style="font-size:14px">${b.amount}</b><br>
+                    <span class="${b.statusCls}">${b.status}</span>
+                  </div>
+                  <button class="btn-sec" ${writable ? '' : 'disabled'} onclick="openBillCorrectionModal('${b.id}')">Endre / Historikk</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (state.subModule === 'familie') {
+        subHtml = `
+          <div class="sheet-split" style="margin-top:0">
+            <div class="c">
+              <b style="font-size:16px">Opprett familiemedlem & velg budsjettdeling</b>
+              <p class="l" style="margin-top:4px;margin-bottom:12px">
+                Ved opprettelse velges om medlemmets eget budsjett skal være helt privat eller ha navngitt foreldreinnsyn (kun leserett).
+              </p>
+              <div style="display:grid;gap:10px">
+                <div>
+                  <label class="l">Navn på medlem</label>
+                  <input class="inp" value="Nora Lindqvist (14)" readonly />
+                </div>
+                <div>
+                  <label class="l">Innsynsvalg for eget budsjett ved opprettelse</label>
+                  <select class="inp">
+                    <option>Navngitt foreldreinnsyn: Marte og Jonas (Kun leserett — medlemmet styrer eget budsjett)</option>
+                    <option>Helt privat budsjettområde (Ingen foreldre- eller admininnsyn)</option>
+                  </select>
+                </div>
+                <button class="btn-pri" onclick="openSharingRulesModal()">Se to-personers bekreftelsesregel</button>
+              </div>
+            </div>
+            <div class="c">
+              <b style="font-size:16px">Modultilgang per medlem (Skjuler både sider og tall)</b>
+              <p class="l" style="margin-top:4px;margin-bottom:12px">
+                Når moduler slås av for et medlem, skjules både menyvalg og alle tilhørende beløp/totaler (prøv «Sander (Begrenset)» øverst!).
+              </p>
+              <div style="display:grid;gap:8px;font-size:13px;font-weight:700">
+                <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" checked disabled> Sparing (Sparemål)</label>
+                <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" checked disabled> Familiekalender</label>
+                <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" disabled> Oversikt, Poster, Budsjett & Regninger (Skjult i begrenset modus)</label>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        subHtml = `
+          <div class="bento">
+            <div class="c" style="background:#FFFFFF">
+              <b>📉 Gjeld & strategi</b>
+              <p class="l" style="margin-top:4px">Snøball vs. Skred-simulator · Boliglån DNB (2 420 000 kr) og Studielån (184 000 kr).</p>
+            </div>
+            <div class="c" style="background:#FFFFFF">
+              <b>🗓️ Årsutgifter (Fond)</b>
+              <p class="l" style="margin-top:4px">Kommunale avgifter, bilservice og forsikring fordelt på 2 150 kr/mnd i egen pott.</p>
+            </div>
+            <div class="c" style="background:#FFFFFF">
+              <b>🌍 Sendt utenlands & Matrise</b>
+              <p class="l" style="margin-top:4px">Overføringslogg med valutakurs-snapshot + full 12-måneders årsmatrise (Jan–Des).</p>
+            </div>
+          </div>
+        `;
+      }
+
+      sheetEl.innerHTML = bannersHtml + `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+          <div>
+            <span class="section-eyebrow">Alle moduler & innstillinger</span>
+            <h1 style="font-size:24px;font-weight:800;margin-top:2px">${state.subModule ? (subModuleTitles[state.subModule] || 'Mer • Modul') : 'Mer • Familieblikk-moduler'}</h1>
+          </div>
+          ${state.subModule ? `
+            <button class="btn-sec" onclick="state.subModule=null;render()">← Tilbake til Mer</button>
+          ` : ''}
+        </div>
+        ${subHtml}
+      `;
+    }
+
+    /* =========================================================================
+       RENDER FLOATING GLASSMORPHIC MOBILE BOTTOM DOCK (.dock-wrap)
+       ========================================================================= */
+    function renderBottomDock() {
+      const dockEl = document.getElementById('bottomDock');
+      const isRestricted = state.viewerRole === 'sander_restricted';
+      const writable = canWriteCurrentArea();
+
+      const navItems = isRestricted ? [
+        { id: 'restricted_home', label: 'Startside', icon: '<path d="M3 11l9-8 9 8v9H3z"></path>' },
+        { id: 'sparing',  label: 'Sparing',  icon: '<path d="M12 4a8 8 0 100 16 8 8 0 000-16zM12 8v8"></path>' },
+        { id: 'kalender', label: 'Kalender', icon: '<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path>' }
+      ] : [
+        { id: 'oversikt', label: 'Oversikt', icon: '<path d="M3 11l9-8 9 8v9H3z"></path>' },
+        { id: 'poster',   label: 'Poster',   icon: '<path d="M6 3h12v18H6zM9 8h6M9 12h6"></path>' },
+        { id: 'budsjett', label: 'Budsjett', icon: '<path d="M5 20V11M12 20V4M19 20v-6"></path>' },
+        { id: 'sparing',  label: 'Sparing',  icon: '<path d="M12 4a8 8 0 100 16 8 8 0 000-16zM12 8v8"></path>' },
+        { id: 'kalender', label: 'Kalender', icon: '<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path>' },
+        { id: 'mer',      label: 'Mer',      icon: '<path d="M4 6h16M4 12h16M4 18h16"></path>' }
+      ];
+
+      dockEl.innerHTML = navItems.map(n => `
+        <button class="dock-item ${state.tab === n.id ? 'on' : ''}" onclick="state.mobileFabOpen=false;selectTab('${n.id}')" title="${n.label}" aria-label="${n.label}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${n.icon}</svg>
+          ${state.tab === n.id ? `<span>${n.label}</span>` : ''}
+        </button>
+      `).join('') + (!isRestricted ? `
+        ${state.mobileFabOpen ? `
+          <div class="dock-speed-list" role="menu" aria-label="Hurtigvalg">
+            <button class="dock-speed-item" role="menuitem" ${writable ? '' : 'disabled'} onclick="state.mobileFabOpen=false;renderBottomDock();openQuickAddModal('manual','act')">
+              <span>🧾</span><span>Utgift / ny post</span>
+            </button>
+            <button class="dock-speed-item" role="menuitem" ${writable ? '' : 'disabled'} onclick="state.mobileFabOpen=false;renderBottomDock();openQuickAddModal('manual','res')">
+              <span>📅</span><span>Regning</span>
+            </button>
+            <button class="dock-speed-item" role="menuitem" onclick="state.mobileFabOpen=false;selectTab('handlelister')">
+              <span>🛒</span><span>Handleliste</span>
+            </button>
+          </div>
+        ` : ''}
+        <button class="dock-fab ${state.mobileFabOpen ? 'open' : ''}" aria-expanded="${state.mobileFabOpen ? 'true' : 'false'}" onclick="toggleMobileQuickMenu(event)" aria-label="Hurtigvalg: utgift, regning eller handleliste" title="Hurtigvalg: utgift, regning eller handleliste">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"></path>
+          </svg>
+        </button>
+      ` : '');
+    }
+
+    function render() {
+      renderPcSidebar();
+      renderHeaderAndMemberBar();
+      renderHero();
+      renderSheet();
+      renderBottomDock();
+    }
+
+    render();
+  </script>
+</body>
+</html>

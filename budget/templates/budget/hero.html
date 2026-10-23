@@ -3,7 +3,7 @@
     <div>
       <div class="hero-eyebrow-row">
         <span class="hero-eyebrow">Igjen å bruke · {{ month|date:'F' }} ({{ request.financial_area.name }}){% if not request.financial_can_write %} · KUN INNSYN{% endif %}</span>
-        {% if pace %}<span class="hero-delta-badge">{{ pace.delta }} vs. {{ pace.label }}</span>{% endif %}
+        {% if pace %}<span class="hero-delta-badge">Forbruk {{ pace.delta }} % vs. {{ pace.label }}</span>{% endif %}
       </div>
       <div class="hero-main-numbers">
         <div class="hero-big-amount">{{ totals.available|nok }}</div>
@@ -15,6 +15,17 @@
           <summary>Slik beregnes beløpet</summary>
           <div class="calc-drawer-body">
             <p>Et budsjettanslag fra registrerte poster, ikke saldoen i banken. Gammelt overskudd inngår ikke i ny måned.</p>
+            <dl class="calculation-details">
+              <dt>Mottatt inntekt</dt><dd>{{ totals.income|nok }}</dd>
+              <dt>+ Netto frigjort sparing</dt><dd>{{ totals.released|nok }}</dd>
+              <dt>− Forbruk etter refusjoner</dt><dd>{{ totals.ordinary|nok }}</dd>
+              <dt>− Ubetalte regninger</dt><dd>{{ totals.bills|nok }}</dd>
+              <dt>− Sparing (reservert én gang)</dt><dd>{{ totals.savings|nok }}</dd>
+              <dt>− Gjeld</dt><dd>{{ totals.debt|nok }}</dd>
+              <dt>− Årsavsetninger og påfyll</dt><dd>{{ totals.funds|nok }}</dd>
+              <dt>= Igjen å bruke</dt><dd>{{ totals.available|nok }}</dd>
+            </dl>
+            {% if daily_days %}<p>Dagsbeløp: {{ totals.available|nok }} delt på {{ daily_days }} gjenstående dager, inkludert i dag = {{ totals.daily|nok }}.</p>{% else %}<p>Dagsbeløp vises bare for inneværende måned.</p>{% endif %}
           </div>
         </details>
         <span class="hero-note">Mottatt inntekt: <b>{{ totals.income|nok }}</b> · Forventet holdes utenfor til mottatt</span>

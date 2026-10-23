@@ -1,0 +1,52 @@
+{
+  "status": "verified",
+  "reference": "_bmad-output/planning-artifacts/ui-modern-redesign-preview.html",
+  "baseline": "dff195786da156e041b04d4100c26a455901a9c8",
+  "review": {
+    "independent_layers": 3,
+    "all_reported_findings_resolved": true
+  },
+  "verified": {
+    "initial_django_suite": 415,
+    "focused_metrics_tests": 7,
+    "node_tests": 63,
+    "docker_build": true,
+    "configuration_invariants": 7,
+    "private_source_records_preserved": 72,
+    "final_release_django_suite": 419,
+    "node_tests_passed_in_windows_export": true,
+    "docker_image_digest": "sha256:7b003d3c591f775a229a19f4c8eaa504a959af481acc164c671f08400ad53d13"
+  },
+  "browser": {
+    "synthetic_only": true,
+    "widths_exercised": [
+      320,
+      375,
+      768,
+      1024,
+      1440
+    ],
+    "camera_tab": true,
+    "calendar_header_editor": true,
+    "reader_no_financial_write_links": true,
+    "mobile_graph_table_width_at_375": 299.43,
+    "console_errors": 0,
+    "manual_expense_saved": "12.50 synthetic expense; personal balance 110.95; other area remains 987.65"
+  },
+  "limitations": [
+    "Physical phone camera and OCR accuracy not retested; this release changes UI only.",
+    "Reference HTML inspected as source because browser file protocol is blocked.",
+    "Unrelated concurrent sharing edits remain uncommitted and are excluded from release."
+  ],
+  "source_sha256": {
+    "budget/services.py": "28871739f03e9dd8f1d3c119ef11d484b6378f89c73d837ba58fd53dc4a1ac25",
+    "budget/views.py": "7ef36e17806b0c3d405f36fef73dc0ca5eee2586180d6b2e72a465cedc7cb269",
+    "budget/static/budget/ui-refresh.css": "0f96fda3b887a59d23207938ba583b314ce35b33befd70d7f0698f1db2df97c7",
+    "budget/static/budget/ui-refresh.js": "f5e225b5d3870e40a9e176b2b0952267ffdd5dc0b735b0056fc63b394281791a",
+    "budget/templates/budget/base.html": "d9c0275a61685394d3d564aa888b49a4728f6ee2fece3694fe5673f4cf4c8c8b",
+    "budget/templates/budget/calendar.html": "1caf8c46bd52bb7a9b1214ffc407a02fe2d7b3cb649a6c8490e946438e55911c",
+    "budget/templates/budget/distribution_refresh.html": "47d742b963772766276b8077e53e8a1b90ac5e954ae04b9c4142078982a8f5b3",
+    "budget/templates/budget/hero.html": "91ef9895123e807c9dcef63a184cc4228561c061166f92b505a8d3932b2de718",
+    "budget/templates/budget/overview_refresh.html": "941a117885f65e7d226dd861792fbf4be367657feae08bc752c7026797dbc5b6"
+  }
+}
