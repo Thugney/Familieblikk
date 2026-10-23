@@ -281,6 +281,25 @@ def page_view(request, page='oversikt'):
     bills = BillOccurrence.objects.filter(household=house, due_date__lte=services.month_end(month)).select_related('template', 'asset').order_by('due_date')
     if page in ('oversikt', 'varsler'): bills = services.pending_bills(house, services.month_end(month)).order_by('due_date')
     bills = access.safe_rows(member, bills)
+    overview_filter = 'alle'
+    overview_bills = list(bills[:3])
+    overview_entries = []
+    if page == 'oversikt':
+        overview_filter = request.GET.get('overview', 'alle')
+        if overview_filter not in ('alle', 'obs', 'faste', 'siste'):
+            overview_filter = 'alle'
+        if overview_filter == 'siste':
+            overview_bills = []
+            overview_entries = list(entries[:3])
+        elif overview_filter == 'obs':
+            overview_bills = [b for b in bills if b.due_date < timezone.localdate()][:3]
+            overview_entries = []
+        elif overview_filter == 'faste':
+            overview_bills = [b for b in bills if b.due_date >= timezone.localdate()][:3]
+            overview_entries = []
+        else:
+            overview_bills = list(bills[:3])
+            overview_entries = list(entries[:3])
     previous = (month.replace(day=1) - __import__('datetime').timedelta(days=1)).replace(day=1)
     comparison = services.calculate(house, previous) if full_finance and Entry.objects.filter(active=True, household=house, effective_date__range=(previous, services.month_end(previous))).exists() else None
     if comparison and month == services.month_start(timezone.localdate()):
@@ -325,7 +344,7 @@ def page_view(request, page='oversikt'):
         item['x'] = trend_x[idx]
         item['y'] = 56 - item['height'] * 48 // 100
         item['label'] = month_abbr[item['month'].month - 1]
-    ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'weekly_bars': weekly_bars, 'weekly_total': weekly_total, 'pace': pace, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
+    ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'overview_filter': overview_filter, 'overview_bills': overview_bills, 'overview_entries': overview_entries, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'weekly_bars': weekly_bars, 'weekly_total': weekly_total, 'pace': pace, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
     if page == 'oversikt':
         ctx['spending_embedded'] = True
         ctx['spending_boot'] = {'initial_tab': 'spending', 'month': month.strftime('%Y-%m'), 'can_save': getattr(request, 'financial_can_write', False), 'urls': {'spending': reverse('spending_data'), 'planning': reverse('planning_data'), 'preview': reverse('planning_preview'), 'save': reverse('planning_save')}}

@@ -92,13 +92,15 @@ class EntryPresentationTests(SimpleTestCase):
 class OverviewPresentationTests(SimpleTestCase):
     def context(self, savings=True):
         today = date(2026, 10, 21)
+        bills = [SimpleNamespace(name=f'Regning {i}', due_date=today, payment=None,
+                                 amount_ore=100, accounting_class='ordinary', pk=uuid4()) for i in range(5)]
         return {'totals': dict(ordinary=200, bills=100, savings=50, debt=25, funds=25, available=600,
                                income=1000, expected=100, released=0, daily=None, gross_deposits=50, planned_savings=50),
                 'household': SimpleNamespace(modules={'savings_dashboard': savings}),
                 'member': SimpleNamespace(role='admin', module_access={}), 'page': 'oversikt', 'today': today,
                 'request': SimpleNamespace(financial_area=SimpleNamespace(name='Testbudsjett', modules={'savings_dashboard': savings}), financial_can_write=True),
-                'bills': [SimpleNamespace(name=f'Regning {i}', due_date=today, payment=None,
-                                         amount_ore=100, accounting_class='ordinary', pk=uuid4()) for i in range(5)],
+                'bills': bills,
+                'overview_filter': 'alle', 'overview_bills': bills[:3], 'overview_entries': [],
                 'assets': [{'row': SimpleNamespace(kind='debt', name='Ikke et sparemål')}],
                 'month': today,
                 'weekly_total': 0, 'weekly_bars': [], 'pace': None,
