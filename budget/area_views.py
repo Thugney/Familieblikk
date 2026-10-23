@@ -9,6 +9,8 @@ from .financial_areas import participant_ids
 from .models import Membership
 from .financial_models import FinancialArea, AreaAccessChange
 
+ACTIVATION_ERROR = 'Oppsettet kunne ikke aktiveres fordi eksisterende poster har en ugyldig kobling. Ingen tilgang eller økonomiposter er endret. Kontakt administrator for kontroll av oppsettet.'
+
 class SetupForm(forms.Form):
     owner = forms.ChoiceField(label='Budsjetteier')
     readers = forms.MultipleChoiceField(label='Navngitte foreldre med lesetilgang', required=False, widget=forms.CheckboxSelectMultiple)
@@ -81,9 +83,12 @@ def index(request):
         if form.is_valid():
             try:
                 proposal = areas.propose_legacy_setup(member, form.cleaned_data['owner'], form.cleaned_data['readers'], form.cleaned_data['editors'], form.cleaned_data['fingerprint'])
+                areas.confirm_access_change(member, proposal.pk, proposal.digest)
                 return redirect('financial_proposal', proposal_id=proposal.pk)
             except (ValidationError, ValueError) as error:
                 form.add_error(None, error)
+            except IntegrityError:
+                form.add_error(None, ACTIVATION_ERROR)
     proposals = list(AreaAccessChange.objects.filter(household=member.household, applied=False).select_related('owner__user', 'admin_confirmation__user', 'area'))
     if member.role != 'admin':
         proposals = [proposal for proposal in proposals if proposal.owner_id == member.pk or member.pk in participant_ids(proposal)]
@@ -127,10 +132,15 @@ def sharing(request, area_id):
     if request.method == 'POST' and form.is_valid():
         try:
             proposal = areas.propose_access_change(member, area.pk, form.cleaned_data['readers'], form.cleaned_data.get('editors', []))
+            areas.confirm_access_change(member, proposal.pk, proposal.digest)
             return redirect('financial_proposal', proposal_id=proposal.pk)
         except ValidationError as error:
             form.add_error(None, error)
-    return render(request, 'budget/form.html', context(member, title='Foreslå endret deling', form=form, explanation='Endringen trer først i kraft når budsjetteieren og én annen person i familien har bekreftet samme forslag.', back='/budsjetter/'))
+        except IntegrityError:
+            form.add_error(None, ACTIVATION_ERROR)
+    return render(request, 'budget/form.html', context(member, title='Foreslå endret deling', form=form,
+        explanation='Når du sender forslaget, bekrefter du den valgte tilgangen. Delingen aktiveres når budsjetteieren og én annen person har bekreftet samme forslag.',
+        submit_label='Bekreft og send forslag', back='/budsjetter/'))
 
 @login_required
 def proposal(request, proposal_id):
@@ -149,7 +159,7 @@ def proposal(request, proposal_id):
             # A failed atomic confirmation rolls back; discard in-memory flags too.
             change.refresh_from_db()
         except IntegrityError:
-            error = 'Oppsettet kunne ikke aktiveres fordi eksisterende poster har en ugyldig kobling. Ingen tilgang eller økonomiposter er endret. Kontakt administrator for kontroll av oppsettet.'
+            error = ACTIVATION_ERROR
             change.refresh_from_db()
     people = {m.pk: m.user.get_full_name() or m.user.email for m in Membership.objects.filter(household=member.household).select_related('user')}
     roles = {'owner': 'Eier', 'reader': 'Kun innsyn', 'editor': 'Kan administrere'}

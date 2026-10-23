@@ -33,6 +33,56 @@ class SharingRecoveryTests(TestCase):
     def proposal(self):
         return propose_access_change(self.owner, self.area.pk, [], [self.wife.pk])
 
+    def test_sending_sharing_invitation_counts_as_owner_approval(self):
+        self.client.force_login(self.owner.user)
+        from django.urls import reverse
+        url = reverse('financial_sharing', args=[self.area.pk])
+        response = self.client.get(url)
+        self.assertContains(response, 'Bekreft og send forslag')
+        response = self.client.post(url, {'editors': [self.wife.pk]}, follow=True)
+        self.assertContains(response, 'Du har bekreftet. Venter på')
+        self.assertNotContains(response, 'Jeg bekrefter dette forslaget')
+        change = AreaAccessChange.objects.get()
+        self.assertEqual(change.owner_confirmation_id, self.owner.pk)
+        self.assertIsNone(change.admin_confirmation_id)
+        self.assertFalse(change.applied)
+        self.assertFalse(can_write(self.wife, self.area))
+        self.client.post(url, {'editors': [self.wife.pk]})
+        self.assertEqual(AreaAccessChange.objects.count(), 1)
+        self.client.force_login(self.wife.user)
+        response = self.client.post(reverse('financial_proposal', args=[change.pk]),
+                                    {'digest': change.digest}, follow=True)
+        self.assertContains(response, 'Forslaget er aktivert.')
+        self.assertTrue(can_write(self.wife, self.area))
+
+    def test_admin_sending_someone_elses_budget_still_requires_owner(self):
+        from django.urls import reverse
+        area = create_area(self.wife, 'Other owner', kind='shared')
+        self.client.force_login(self.owner.user)
+        response = self.client.post(reverse('financial_sharing', args=[area.pk]),
+                                    {'editors': [self.owner.pk]}, follow=True)
+        self.assertContains(response, 'Venter på budsjetteieren')
+        change = AreaAccessChange.objects.get(area=area)
+        self.assertIsNone(change.owner_confirmation_id)
+        self.assertEqual(change.admin_confirmation_id, self.owner.pk)
+        self.assertFalse(can_write(self.owner, area))
+        self.client.force_login(self.wife.user)
+        self.client.post(reverse('financial_proposal', args=[change.pk]), {'digest': change.digest})
+        self.assertTrue(can_write(self.owner, area))
+
+    def test_changed_sharing_invitation_requires_new_recipient_approval(self):
+        from django.urls import reverse
+        self.client.force_login(self.owner.user)
+        url = reverse('financial_sharing', args=[self.area.pk])
+        self.client.post(url, {'readers': [self.wife.pk]})
+        first = AreaAccessChange.objects.get()
+        self.client.post(url, {'editors': [self.wife.pk]})
+        second = AreaAccessChange.objects.exclude(pk=first.pk).get()
+        self.assertNotEqual(first.digest, second.digest)
+        self.assertEqual(second.owner_confirmation_id, self.owner.pk)
+        self.assertIsNone(second.admin_confirmation_id)
+        self.assertFalse(second.applied)
+
     def test_both_approval_orders_enable_both_people_to_administer(self):
         for first, second in ((self.owner, self.wife), (self.wife, self.owner)):
             with self.subTest(first=first.pk):

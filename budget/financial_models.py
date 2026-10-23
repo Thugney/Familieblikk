@@ -124,10 +124,16 @@ class FinancialRecord(models.Model):
                 if hasattr(related, 'financial_area_id') and related.financial_area_id != self.financial_area_id:
                     raise ValidationError({field.name: 'Koblingen må tilhøre samme budsjett.'})
         if self._meta.model_name == 'importrecord' and self.target_id:
-            from .models import Category, Entry, Asset
+            from .models import Category, Entry, Asset, MonthPlan
             target_model = {'categories': Category, 'transactions': Entry, 'debts': Asset,
                             'savings_goals': Asset, 'annual_funds': Asset, 'recipients': Asset}.get(self.source_kind)
-            if target_model is None or not target_model.objects.filter(pk=self.target_id).exists():
+            valid_target = target_model is not None and target_model.objects.filter(pk=self.target_id).exists()
+            if self.source_kind == 'categories' and self.status == 'confirmed':
+                valid_target = valid_target or MonthPlan.objects.filter(
+                    pk=self.target_id, household_id=self.household_id,
+                    category__financial_area_id=area.pk,
+                    category__household_id=self.household_id).exists()
+            if not valid_target:
                 raise ValidationError('Importmålet må tilhøre samme budsjett og riktig type.')
         if self._meta.model_name == 'correctionevent':
             from .models import Entry, BillOccurrence, BillTemplate

@@ -3,7 +3,7 @@
 <section class="work-surface form-surface">
   <h1>Bekreft budsjett og deling</h1>
   <p>{% if change.kind == 'legacy' %}Oppsett av eksisterende budsjett{% else %}{{ change.area.name }}{% endif %}</p>
-  <p>Kontroller hvem som skal kunne se eller administrere økonomien. Eieren og én annen person må bekrefte det samme forslaget. Den andre må være en navngitt deltaker eller familieadministrator.</p>
+  <p>Kontroller hvem som skal kunne se eller administrere økonomien. Eieren og én annen person må bekrefte det samme forslaget. Den som sender forslaget, bekrefter samtidig. Den andre må være en navngitt deltaker eller familieadministrator.</p>
   {% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
   <ul>{% for person in participants %}<li>{{ person.name }} – {{ person.role }}</li>{% endfor %}</ul>
   {% if change.kind == 'legacy' %}<p>Dette gjelder alle eksisterende økonomiposter i denne familien. Dataene flyttes ikke til en annen familie.</p>{% endif %}

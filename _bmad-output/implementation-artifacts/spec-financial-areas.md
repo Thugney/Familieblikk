@@ -107,3 +107,9 @@ Produsentkontrakt: graph/nodes/producer-financial-areas.md. Ingen separat redesi
 
 ### Trygg oppstart med én eksisterende konto
 Familieadministrator kan opprette eller invitere et nytt medlem med uttrykkelig valgt, tomt personlig budsjett selv om eldre økonomiposter venter på oppsett. Dette gir ingen tilgang til de eldre postene og foretar ingen legacy-tildeling. Dermed kan en annen person bli familieadministrator og bekrefte oppsettet sammen med eieren. Begge bekreftelsene er fortsatt obligatoriske fra forskjellige personer.
+
+### Reparasjon av aktivering og avsenderbekreftelse — 2026-10-24
+
+Brukeren bekrefter at delingsinvitasjonen skal telle som avsenderens godkjenning. «Bekreft og send forslag» registrerer derfor avsenderen i riktig bekreftelsesfelt; mottakeren bekrefter én gang. Hvis administrator sender for en annen budsjetteier, må eieren fortsatt bekrefte selv. To ulike personer, samme signerte innhold, gyldig datagrunnlag og gjeldende tilgang er fortsatt obligatorisk. Gamle lenker med registrert første bekreftelse skal kunne fullføres uten å opprette et nytt forslag.
+
+Avklarte kategoriimporter kan peke på den lagrede månedsplanen, mens uavklarte kategorirader peker på kategorien. Database- og modellkontroll må bevare begge gyldige varianter. Månedsplanvarianten krever bekreftet kategoriimport og samme familie/budsjett for planen og dens kategori. Migrasjon 0025 erstatter bare kontrollfunksjonen; den endrer ikke finansposter, kildeverdier, tidligere godkjenninger eller tilganger. Deling og økonomiske koblinger er separate forhold: aktivering skal bevare eksisterende betalings-/gjeldskoblinger og beløp.

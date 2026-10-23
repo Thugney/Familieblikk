@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, override_settings
 
 from budget.financial_areas import (
     area_scope, confirm_access_change, financial_models, legacy_inventory,
@@ -41,7 +41,7 @@ class LegacySharingGraphTests(TransactionTestCase):
         day = date(2026, 9, 1)
         category = make('Category', name='Fictional groceries')
         asset = make('Asset', name='Fictional fund', kind='fund', opening_date=day)
-        make('MonthPlan', month=day, category=category, amount_ore=120000)
+        plan = make('MonthPlan', month=day, category=category, amount_ore=120000)
         template = make('BillTemplate', name='Fictional bill', amount_ore=25000,
                         first_due=day, category=category, asset=asset, accounting_class='fund')
         bill = make('BillOccurrence', template=template, name='Fictional bill', due_date=day,
@@ -56,6 +56,14 @@ class LegacySharingGraphTests(TransactionTestCase):
              description='Fictional refund', original=expense, category=category, sequence=3)
         make('FundTopUp', occurrence=bill, effective_month=day, amount_ore=25000)
         batch = make('ImportBatch', series='synthetic', sha256='a' * 64)
+        # The import review screen replaces a category target with the saved
+        # MonthPlan when its previously undated monthly limit is confirmed.
+        make('ImportRecord', batch=batch, source_id='synthetic-reviewed-category',
+             source_kind='categories', raw={'monthly_budget_ore': 120000},
+             status='confirmed', target_id=plan.pk)
+        make('ImportRecord', batch=batch, source_id='synthetic-category-draft',
+             source_kind='categories', raw={'monthly_budget_ore': 120000},
+             target_id=category.pk)
         make('ImportRecord', batch=batch, source_id='synthetic-entry', source_kind='transactions',
              raw={'amount': '250,00', 'date': '2026-09-01'}, target_id=payment.pk,
              status='confirmed', approved_decision={'category_id': str(category.pk), 'amount_ore': 25000})
@@ -90,7 +98,7 @@ class LegacySharingGraphTests(TransactionTestCase):
         make('Audit', object_id=listing.pk, operation='handlelistevare', changes={'purchased': True})
         return house.pk, owner.pk, second.pk, revision.pk, job.pk, listing.pk
 
-    def migrated_graphs(self, suffixes):
+    def migrated_graphs(self, suffixes, target=None):
         executor = MigrationExecutor(connection)
         latest = executor.loader.graph.leaf_nodes('budget')
         old = [('budget', '0016_transient_scans')]
@@ -99,8 +107,48 @@ class LegacySharingGraphTests(TransactionTestCase):
             state = executor.loader.project_state(old).apps
             fixtures = [self.seed_old_graph(state, suffix) for suffix in suffixes]
         finally:
-            MigrationExecutor(connection).migrate(latest)
+            MigrationExecutor(connection).migrate(target or latest)
         return fixtures
+
+    @override_settings(ALLOWED_HOSTS=['testserver'])
+    def test_failed_existing_invitation_can_be_accepted_after_compatibility_migration(self):
+        latest = MigrationExecutor(connection).loader.graph.leaf_nodes('budget')
+        try:
+            house_id, owner_id, second_id, *_ = self.migrated_graphs(
+                ('retry-existing',), [('budget', '0024_notification_targets')])[0]
+            owner = Membership.objects.get(pk=owner_id)
+            second = Membership.objects.get(pk=second_id)
+            inventory = legacy_inventory(owner)
+            proposal = propose_legacy_setup(owner, owner.pk, [], [second.pk], inventory['fingerprint'])
+            url = '/budsjetter/forslag/%s/' % proposal.pk
+            self.client.force_login(owner.user)
+            self.assertEqual(self.client.post(url, {'digest': proposal.digest}).status_code, 302)
+            self.client.force_login(second.user)
+            response = self.client.post(url, {'digest': proposal.digest})
+            self.assertContains(response, 'Ingen tilgang eller økonomiposter er endret.')
+            proposal.refresh_from_db()
+            self.assertEqual(proposal.owner_confirmation_id, owner.pk)
+            self.assertIsNone(proposal.admin_confirmation_id)
+            self.assertIsNone(proposal.area_id)
+            self.assertEqual(legacy_inventory(owner), inventory)
+        finally:
+            MigrationExecutor(connection).migrate(latest)
+        # A function-only repair must leave the signed inventory and first
+        # approval intact. The spouse can retry the very same invitation.
+        self.assertEqual(legacy_inventory(owner), inventory)
+        response = self.client.post(url, {'digest': proposal.digest}, follow=True)
+        self.assertContains(response, 'Forslaget er aktivert.')
+        self.assertContains(response, 'Åpne budsjettet')
+        proposal.refresh_from_db()
+        self.assertTrue(proposal.applied)
+        from budget import services
+        from budget.models import Category
+        for member in (owner, second):
+            self.client.force_login(member.user)
+            self.assertEqual(self.client.get('/ny/category/', {'area': proposal.area_id}).status_code, 200)
+            with area_scope(member, proposal.area_id, write=True):
+                category = services.save_row(member.user, Category(name='Shared edit %s' % member.pk), admin=True)
+                self.assertEqual(category.financial_area_id, proposal.area_id)
 
     def test_connected_graph_survives_both_confirmation_orders(self):
         fixtures = self.migrated_graphs(('owner-first', 'editor-first'))
@@ -156,3 +204,26 @@ class LegacySharingGraphTests(TransactionTestCase):
         self.assertIsNone(proposal.area_id)
         from budget.models import Entry
         self.assertEqual(Entry.all_objects.filter(household_id=house_id, financial_area=None).count(), 3)
+
+    @override_settings(ALLOWED_HOSTS=['testserver'])
+    def test_sending_legacy_invitation_needs_only_spouse_acceptance(self):
+        from budget.financial_models import AreaAccessChange
+        house_id, owner_id, second_id, *_ = self.migrated_graphs(('send-once',))[0]
+        owner, second = Membership.objects.get(pk=owner_id), Membership.objects.get(pk=second_id)
+        inventory = legacy_inventory(owner)
+        self.client.force_login(owner.user)
+        response = self.client.post('/budsjetter/', {'owner': owner.pk, 'editors': [second.pk],
+                                   'fingerprint': inventory['fingerprint']}, follow=True)
+        self.assertContains(response, 'Du har bekreftet. Venter på')
+        self.assertNotContains(response, 'Jeg bekrefter dette forslaget')
+        proposal = AreaAccessChange.objects.get(household_id=house_id)
+        self.assertEqual(proposal.owner_confirmation_id, owner.pk)
+        self.assertIsNone(proposal.admin_confirmation_id)
+        self.assertEqual(legacy_inventory(owner), inventory)
+        self.client.force_login(second.user)
+        response = self.client.post('/budsjetter/forslag/%s/' % proposal.pk,
+                                    {'digest': proposal.digest}, follow=True)
+        self.assertContains(response, 'Forslaget er aktivert.')
+        proposal.refresh_from_db()
+        self.assertTrue(proposal.applied)
+        self.assertEqual(sum(legacy_inventory(owner)['groups'].values()), 0)
