@@ -24,7 +24,7 @@ def budget_distribution(totals):
         'chartable': chartable,
         'parts': [
             {'label': label, 'amount': amount, 'kind': kind, 'weight': amount if chartable else 0}
-            for label, amount, kind in zip(('Forbruk', 'Forpliktelser', 'Igjen'), amounts, ('spent', 'committed', 'available'))
+            for label, amount, kind in zip(('Betalt', 'Reservert faste', 'Fri bruk'), amounts, ('spent', 'committed', 'available'))
         ],
         'total': total,
     }

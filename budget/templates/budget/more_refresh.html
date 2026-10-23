@@ -1,18 +1,25 @@
 {% load budget_tags %}{% can_access_private_import as private_import_access %}
-<div class="more-groups">
-<section><h2>Økonomi og planer</h2><div class="menu-grid">
-{% if member|allows_module:"bills" %}<a href="{% url 'page' 'regninger' %}?month={{ month|date:'Y-m' }}"><span><strong>Regninger</strong><small>Betalte, forfalte og kommende</small></span><span aria-hidden="true">›</span></a>{% endif %}
-{% if member|allows_module:"debt" and not request.financial_area or request.financial_area.modules.debt and member|allows_module:"debt" %}<a href="{% url 'page' 'gjeld' %}?month={{ month|date:'Y-m' }}"><span><strong>Gjeld &amp; strategi</strong><small>Månedsplan og nedbetalingsanslag</small></span><span aria-hidden="true">›</span></a>{% endif %}
-{% if member|allows_module:"fund" and not request.financial_area or request.financial_area.modules.fund and member|allows_module:"fund" %}<a href="{% url 'page' 'arsutgifter' %}?month={{ month|date:'Y-m' }}"><span><strong>Årsutgifter (Fond)</strong><small>Avsetninger til større utgifter</small></span><span aria-hidden="true">›</span></a>{% endif %}
-{% if member|allows_module:"remittance" and not request.financial_area or request.financial_area.modules.remittance and member|allows_module:"remittance" %}<a href="{% url 'page' 'utland' %}?month={{ month|date:'Y-m' }}"><span><strong>Sendt utenlands</strong><small>Mottakere, registrerte beløp og kurser</small></span><span aria-hidden="true">›</span></a>{% endif %}
-{% if request.financial_area.modules.annual_navigation != False and member|allows_page:"arsoversikt" %}<a href="{% url 'page' 'arsoversikt' %}?month={{ month|date:'Y-m' }}{% if member|can_matrix %}&amp;view=matrix{% endif %}"><span><strong>Årsoversikt{% if member|can_matrix %} (Matrise){% endif %}</strong><small>Måned for måned og kategorier</small></span><span aria-hidden="true">›</span></a>{% endif %}
-</div></section>
-<section><h2>Familien og appen</h2><div class="menu-grid">
-{% if member|allows_module:'documents' %}<a href="{% url 'documents' %}"><span><strong>Skann kvittering</strong><small>Fang beløp, dato og betalingsmottaker</small></span><span aria-hidden="true">›</span></a>{% endif %}
-{% if member|allows_module:'shopping' %}<a href="{% url 'shopping_lists' %}"><span><strong>Handlelister</strong><small>Del varer og bekreft handleturer</small></span><span aria-hidden="true">›</span></a>{% endif %}
-<a href="{% url 'page' 'tilpass' %}?month={{ month|date:'Y-m' }}"><span><strong>Tilpass appen</strong><small>Velg hvilke moduler budsjettet bruker</small></span><span aria-hidden="true">›</span></a>
-<a href="{% url 'page' 'familie' %}?month={{ month|date:'Y-m' }}"><span><strong>Familie &amp; innstillinger</strong><small>Medlemmer, roller og konto</small></span><span aria-hidden="true">›</span></a>
-{% if member|allows_module:"calendar" %}<a href="{% url 'page' 'varsler' %}?month={{ month|date:'Y-m' }}"><span><strong>Varsler &amp; Push</strong><small>Avtaler, svar og enhetens varsler</small></span><span aria-hidden="true">›</span></a>{% endif %}
-{% if private_import_access %}<a href="{% url 'page' 'import' %}?month={{ month|date:'Y-m' }}"><span><strong>Mer / Kildeimport</strong><small>Private kildeposter og avklaringer</small></span><span aria-hidden="true">›</span></a>{% endif %}
-<a href="{% url 'info' 'hjelp' %}"><span><strong>Installering og hjelp</strong><small>Legg appen på hjemskjermen</small></span><span aria-hidden="true">›</span></a>
-</div></section></div>
+<div class="mer-groups">
+<section>
+  <h2 class="mer-group-title">Økonomi og planer</h2>
+  <div class="mer-group-card">
+    {% if member|allows_module:"bills" %}<a class="mer-row" href="{% url 'page' 'regninger' %}?month={{ month|date:'Y-m' }}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'regninger' %}</span><span class="mer-row-body"><b>Regninger</b><span>Betalte, forfalte og kommende</span></span></span><span class="mer-row-chev">›</span></a>{% endif %}
+    {% if member|allows_module:"debt" and not request.financial_area or request.financial_area.modules.debt and member|allows_module:"debt" %}<a class="mer-row" href="{% url 'page' 'gjeld' %}?month={{ month|date:'Y-m' }}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'gjeld' %}</span><span class="mer-row-body"><b>Gjeld &amp; strategi</b><span>Månedsplan og nedbetalingsanslag</span></span></span><span class="mer-row-chev">›</span></a>{% endif %}
+    {% if member|allows_module:"fund" and not request.financial_area or request.financial_area.modules.fund and member|allows_module:"fund" %}<a class="mer-row" href="{% url 'page' 'arsutgifter' %}?month={{ month|date:'Y-m' }}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'arsutgifter' %}</span><span class="mer-row-body"><b>Årsutgifter (Fond)</b><span>Avsetninger til større utgifter</span></span></span><span class="mer-row-chev">›</span></a>{% endif %}
+    {% if member|allows_module:"remittance" and not request.financial_area or request.financial_area.modules.remittance and member|allows_module:"remittance" %}<a class="mer-row" href="{% url 'page' 'utland' %}?month={{ month|date:'Y-m' }}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'utland' %}</span><span class="mer-row-body"><b>Sendt utenlands</b><span>Mottakere, registrerte beløp og kurser</span></span></span><span class="mer-row-chev">›</span></a>{% endif %}
+    {% if request.financial_area.modules.annual_navigation != False and member|allows_page:"arsoversikt" %}<a class="mer-row" href="{% url 'page' 'arsoversikt' %}?month={{ month|date:'Y-m' }}{% if member|can_matrix %}&amp;view=matrix{% endif %}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'arsoversikt' %}</span><span class="mer-row-body"><b>Årsoversikt{% if member|can_matrix %} (Matrise){% endif %}</b><span>Måned for måned og kategorier</span></span></span><span class="mer-row-chev">›</span></a>{% endif %}
+  </div>
+</section>
+<section>
+  <h2 class="mer-group-title">Familien og appen</h2>
+  <div class="mer-group-card">
+    {% if member|allows_module:'documents' %}<a class="mer-row" href="{% url 'documents' %}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'dokumenter' %}</span><span class="mer-row-body"><b>Skann kvittering</b><span>Fang beløp, dato og betalingsmottaker</span></span></span><span class="mer-row-chev">›</span></a>{% endif %}
+    {% if member|allows_module:'shopping' %}<a class="mer-row" href="{% url 'shopping_lists' %}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'handlelister' %}</span><span class="mer-row-body"><b>Handlelister</b><span>Del varer og bekreft handleturer</span></span></span><span class="mer-row-chev">›</span></a>{% endif %}
+    <a class="mer-row" href="{% url 'page' 'tilpass' %}?month={{ month|date:'Y-m' }}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'tilpass' %}</span><span class="mer-row-body"><b>Tilpass appen</b><span>Velg hvilke moduler budsjettet bruker</span></span></span><span class="mer-row-chev">›</span></a>
+    <a class="mer-row" href="{% url 'page' 'familie' %}?month={{ month|date:'Y-m' }}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'familie' %}</span><span class="mer-row-body"><b>Familie &amp; innstillinger</b><span>Medlemmer, roller og konto</span></span></span><span class="mer-row-chev">›</span></a>
+    {% if member|allows_module:"calendar" %}<a class="mer-row" href="{% url 'page' 'varsler' %}?month={{ month|date:'Y-m' }}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'varsler' %}</span><span class="mer-row-body"><b>Varsler &amp; Push</b><span>Avtaler, svar og enhetens varsler</span></span></span><span class="mer-row-chev">›</span></a>{% endif %}
+    {% if private_import_access %}<a class="mer-row" href="{% url 'page' 'import' %}?month={{ month|date:'Y-m' }}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'import' %}</span><span class="mer-row-body"><b>Mer / Kildeimport</b><span>Private kildeposter og avklaringer</span></span></span><span class="mer-row-chev">›</span></a>{% endif %}
+    <a class="mer-row" href="{% url 'info' 'hjelp' %}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'mer' %}</span><span class="mer-row-body"><b>Installering og hjelp</b><span>Legg appen på hjemskjermen</span></span></span><span class="mer-row-chev">›</span></a>
+  </div>
+</section>
+</div>

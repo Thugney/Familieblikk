@@ -114,8 +114,8 @@ class OverviewPresentationTests(SimpleTestCase):
         self.assertNotIn('Regning 3', html)
         self.assertIn('Ingen sparemål ennå.', html)
         self.assertNotIn('Ikke et sparemål', html)
-        self.assertIn('class="bento-grid"', html)
-        self.assertLess(html.index('bento-grid'), html.index('overview-priorities'))
+        self.assertIn('class="bento"', html)
+        self.assertLess(html.index('class="bento"'), html.index('sheet-split'))
 
     def test_disabled_savings_omits_complete_overview_panel(self):
         html = render_to_string('budget/overview_refresh.html', self.context(savings=False))
@@ -146,7 +146,7 @@ class OverviewPresentationTests(SimpleTestCase):
         overview_html = render_to_string('budget/page.html', {**ctx, 'page': 'oversikt'})
         self.assertIn('data-hero-distribution', overview_html)
         self.assertIn('data-hero-mode="bar"', overview_html)
-        self.assertIn('data-hero-mode="breakdown"', overview_html)
+        self.assertIn('data-hero-mode="trend"', overview_html)
         self.assertIn('class="fam-bar"', overview_html)
         self.assertIn('Felles budsjett', overview_html)
         self.assertIn('Kun innsyn', overview_html)

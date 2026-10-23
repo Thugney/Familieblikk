@@ -1,7 +1,5 @@
-{% extends 'budget/base.html' %}{% block content %}
-<section class="work-surface"><p class="eyebrow">{{ member.household.name }}</p><h1>Din startside</h1>
-<p>Her finner du funksjonene du har tilgang til. Administrator velger modultilgang for hvert familiemedlem.</p>
-<p>Full disponering og komplett planlegging krever tilgang til alle økonomimoduler. Skjulte opplysninger og summer er utelatt.</p>
-<div class="menu-grid">{% for key,label in available_pages %}<a href="{% url 'page' key %}?month={{ month|date:'Y-m' }}"><strong>{{ label }}</strong><span aria-hidden="true">›</span></a>{% empty %}<p>Ingen moduler er valgt ennå.</p>{% endfor %}
-<a href="{% url 'page' 'familie' %}"><strong>Konto og familie</strong><span aria-hidden="true">›</span></a></div></section>
+{% extends 'budget/base.html' %}{% load budget_tags %}{% block content %}
+<div class="access-banner owner-info"><div><strong>Din startside</strong> · {{ member.household.name }}</div><span>Lesetilgang</span></div>
+<p class="sheet-note">Her finner du funksjonene du har tilgang til. Administrator velger modultilgang for hvert familiemedlem. Full disponering og komplett planlegging krever tilgang til alle økonomimoduler. Skjulte opplysninger og summer er utelatt.</p>
+<div class="mer-groups"><section><div class="mer-group-card">{% for key,label in available_pages %}<a class="mer-row" href="{% url 'page' key %}?month={{ month|date:'Y-m' }}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon key %}</span><span class="mer-row-body"><b>{{ label }}</b></span></span><span class="mer-row-chev">›</span></a>{% empty %}<p class="sheet-note">Ingen moduler er valgt ennå.</p>{% endfor %}<a class="mer-row" href="{% url 'page' 'familie' %}"><span class="mer-row-main"><span class="mer-row-icon">{% nav_icon 'familie' %}</span><span class="mer-row-body"><b>Konto og familie</b></span></span><span class="mer-row-chev">›</span></a></div></section></div>
 {% endblock %}
