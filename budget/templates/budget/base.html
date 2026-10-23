@@ -95,7 +95,7 @@
 
     {% if request.financial_can_write or member|allows_module:'shopping' %}
     <nav class="dock-wrap" aria-label="Mobilmeny" data-mobile-quick-actions>
-      {% for key,label in nav|visible_navigation:member %}{% if key != 'handlelister' %}<a class="dock-item{% if page == key %} on{% endif %}" href="{% url 'page' key %}?month={{ navigation_month }}{% if key == 'arsoversikt' and member|can_matrix %}&amp;view=matrix{% endif %}" {% if page == key %}aria-current="page"{% endif %}>{% nav_icon key %}<span>{{ label }}</span></a>{% endif %}{% endfor %}
+      {% for key,label in nav|visible_navigation:member %}{% if key != 'handlelister' %}<a class="dock-item{% if page == key %} on{% endif %}" href="{% url 'page' key %}?month={{ navigation_month }}{% if key == 'arsoversikt' and member|can_matrix %}&amp;view=matrix{% endif %}" title="{{ label }}" aria-label="{{ label }}" {% if page == key %}aria-current="page"{% endif %}>{% nav_icon key %}</a>{% endif %}{% endfor %}
       <div class="dock-speed-list" id="mobile-quick-sheet" data-mobile-sheet role="menu" aria-label="Hurtigvalg" hidden>
         {% if request.financial_can_write %}<a class="dock-speed-item" role="menuitem" href="{% url 'create' 'entry' %}?month={{ navigation_month }}&amp;return_to={{ page|default:'oversikt' }}"><span>{% nav_icon 'poster' %}</span><strong>Utgift / ny post</strong></a>{% endif %}
         {% if request.financial_can_write and member|allows_module:'bills' %}<a class="dock-speed-item" role="menuitem" href="{% url 'create' 'bill' %}?month={{ navigation_month }}&amp;return_to=regninger"><span>{% nav_icon 'regninger' %}</span><strong>Regning</strong></a>{% endif %}
