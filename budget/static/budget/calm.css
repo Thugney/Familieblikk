@@ -845,6 +845,141 @@ body.show-notes .is-explainer { display: block; }
 .info-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .info-toggle[aria-pressed='true'] { background: var(--brand-soft); color: var(--brand); border-color: transparent; }
 
+/* ───────── Pro UI (accepted direction): shared look for every page. Presentation only. ───────── */
+:root {
+  --pro-bg: #EEF1EC;
+  --pro-surface: #FFFFFF;
+  --pro-ink: #14201B;
+  --pro-ink-2: #5A6A63;
+  --pro-ink-3: #8D9A94;
+  --pro-line: #E4E8E2;
+  --pro-brand: #1E6B53;
+  --pro-brand-soft: #E6F1EC;
+}
+html, body { background: var(--pro-bg); color: var(--pro-ink); }
+.app-stage, .sheet, .page-body { background: transparent; }
+.sheet { padding: 16px 22px 120px; }
+.page-body { max-width: 1040px; margin: 0 auto; }
+
+/* Headings: fewer words, larger type, quieter eyebrows */
+.sheet-head { margin: 4px 0 16px; }
+.sheet-head h1, .work-surface h1, .section-heading h1 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; color: var(--pro-ink); }
+.section-eyebrow, .eyebrow { font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--pro-ink-3); }
+.sheet-note, .l, .sheet-head .l { color: var(--pro-ink-2); font-size: 13.5px; }
+
+/* Cards: white, large radius, almost no border */
+.c, .work-surface, .mer-group-card, .future-panel, .budget-card, .list-card, .tx-card, .sp-card, .asset-row, .card, .category-card, .shopping-list-card, .shopping-items-panel, .shopping-add-panel, .shopping-create-card, .shopping-empty-card, .calendar-grid, .calendar-day-panel, .gj-result, .push-disclosure {
+  background: var(--pro-surface);
+  border: 0;
+  border-radius: 24px;
+  box-shadow: 0 1px 2px rgba(20, 32, 27, .04), 0 8px 24px -16px rgba(20, 32, 27, .18);
+}
+.work-surface, .c, .list-card { padding: 22px; }
+.list-card, .tx-card { padding: 4px 18px; }
+
+/* Rows: flat, separated by hairlines */
+.row, .entry-row, .bill-row, .tx, .shopping-item-row, .mer-row, .family-member, .debt, .goal, .cat {
+  border-color: var(--pro-line);
+}
+.row.tx, .row.bill-row { padding: 14px 0; }
+.mer-row { padding: 16px 18px; }
+.av, .tx-icon, .shopping-list-card-icon, .mer-row-icon { background: var(--pro-brand-soft); color: var(--pro-brand); }
+.av { border-radius: 50%; }
+
+/* Buttons: one primary, quiet secondaries */
+.btn-pri, .button.primary, button.primary, .form-surface .primary, .chip-btn.cta-light, .btn, .gj-form button {
+  background: var(--pro-brand); color: #fff; border: 0; border-radius: 99px; box-shadow: none; font-weight: 600;
+}
+.btn-sec, .button.secondary, button.secondary, .form-surface .secondary, .chip-btn {
+  background: var(--pro-surface); color: var(--pro-ink); border: 1px solid var(--pro-line); border-radius: 99px; box-shadow: none; font-weight: 600;
+}
+.btn-sec:hover, .button.secondary:hover, button.secondary:hover { background: var(--pro-bg); }
+
+/* Segmented controls and pills */
+.pill, .fchip, .hero-view-toggle, .calendar-view, .seg2, .entry-capture-tabs, .sp-tabs, .fam-bar-wrap .sw-btn { border-radius: 99px; }
+.pill, .fchip { background: var(--pro-surface); border: 1px solid var(--pro-line); color: var(--pro-ink-2); font-weight: 600; box-shadow: none; }
+.pill.on, .fchip.on { background: var(--pro-brand); border-color: var(--pro-brand); color: #fff; }
+.hero-view-toggle { background: var(--pro-bg); }
+.hero-toggle-btn { color: var(--pro-ink-2); }
+.hero-toggle-btn.is-active { background: var(--pro-surface); color: var(--pro-ink); box-shadow: 0 1px 2px rgba(20, 32, 27, .08); }
+
+/* Forms: calm inputs with no heavy outlines */
+.form-surface, .shopping-add-panel, .budget-disclosure-content.form-surface { padding: 22px; }
+.form-surface input:not([type='hidden']):not([type='checkbox']):not([type='radio']), .form-surface select, .form-surface textarea, .sheet input:not([type='checkbox']):not([type='radio']):not([type='hidden']), .sheet select, .sheet textarea, .inp {
+  border: 1px solid var(--pro-line); background: var(--pro-bg); border-radius: 14px; color: var(--pro-ink); min-height: 46px;
+}
+.form-surface label, .sheet label, .field-label { color: var(--pro-ink-2); font-weight: 600; font-size: 13px; }
+.form-surface input:focus, .form-surface select:focus, .sheet input:focus, .sheet select:focus { border-color: var(--pro-brand); box-shadow: 0 0 0 3px rgba(30, 107, 83, .15); }
+
+/* Notices: soft tints, no borders */
+.access-banner, .notice, .calendar-privacy, .note { border: 0; border-radius: 16px; }
+.access-banner.readonly { background: #FFF4DE; color: #7A4B00; }
+.access-banner.owner-info { background: var(--pro-brand-soft); color: var(--pro-brand); }
+
+/* Status tags: small and soft */
+.s, .ui-status, .tag, .ov-tag { border: 0; font-weight: 600; border-radius: 99px; }
+
+/* Tables */
+table.mx th, table.mx td, .table-region th, .table-region td { border-color: var(--pro-line); }
+
+/* Progress bars: thin, rounded */
+.bar, .sp-bar-track, .bento-progress-row .bar { height: 5px; background: var(--pro-bg); border-radius: 99px; }
+.bar i, .sp-bar, .prog i { border-radius: 99px; }
+
+/* Bottom bar: floating white pill, icon and short label */
+.dock-wrap { left: 16px; right: 16px; bottom: 14px; height: 70px; border-radius: 99px; background: rgba(255, 255, 255, .96); border: 0; box-shadow: 0 12px 36px -12px rgba(20, 32, 27, .28); }
+.dock-item { color: var(--pro-ink-3); font-weight: 600; }
+.dock-item.on { background: var(--pro-brand-soft); color: var(--pro-brand); }
+.dock-fab { background: var(--pro-brand); box-shadow: 0 8px 20px -8px rgba(30, 107, 83, .9); }
+
+/* Sidebar on desktop */
+.pc-sidebar { background: var(--pro-surface); border: 0; box-shadow: 0 1px 2px rgba(20, 32, 27, .04); }
+.pc-nav-btn.on { background: var(--pro-brand-soft); color: var(--pro-brand); }
+.pc-nav-btn { color: var(--pro-ink-2); }
+
+/* Header */
+.app-header { background: color-mix(in srgb, var(--pro-bg) 92%, transparent); border-bottom: 0; }
+.header-month-form, .sw-btn, .icon-btn { background: var(--pro-surface); border: 0; box-shadow: 0 1px 2px rgba(20, 32, 27, .05); }
+
+/* Hero: a white card with green figures, not a green block */
+.hero { background: var(--pro-surface); color: var(--pro-ink); border: 0; box-shadow: 0 1px 2px rgba(20, 32, 27, .04), 0 8px 24px -16px rgba(20, 32, 27, .18); border-radius: 28px; }
+.hero::after { display: none; }
+.hero .hero-eyebrow, .hero .hero-note, .hero .hero-short, .hero .hero-per-day, .hero .hero-chart-head, .hero .hero-legend, .hero .l { color: var(--pro-ink-2); }
+.hero .hero-big-amount { color: var(--pro-brand); }
+.hero .hero-big-amount .kr { color: var(--pro-brand); opacity: .7; }
+.hero .chip-btn { background: var(--pro-bg); border: 0; color: var(--pro-ink); }
+.hero .calc-drawer summary, .hero-more > summary { color: var(--pro-ink); border-color: var(--pro-line); background: var(--pro-bg); }
+.hero-chart-box { background: var(--pro-bg); border: 0; }
+.hero-chart-box svg polyline { stroke: var(--pro-brand); }
+.seg { background: var(--pro-bg); }
+.seg > div { border-radius: 99px; }
+
+/* Calm typography on big numbers */
+.big2, .big-r, .stat strong, .ov-stat strong, .sum b { letter-spacing: -.02em; }
+
+/* Oversikt donut and icon rows */
+.pro-donut-row { display: flex; align-items: center; gap: 18px; margin: 4px 0 18px; }
+.pro-donut { position: relative; width: 150px; height: 150px; flex: none; }
+.pro-donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.pro-donut-c { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.pro-donut-c b { display: block; white-space: nowrap; font-size: 14px; font-weight: 800; letter-spacing: -.02em; color: var(--pro-ink); }
+.pro-donut-c small { font-size: 12px; color: var(--pro-ink-2); }
+.pro-legend { list-style: none; margin: 0; padding: 0; flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pro-legend li { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; color: var(--pro-ink); }
+.pro-legend i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.pro-legend span { margin-left: auto; color: var(--pro-ink-2); font-weight: 500; }
+.pro-ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 15px; text-transform: uppercase; flex: none; }
+.ov-cat { grid-template-columns: 40px minmax(0, 1fr) auto; }
+.ov-cat .bar { margin-top: 2px; }
+
+/* Hero chart on the light card */
+.hero .hero-chart-labels { color: var(--pro-ink-3); }
+.hero .hero-chart-box circle { fill: var(--pro-brand); }
+.hero .hero-chart-box polyline[stroke-dasharray] { stroke: var(--pro-ink-3); opacity: .6; }
+.hero .hero-legend .lg-a { background: var(--pro-brand); }
+.hero .hero-legend .lg-b { background: var(--pro-ink-3); opacity: .6; }
+.hero .hero-legend span { color: var(--pro-ink-2); }
+.hero .hero-chart-box svg text { fill: var(--pro-ink-3); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
 /* ───────── Tablet ───────── */

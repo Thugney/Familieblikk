@@ -331,3 +331,22 @@ def access_matrix(member):
         rows.setdefault(grant.area_id, {'name': grant.area.name, 'roles': {}})['roles'][grant.member_id] = labels.get(grant.role, (grant.role, ''))
     return {'members': [people[mid] for mid in order],
             'rows': [{'name': row['name'], 'cells': [row['roles'].get(mid, ('Ingen', '')) for mid in order]} for row in rows.values()]}
+
+
+@register.simple_tag
+def donut_segments(categories, limit=5):
+    """Ring segments from the category shares the overview already computes (display only)."""
+    from decimal import Decimal
+    rows = [item for item in categories if item.get('spent', 0) > 0 and item.get('share')]
+    shown = rows[:limit]
+    rest = sum((Decimal(str(item['share'])) for item in rows[limit:]), Decimal(0))
+    parts = [{'label': item['row'].name, 'color': item['row'].color, 'share': Decimal(str(item['share']))} for item in shown]
+    if rest > 0:
+        parts.append({'label': 'Annet', 'color': '#8D9A94', 'share': rest})
+    segments, offset = [], Decimal(0)
+    for part in parts:
+        share = part['share']
+        segments.append({'label': part['label'], 'color': part['color'], 'percent': round(share),
+                         'dash': format(share, '.2f') + ' ' + format(100 - share, '.2f'), 'offset': format(-offset, '.2f')})
+        offset += share
+    return segments
