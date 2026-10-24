@@ -317,3 +317,10 @@ class MoneyCalculationTests(TestCase):
         with area_scope(Membership.objects.get(user=other), other.test_area.pk):
             self.assertEqual(month_basis(foreign_house, self.month)['pending'], [])
             self.assertEqual(services.calculate(foreign_house, self.month)['bills'], 0)
+
+    def test_daily_amount_is_zero_not_negative_when_month_is_in_deficit(self):
+        Entry.objects.create(household=self.house, created_by=self.user, kind='expense',
+            amount_ore=5000, effective_date=self.today, category=self.category)
+        values = services.calculate(self.house, self.month, today=self.today)
+        self.assertLess(values['available'], 0)
+        self.assertEqual(values['daily'], 0)

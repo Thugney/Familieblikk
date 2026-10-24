@@ -418,7 +418,7 @@ def calculate(household, month, today=None, projected_asset_plans=None):
     funds = fund_plans + sum(basis['fund_topups'].values())
     available = income + released - ordinary - bills - savings - debt - funds
     cash = income + total(entries.filter(kind='withdrawal')) - ordinary - total(entries.filter(kind__in=['debt', 'fund', 'deposit'])) + total(entries.filter(kind='refund', original__kind__in=['debt', 'fund']))
-    return dict(income=income, expected=expected, ordinary=ordinary, bills=bills, savings=savings, released=released, debt=debt, funds=funds, available=available, cash=cash, daily=available // (end.day - today.day + 1) if start == month_start(today) else None)
+    return dict(income=income, expected=expected, ordinary=ordinary, bills=bills, savings=savings, released=released, debt=debt, funds=funds, available=available, cash=cash, daily=max(available, 0) // (end.day - today.day + 1) if start == month_start(today) else None)
 
 
 def savings_balance(asset, end=None):

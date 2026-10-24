@@ -49,11 +49,11 @@ def save_item(actor, list_id, expected_version, key, item_id=None, **fields):
         raise ValidationError('Ukjente varefelt.')
     row = ShoppingItem.objects.select_for_update().get(pk=item_id, shopping_list=listing) if item_id else ShoppingItem(household=member.household, created_by=actor, shopping_list=listing)
     if row.trip_id: raise ValidationError('Varen tilhører en fullført tur. Legg til en ny vare.')
-    if fields.get('price_ore') is not None or fields.get('category_id'):
-        raise ValidationError('Pris og kategori registreres privat ved fullføring av turen.')
     if fields.get('category_id'):
+        raise ValidationError('Kategori registreres privat ved fullføring av turen.')
+    if 'price_ore' in fields:
+        # An estimate that pre-fills the trip total; only budget members may see or set it.
         access.require(member, {'budget'})
-        Category.objects.get(pk=fields['category_id'], household=member.household, archived=False)
     before = {name: str(getattr(row, name)) for name in fields}
     for name, value in fields.items(): setattr(row, name, value)
     row.version += 1
@@ -67,6 +67,19 @@ def save_item(actor, list_id, expected_version, key, item_id=None, **fields):
     if any(before[name] != str(value) for name, value in fields.items()):
         record_shopping_change(member, listing, key)
     return row
+
+
+def trip_suggestion(member, listing):
+    """Pre-fill for the trip form: summed item prices and the list's last visible category. Never posts."""
+    items = list(listing.items.filter(purchased=True, removed=False, trip__isnull=True))
+    priced = [item.price_ore for item in items if item.price_ore is not None]
+    last = (listing.trips.select_related('entry').order_by('-created_at').first()
+            if access.allows(member, 'budget') else None)
+    category_id = None
+    if last and access.safe_rows(member, Entry.objects.filter(pk=last.entry_id)).exists():
+        category_id = last.entry.category_id
+    return {'amount_ore': sum(priced) if priced else None, 'priced': len(priced), 'items': len(items),
+            'category_id': category_id}
 
 
 @transaction.atomic

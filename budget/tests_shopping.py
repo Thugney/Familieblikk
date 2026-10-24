@@ -1,6 +1,7 @@
 from .financial_test_helpers import install_area
 from .financial_areas import area_scope, create_area
 import uuid
+from decimal import Decimal
 from concurrent.futures import ThreadPoolExecutor
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -189,11 +190,41 @@ class ShoppingTests(DocumentTests):
             name='Brød', quantity='3', purchased='on', price='25,50', category=self.category.pk))
         self.assertEqual(result.status_code, 302)
         item.refresh_from_db()
-        # Shared list edits cannot publish private price/category metadata.
-        self.assertIsNone(item.price_ore)
+        # Budget members may record an estimated price; category stays private to trip completion.
+        self.assertEqual(item.price_ore, 2550)
         self.assertIsNone(item.category_id)
         self.assertEqual(item.name, 'Brød')
         self.assertFalse(Entry.objects.exists())
+
+
+    def test_item_prices_prefill_trip_total_and_stay_hidden_without_budget_access(self):
+        listing, item = self.listing()
+        detail = reverse('shopping_detail', args=[listing.pk])
+        self.assertEqual(self.client.post(detail, dict(key=uuid.uuid4(), version=listing.version, name='Ost',
+            quantity='1', price='89,90', purchased='on')).status_code, 302)
+        listing.refresh_from_db(); item.refresh_from_db()
+        self.client.post(reverse('shopping_item', args=[item.pk]), dict(key=uuid.uuid4(), version=listing.version,
+            name=item.name, quantity=item.quantity, price='30,10', purchased='on'))
+        listing.refresh_from_db(); item.refresh_from_db()
+        # The tick button sends no price input; it must keep the stored estimate.
+        self.client.post(reverse('shopping_item', args=[item.pk]), dict(key=uuid.uuid4(), version=listing.version,
+            name=item.name, quantity=item.quantity))
+        item.refresh_from_db(); listing.refresh_from_db()
+        self.assertEqual((item.price_ore, item.purchased), (3010, False))
+        self.client.post(reverse('shopping_item', args=[item.pk]), dict(key=uuid.uuid4(), version=listing.version,
+            name=item.name, quantity=item.quantity, purchased='on'))
+        listing.refresh_from_db()
+        self.assertContains(self.client.get(detail), 'Anslått sum for avkryssede varer')
+        form = self.client.get(reverse('shopping_complete', args=[listing.pk])).context['form']
+        self.assertEqual(str(form['amount'].value()), '120.00')
+        self.assertFalse(Entry.objects.exists())
+        self.member.role, self.member.module_access = 'member', {'budget': False, 'documents': False}
+        self.member.save()
+        page = self.client.get(detail)
+        self.assertNotContains(page, '89,90')
+        self.assertNotContains(page, 'name="price"')
+        with self.assertRaises(PermissionDenied):
+            shop.save_item(self.user, listing.pk, listing.version, uuid.uuid4(), item.pk, price_ore=100)
 
 
 class ConcurrentShoppingTests(TransactionTestCase):

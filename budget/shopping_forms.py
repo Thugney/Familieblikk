@@ -13,10 +13,13 @@ class ListForm(CommandForm):
 class ItemForm(CommandForm):
     name = forms.CharField(label='Vare', max_length=120)
     quantity = forms.CharField(label='Antall / mengde', max_length=40, initial='1')
+    price = MoneyField(label='Anslått pris i NOK (valgfritt)', required=False)
     purchased = forms.BooleanField(label='Kjøpt', required=False)
     removed = forms.BooleanField(label='Fjern fra aktiv liste (historikken bevares)', required=False)
     def __init__(self, *args, member, **kwargs):
         super().__init__(*args, **kwargs)
+        # Prices are budget information: only members with budget access see or set them.
+        if not access.allows(member, 'budget'): self.fields.pop('price')
 
 
 class DocumentChoice(forms.ModelChoiceField):

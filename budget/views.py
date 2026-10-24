@@ -744,6 +744,34 @@ def member_access_view(request, member_id):
 
 
 @login_required
+def member_manage_view(request, member_id):
+    actor = household_admin(request)
+    target = get_object_or_404(Membership.objects.select_related('user'), pk=member_id, household=actor.household)
+    if target.pk == actor.pk: raise PermissionDenied('Du kan ikke endre din egen rolle eller tilgang.')
+    form = forms.MemberChangeForm(request.POST if request.method == 'POST' else None)
+    status = 200
+    if request.method == 'POST' and form.is_valid():
+        try:
+            identity.change_member(request.user, target.pk, form.cleaned_data['action'], form.cleaned_data['version'])
+            messages.success(request, {'deactivate': 'Tilgangen er deaktivert. Medlemmet er logget ut, og alle poster og budsjetter er bevart.',
+                                       'reactivate': 'Medlemmet kan logge inn igjen.',
+                                       'make_admin': 'Medlemmet er nå administrator.',
+                                       'make_member': 'Medlemmet er nå vanlig medlem.'}[form.cleaned_data['action']])
+            return redirect('page', page='familie')
+        except ValidationError as exc:
+            form.add_error(None, exc)
+            status = 409 if isinstance(exc, services.Conflict) else 400
+            target.refresh_from_db()
+            target.user.refresh_from_db()
+    elif request.method == 'POST': status = 400
+    return render(request, 'budget/member_manage.html', {
+        'form': form, 'title': 'Administrer medlem', 'member': actor, 'nav': NAV, 'page': 'familie',
+        'target': target, 'is_owner': target.identity_method == 'preregistered_owner',
+        'back': reverse('page', args=['familie']),
+    }, status=status)
+
+
+@login_required
 @require_POST
 def preferences_view(request):
     from .financial_areas import current_area

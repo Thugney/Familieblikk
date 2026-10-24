@@ -255,3 +255,57 @@ def validate_financial_choice(member, sharing, reader_ids):
     actual = set(Membership.objects.filter(household=member.household, user__is_active=True, pk__in=ids).values_list('pk', flat=True))
     if actual != ids:
         raise ValidationError('Velg aktive medlemmer i denne familien.')
+
+
+MEMBER_ACTIONS = {
+    'deactivate': 'Deaktiver tilgang',
+    'reactivate': 'Gi tilgang igjen',
+    'make_admin': 'Gjør til administrator',
+    'make_member': 'Gjør til vanlig medlem',
+}
+
+
+def end_sessions(user):
+    """Log the account out everywhere; the auth backend also rejects inactive users on the next request."""
+    from django.contrib.sessions.models import Session
+    for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator():
+        if session.get_decoded().get('_auth_user_id') == str(user.pk):
+            session.delete()
+
+
+@transaction.atomic
+def change_member(actor, member_id, action, expected_version):
+    """Deactivate/reactivate an account or change its role. Nothing is deleted: posts, budgets and history stay."""
+    from .access import lock_member
+    from .services import Conflict
+    admin = lock_member(actor)
+    if not actor.is_active or admin.role != 'admin': raise PermissionDenied('Bare familieadministrator kan endre medlemmer.')
+    if action not in MEMBER_ACTIONS: raise ValidationError('Ukjent endring.')
+    target = Membership.objects.select_for_update().select_related('user').get(pk=member_id, household=admin.household)
+    if target.pk == admin.pk: raise ValidationError('Du kan ikke endre din egen rolle eller tilgang.')
+    if target.identity_method == 'preregistered_owner' and action in ('deactivate', 'make_member'):
+        raise ValidationError('Familiens eier kan ikke deaktiveres eller gjøres til vanlig medlem.')
+    if target.access_version != expected_version: raise Conflict('Medlemmet er endret av noen andre. Last inn på nytt.')
+    user = get_user_model().objects.select_for_update().get(pk=target.user_id)
+    before = {'role': target.role, 'active': user.is_active}
+    if action == 'deactivate':
+        if not user.is_active: raise ValidationError('Kontoen er allerede deaktivert.')
+        user.is_active = False
+    elif action == 'reactivate':
+        if user.is_active: raise ValidationError('Kontoen er allerede aktiv.')
+        user.is_active = True
+    elif action == 'make_admin':
+        if target.role == 'admin': raise ValidationError('Medlemmet er allerede administrator.')
+        target.role = 'admin'
+    elif action == 'make_member':
+        if target.role == 'member': raise ValidationError('Medlemmet er allerede vanlig medlem.')
+        target.role = 'member'
+    user.save(update_fields=['is_active'])
+    target.access_version += 1
+    target.save(update_fields=['role', 'access_version'])
+    if action == 'deactivate': end_sessions(user)
+    # Logged as member-access metadata: the DB guard keeps these audit rows outside any budget.
+    Audit.objects.create(household=admin.household, actor=actor, object_id=admin.household_id, operation='modultilgang',
+                         changes={'membership_id': target.pk, 'action': action, 'before': before,
+                                  'after': {'role': target.role, 'active': user.is_active}})
+    return target

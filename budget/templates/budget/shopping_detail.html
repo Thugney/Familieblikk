@@ -27,6 +27,7 @@
         <h2>Varer på listen ({{ items_total }})</h2>
         <span class="s act" data-shopping-count>{{ purchased_count }} av {{ items_total }} kjøpt</span>
       </div>
+      {% if show_prices and priced_total %}<p class="shopping-price-sum">Anslått sum for avkryssede varer: <strong>{{ priced_total|nok }}</strong></p>{% endif %}
       <div class="prog" aria-hidden="true"><i data-shopping-progress style="width:{% if items_total %}{% widthratio purchased_count items_total 100 %}{% else %}0{% endif %}%"></i></div>
       {% for item in items %}
       <article class="row shopping-item-row {% if item.purchased %}is-purchased{% endif %}">
@@ -34,7 +35,7 @@
           <form class="tick-form" method="post" action="{% url 'shopping_item' item.pk %}" data-tick-form>{% csrf_token %}<input type="hidden" name="name" value="{{ item.name }}"><input type="hidden" name="quantity" value="{{ item.quantity }}"><input type="hidden" name="version" value="{{ listing.version }}"><input type="hidden" name="key" value="{% new_key %}">{% if not item.purchased %}<input type="hidden" name="purchased" value="on">{% endif %}<button type="submit" class="shopping-check-badge{% if item.purchased %} checked{% endif %}" aria-pressed="{% if item.purchased %}true{% else %}false{% endif %}" aria-label="{% if item.purchased %}Fjern avkryssing for {{ item.name }}{% else %}Kryss av {{ item.name }}{% endif %}">{% if item.purchased %}✓{% endif %}</button></form>
           <div>
             <strong>{{ item.name }}</strong>
-            <p><span class="shopping-qty-pill">{{ item.quantity }}</span><span class="ui-status {% if item.purchased %}actual{% else %}neutral{% endif %}">{% if item.purchased %}Kjøpt{% else %}Gjenstår{% endif %}</span></p>
+            <p><span class="shopping-qty-pill">{{ item.quantity }}</span>{% if show_prices and item.price_ore != None %}<span class="shopping-price-pill">{{ item.price_ore|nok }}</span>{% endif %}<span class="ui-status {% if item.purchased %}actual{% else %}neutral{% endif %}">{% if item.purchased %}Kjøpt{% else %}Gjenstår{% endif %}</span></p>
           </div>
         </div>
         <a class="button secondary shopping-item-action" href="{% url 'shopping_item' item.pk %}">Endre / kryss av</a>

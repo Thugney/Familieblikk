@@ -35,7 +35,7 @@
         <dt>= Igjen å bruke</dt><dd>{{ totals.available|nok }}</dd>
       </dl>
       <p>Regninger merket «Gjeldsbetaling» inngår bare i Gjeld. For hvert lån brukes det høyeste av månedsplanen og betalte eller ubetalte gjeldsregninger.</p>
-      {% if daily_days %}<p>Dagsbeløp: {{ totals.available|nok }} delt på {{ daily_days }} gjenstående dager, inkludert i dag = {{ totals.daily|nok }}.</p>{% else %}<p>Dagsbeløp vises bare for inneværende måned.</p>{% endif %}
+      {% if daily_days and totals.available < 0 %}<p>Dagsbeløpet er 0 kr fordi måneden har underskudd.</p>{% elif daily_days %}<p>Dagsbeløp: {{ totals.available|nok }} delt på {{ daily_days }} gjenstående dager, inkludert i dag = {{ totals.daily|nok }}.</p>{% else %}<p>Dagsbeløp vises bare for inneværende måned.</p>{% endif %}
     </div>
   </details>
 </section>{% endif %}

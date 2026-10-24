@@ -269,7 +269,7 @@ def category_choices(member, queryset):
 
 
 def calendar_members(household):
-    return [m for m in Membership.objects.filter(household=household).select_related('user') if allows(m, 'calendar')]
+    return [m for m in Membership.objects.filter(household=household, user__is_active=True).select_related('user') if allows(m, 'calendar')]
 
 
 def restrict_form(member, form):

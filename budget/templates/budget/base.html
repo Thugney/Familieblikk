@@ -101,7 +101,7 @@
           {% if not request.financial_area %}<a class="dock-speed-item" href="{% url 'financial_areas' %}"><span>{% nav_icon 'budsjett' %}</span><strong>Velg budsjett for ny post</strong></a>{% endif %}
           {% if member|allows_module:'documents' %}<a class="dock-speed-item" href="{% url 'documents' %}"><span>{% nav_icon 'dokumenter' %}</span><strong>Skann kvittering</strong></a>{% endif %}
           {% if member|allows_module:'shopping' %}<a class="dock-speed-item" href="{% url 'shopping_lists' %}"><span>{% nav_icon 'handlelister' %}</span><strong>Handleliste</strong></a>{% endif %}
-          {% if member|allows_module:'calendar' %}<a class="dock-speed-item" href="{% url 'page' 'kalender' %}?month={{ navigation_month }}"><span>{% nav_icon 'kalender' %}</span><strong>Familieavtale</strong></a>{% endif %}
+          {% if member|allows_module:'calendar' %}<a class="dock-speed-item" href="{% url 'page' 'kalender' %}?month={{ navigation_month }}#ny-avtale"><span>{% nav_icon 'kalender' %}</span><strong>Familieavtale</strong></a>{% endif %}
         </div>
       </div>
       {% endif %}

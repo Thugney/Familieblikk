@@ -92,6 +92,8 @@
     updateFields(); show(editor);
   }
   document.getElementById('calendar-create').addEventListener('click', () => openEditor());
+  // The quick menu's "Familieavtale" opens the new-event editor directly.
+  if (location.hash === '#ny-avtale') { history.replaceState(null, '', location.pathname + location.search); openEditor(); }
   let selectedDay = new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Oslo'});
   function selectDay(day) {
     selectedDay=day;

@@ -1,0 +1,25 @@
+{% extends 'budget/base.html' %}{% load budget_tags %}{% block content %}
+<section class="work-surface form-surface member-manage"><a href="{{ back }}">Tilbake til familien</a><h1>Administrer medlem</h1>
+<div class="row family-member"><div class="member-identity"><span class="av">{{ target.user.get_full_name|default:target.user.email|initials }}</span><div><strong>{{ target.user.get_full_name|default:target.user.email }}</strong><span>{{ target.user.email }}</span></div></div><span class="s {% if not target.user.is_active %}unk{% elif target.role == 'admin' %}act{% else %}res{% endif %}">{% if not target.user.is_active %}Deaktivert{% else %}{{ target.get_role_display }}{% endif %}</span></div>
+{{ form.non_field_errors }}
+
+<h2>Tilgang til appen</h2>
+{% if is_owner %}<p>Familiens eier kan ikke deaktiveres.</p>
+{% elif target.user.is_active %}<p>Deaktivering logger medlemmet ut på alle enheter og stopper innlogging. Poster, budsjetter, avtaler og historikk slettes ikke.</p>
+<form method="post">{% csrf_token %}<input type="hidden" name="version" value="{{ target.access_version }}"><input type="hidden" name="action" value="deactivate"><label><input type="checkbox" name="confirm" required> Jeg bekrefter at {{ target.user.get_full_name|default:target.user.email }} ikke lenger skal ha tilgang.</label><div class="actions"><button class="danger">Deaktiver tilgang</button></div></form>
+{% else %}<p>Kontoen er deaktivert. Alle opplysninger er bevart.</p>
+<form method="post">{% csrf_token %}<input type="hidden" name="version" value="{{ target.access_version }}"><input type="hidden" name="action" value="reactivate"><label><input type="checkbox" name="confirm" required> Jeg bekrefter at medlemmet kan logge inn igjen.</label><div class="actions"><button class="primary">Gi tilgang igjen</button></div></form>
+{% endif %}
+
+<h2>Rolle</h2>
+<p>Administrator kan legge til og administrere medlemmer. Rollen gir ikke automatisk innsyn i andres budsjetter.</p>
+{% if target.role == 'admin' %}{% if is_owner %}<p>Familiens eier er alltid administrator.</p>{% else %}
+<form method="post">{% csrf_token %}<input type="hidden" name="version" value="{{ target.access_version }}"><input type="hidden" name="action" value="make_member"><label><input type="checkbox" name="confirm" required> Jeg bekrefter rolleendringen.</label><div class="actions"><button class="secondary">Gjør til vanlig medlem</button></div></form>{% endif %}
+{% else %}
+<form method="post">{% csrf_token %}<input type="hidden" name="version" value="{{ target.access_version }}"><input type="hidden" name="action" value="make_admin"><label><input type="checkbox" name="confirm" required> Jeg bekrefter rolleendringen.</label><div class="actions"><button class="secondary">Gjør til administrator</button></div></form>
+{% endif %}
+
+{% if target.role != 'admin' %}<h2>Moduler</h2><p>Velg hvilke deler av appen medlemmet kan bruke.</p><div class="actions"><a class="button secondary" href="{% url 'member_access' target.pk %}">Endre modultilgang</a></div>{% endif %}
+<h2>Budsjettinnsyn</h2><p>Hvem som kan se et budsjett endres fra budsjettets deling. Endringer krever bekreftelse fra både budsjetteier og familieadministrator.</p><div class="actions"><a class="button secondary" href="{% url 'financial_areas' %}?manage=1">Åpne budsjettdeling</a></div>
+</section>
+{% endblock %}

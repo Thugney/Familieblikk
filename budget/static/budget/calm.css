@@ -1574,3 +1574,9 @@ button.shopping-check-badge.checked, .shopping-check-badge.checked { background:
 .shopping-history-columns .row .button { min-height: 36px; padding: 0 14px; font-size: 13px; border-radius: 99px; }
 @media (max-width: 850px) { .shopping-history-columns { grid-template-columns: 1fr; gap: 14px; } }
 body[data-page='kalender'] .app-header [data-calendar-quick-create] { display: none !important; }
+@media (max-width: 560px) { .row.tx .entry-body .l .by-sep { display: none; } }
+.family-member .member-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.member-manage h2 { font-size: 17px; margin: 22px 0 6px; }
+.member-manage form label { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; margin: 8px 0; }
+.shopping-price-pill { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: var(--pro-brand-soft); color: var(--pro-brand); font-size: 12px; font-weight: 700; }
+.shopping-price-sum { margin: 0 0 8px; font-size: 13px; color: var(--pro-ink-2); }

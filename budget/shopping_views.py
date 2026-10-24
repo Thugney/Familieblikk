@@ -10,7 +10,7 @@ from django.views.decorators.http import require_GET
 from . import access, shopping_services as service
 from .shopping_forms import ListForm, ItemForm, TripForm, ReceiptForm
 from .document_views import form_error
-from .models import ShoppingList, ShoppingItem, ShoppingTrip, WorkflowCommand, Document
+from .models import ShoppingList, ShoppingItem, ShoppingTrip, WorkflowCommand, Document, Category
 from .document_services import canonical
 from .views import NAV
 
@@ -26,6 +26,19 @@ def submissions(request, version):
         data['version'], data['key'] = str(version), str(uuid.uuid4())
         data.pop('confirmation', None)
     return data, recovering
+
+
+def price_fields(fields, data):
+    """Form price (kroner) -> price_ore; untouched when the request had no price input (e.g. the tick button)."""
+    if 'price' in fields:
+        price = fields.pop('price')
+        if data is not None and 'price' in data:
+            fields['price_ore'] = int(price * 100) if price is not None else None
+    return fields
+
+
+def form_has_category(member, category_id):
+    return access.category_choices(member, Category.objects.filter(archived=False)).filter(pk=category_id).exists()
 
 
 def allow_receipt_replay(form, member, data, operation, target_id):
@@ -77,7 +90,7 @@ def detail(request, list_id):
     data, recovering = submissions(request, row.version)
     form = ItemForm(data, member=member, initial={'version': row.version})
     if request.method == 'POST' and not recovering and form.is_valid():
-        fields = form.cleaned_data.copy()
+        fields = price_fields(form.cleaned_data.copy(), data)
         key, version = fields.pop('key'), fields.pop('version')
         if 'category' in fields:
             category = fields.pop('category')
@@ -95,8 +108,10 @@ def detail(request, list_id):
                       'items': trip.items.filter(household=member.household).values('name', 'quantity', 'purchased'),
                       'can_attach': visible and access.allows(member, 'documents') and not trip.receipt_id})
     items = row.items.filter(removed=False, trip__isnull=True).order_by('created_at')
-    return render(request, 'budget/shopping_detail.html', context(member, listing=row,
-        items=items, purchased_count=items.filter(purchased=True).count(), items_total=items.count(),
+    show_prices = access.allows(member, 'budget')
+    priced_total = sum(item.price_ore for item in items if item.purchased and item.price_ore is not None) if show_prices else 0
+    return render(request, 'budget/shopping_detail.html', context(member, listing=row, show_prices=show_prices,
+        priced_total=priced_total, items=items, purchased_count=items.filter(purchased=True).count(), items_total=items.count(),
         removed_items=row.items.filter(removed=True, trip__isnull=True).order_by('created_at'),
         form=form, trips=trips, recovered=recovering))
 
@@ -110,10 +125,10 @@ def item(request, item_id):
     row = get_object_or_404(ShoppingItem, pk=item_id, household=member.household, trip__isnull=True)
     data, recovering = submissions(request, row.shopping_list.version)
     initial = dict(name=row.name, quantity=row.quantity, purchased=row.purchased, removed=row.removed,
-        version=row.shopping_list.version)
+        price=(Decimal(row.price_ore) / 100).quantize(Decimal('0.01')) if row.price_ore is not None else None, version=row.shopping_list.version)
     form = ItemForm(data, member=member, initial=initial)
     if request.method == 'POST' and not recovering and form.is_valid():
-        fields = form.cleaned_data.copy()
+        fields = price_fields(form.cleaned_data.copy(), data)
         key, version = fields.pop('key'), fields.pop('version')
         if 'category' in fields:
             category = fields.pop('category')
@@ -134,7 +149,11 @@ def complete(request, list_id):
     access.require(member, {'shopping', 'budget'})
     row = get_object_or_404(ShoppingList, pk=list_id, household=member.household)
     data, recovering = submissions(request, row.version)
-    form = TripForm(data, member=member, initial={'version': row.version})
+    suggestion = service.trip_suggestion(member, row)
+    initial = {'version': row.version}
+    if suggestion['amount_ore']: initial['amount'] = (Decimal(suggestion['amount_ore']) / 100).quantize(Decimal('0.01'))
+    if suggestion['category_id'] and form_has_category(member, suggestion['category_id']): initial['category'] = suggestion['category_id']
+    form = TripForm(data, member=member, initial=initial)
     if not recovering: allow_receipt_replay(form, member, data, 'shopping_complete', row.pk)
     candidates = []
     if request.method == 'POST' and not recovering and form.is_valid():
@@ -149,7 +168,8 @@ def complete(request, list_id):
         except ValidationError as error: form_error(form, error)
     return render(request, 'budget/workflow_form.html', context(member, form=form, heading='Fullfør handletur',
         button='Bekreft én utgift', list_id=row.pk, recovered=recovering, duplicates=candidates,
-        explanation='Bare avkryssede varer tas med. Flere butikker krever separate turer. Anslåtte varepriser erstatter ikke faktisk total.'))
+        explanation='Bare avkryssede varer tas med. Flere butikker krever separate turer. Anslåtte varepriser erstatter ikke faktisk total.'
+            + (f" Beløpet er forhåndsutfylt fra varepriser ({suggestion['priced']} av {suggestion['items']} avkryssede varer har pris). Kontroller mot kvitteringen før du bekrefter." if suggestion['amount_ore'] else '')))
 
 
 @login_required

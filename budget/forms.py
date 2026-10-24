@@ -110,6 +110,17 @@ class MemberAccessForm(forms.Form):
                                 modules=[key for key in MODULES if allows(member, key)])
 
 
+class MemberChangeForm(forms.Form):
+    version = forms.IntegerField(widget=forms.HiddenInput, min_value=1)
+    action = forms.ChoiceField(widget=forms.HiddenInput, choices=[])
+    confirm = forms.BooleanField(label='Jeg bekrefter endringen.')
+
+    def __init__(self, *args, **kwargs):
+        from .identity import MEMBER_ACTIONS
+        super().__init__(*args, **kwargs)
+        self.fields['action'].choices = list(MEMBER_ACTIONS.items())
+
+
 class RowForm(forms.ModelForm):
     version = forms.IntegerField(widget=forms.HiddenInput, initial=0, required=False)
     amount = MoneyField(label='Beløp i NOK')
