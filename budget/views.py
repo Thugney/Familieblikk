@@ -214,7 +214,7 @@ def page_view(request, page='oversikt'):
     for item in chart: item['height'] = max(item['amount'] * 100 // ceiling, 0)
     # Listefiltre påvirker aldri månedens regnskapsgrunnlag eller andre seksjoner.
     entries = month_entries.select_related('category', 'asset', 'created_by').order_by('-effective_date', '-sequence', '-pk')
-    filter_form, page_obj = None, None
+    filter_form, page_obj, poster_sums = None, None, None
     entry_query = ''
     entry_scope_has_rows = False
     poster_status = 'alle'
@@ -261,6 +261,9 @@ def page_view(request, page='oversikt'):
                 entries = entries.filter(Q(occurrence__due_date__lt=timezone.localdate()))
         else:
             entries = entries.none()
+        if page == 'poster':
+            poster_sums = entries.aggregate(inn=Sum('amount_ore', filter=Q(kind='income', received=True) | Q(kind='refund')),
+                                            ut=Sum('amount_ore', filter=Q(kind__in=['expense', 'remittance'])))
         page_obj = Paginator(entries, 10).get_page(request.GET.get('page'))
         entries = page_obj.object_list
         poster_query = {'poster_status': poster_status} if page == 'poster' and poster_status != 'alle' else {}
@@ -280,6 +283,8 @@ def page_view(request, page='oversikt'):
         share = Decimal(max(item['spent'], 0)) * 100 / positive_spending if positive_spending else Decimal(0)
         item.update(share=share, share_width=format(share, '.4f'))
     category_count_total = len(categories)
+    limited = [item for item in categories if item['limit'] is not None and not item['row'].archived]
+    category_sums = {'limit': sum(item['limit'] for item in limited), 'spent': sum(item['spent'] for item in limited), 'count': len(limited)}
     category_q = request.GET.get('category_q', '').strip()[:120]
     category_status = request.GET.get('category_status', 'active' if page == 'oversikt' else 'all')
     if category_status not in ('active', 'all', 'archived'): category_status = 'all'
@@ -389,6 +394,8 @@ def page_view(request, page='oversikt'):
         item['y'] = 56 - item['height'] * 48 // 100
         item['label'] = month_abbr[item['month'].month - 1]
     ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'overview_filter': overview_filter, 'overview_bills': overview_bills, 'overview_entries': overview_entries, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'weekly_bars': weekly_bars, 'weekly_total': weekly_total, 'pace': pace, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'poster_status': poster_status, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
+    ctx['poster_sums'] = poster_sums
+    ctx['category_sums'] = category_sums
     if page == 'oversikt':
         ctx['money_control'] = money_info
         if month > services.month_start(timezone.localdate()) and full_finance:

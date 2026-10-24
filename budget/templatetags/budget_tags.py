@@ -242,3 +242,35 @@ def accessible_financial_areas(context):
         return result
     except Exception:
         return []
+
+
+@register.simple_tag
+def greeting(user):
+    """Time-of-day greeting with the member's first name (never guessed from anything but the account)."""
+    from django.utils import timezone
+    hour = timezone.localtime().hour
+    word = 'God morgen' if hour < 10 else 'God dag' if hour < 17 else 'God kveld'
+    name = (getattr(user, 'first_name', '') or str(getattr(user, 'email', '')).split('@')[0]).strip()
+    return f'{word}, {name.capitalize()}' if name else word
+
+
+@register.filter
+def of_kind(rows, kind):
+    return [row for row in rows if getattr(row['row'], 'kind', None) == kind]
+
+
+@register.filter
+def group_bills(bills, today):
+    """Status groups for the bills page; every bill appears in exactly one group."""
+    groups = [('Forfalt', 'bad', []), ('Kommende', 'warn', []), ('Betalt', 'ok', []), ('Avbrutt', '', [])]
+    for bill in bills:
+        if getattr(bill, 'cancelled', False): groups[3][2].append(bill)
+        elif getattr(bill, 'payment', None): groups[2][2].append(bill)
+        elif bill.due_date < today: groups[0][2].append(bill)
+        else: groups[1][2].append(bill)
+    return [group for group in groups if group[2]]
+
+
+@register.filter
+def minus(value, other):
+    return (value or 0) - (other or 0)

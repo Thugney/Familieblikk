@@ -1,5 +1,28 @@
 {% load budget_tags ui_tags %}
 {% if future_overview %}{% include 'budget/future_sections.html' %}{% else %}
+<div class="ov-stats" aria-label="Månedens hovedtall">
+  <div class="c ov-stat"><span class="ov-ic ov-ic-in">{% nav_icon 'poster' %}</span><strong>{{ totals.income|nok }}</strong><span class="ov-k">Inn denne måneden</span><span class="ov-d">Mottatt inntekt</span></div>
+  <div class="c ov-stat"><span class="ov-ic ov-ic-out">{% nav_icon 'regninger' %}</span><strong>{{ totals.ordinary|nok }}</strong><span class="ov-k">Brukt denne måneden</span><span class="ov-d">Etter penger tilbake</span></div>
+  <div class="c ov-stat"><span class="ov-ic ov-ic-set">{% nav_icon 'arsutgifter' %}</span><strong>{{ totals.bills|add:totals.savings|add:totals.debt|add:totals.funds|nok }}</strong><span class="ov-k">Satt av</span><span class="ov-d">Regninger, sparing, gjeld, årsutgifter</span></div>
+</div>
+
+<div class="ov-cols">
+  <section class="c ov-cats" aria-labelledby="ov-cats-title">
+    <div class="ov-head"><h2 id="ov-cats-title">Kategorier</h2><a href="{% url 'page' 'budsjett' %}?month={{ month|date:'Y-m' }}">Se alle</a></div>
+    {% if categories %}<div class="bento-progress">{% for item in categories|slice:':6' %}<div class="ov-cat bento-progress-row{% if item.budget_status == 'over' %} is-over{% elif item.budget_status == 'warning' %} is-warning{% endif %}"><span class="ov-dot" style="background:{{ item.row.color }}" aria-hidden="true"></span><div class="ov-cat-name"><b>{{ item.row.name }}</b><span class="ov-tag {% if item.budget_status == 'over' %}bad{% elif item.budget_status == 'warning' %}warn{% elif item.has_limit %}ok{% endif %}">{% if not item.has_limit %}Ingen ramme{% elif item.budget_status == 'over' %}Rammen er brukt opp{% elif item.budget_status == 'warning' %}Nær rammen{% else %}Innenfor rammen{% endif %}</span></div><div class="ov-cat-amt">{{ item.spent|nok }}{% if item.has_limit %}<small>av {{ item.limit|nok }}{% if item.pct != None %} · {{ item.pct }} %{% endif %}</small>{% endif %}</div><div class="bar"><i style="width:{{ item.bar_pct }}%;background:{{ item.row.color }}"></i></div></div>{% endfor %}</div>{% else %}<p class="sheet-note">Ingen kategorier eller rammer ennå.</p>{% endif %}
+  </section>
+  <div class="ov-side">
+    <section class="c ov-bills" aria-labelledby="ov-bills-title">
+      <div class="ov-head"><h2 id="ov-bills-title">Regninger</h2><a href="{% url 'page' 'regninger' %}?month={{ month|date:'Y-m' }}">Alle regninger</a></div>
+      {% for bill in overview_bills|slice:':3' %}<div class="ov-bill"><div class="date-tile{% if not bill.payment and not bill.cancelled and bill.due_date < today %} late{% endif %}" aria-hidden="true"><b>{{ bill.due_date|date:'d' }}</b><span>{{ bill.due_date|date:'M' }}</span></div><div class="ov-bill-main"><b>{{ bill.name }}</b><small>{% if bill.cancelled %}Avbrutt{% elif bill.payment %}Betalt{% elif bill.due_date < today %}Forfalt {{ bill.due_date|date:'d.m.Y' }}{% else %}Forfaller {{ bill.due_date|date:'d.m.Y' }}{% endif %}</small></div><div class="ov-bill-end"><strong>{{ bill.amount_ore|nok }}</strong>{% if request.financial_can_write and not bill.payment and not bill.cancelled %}<a class="ov-pay" href="{% url 'pay' bill.pk %}?month={{ month|date:'Y-m' }}">Marker betalt</a>{% endif %}</div></div>{% empty %}<p class="sheet-note">Ingen regninger i dette utvalget.</p>{% endfor %}
+    </section>
+    {% if request.financial_area.modules.savings_dashboard != False %}{% with goals=assets|of_kind:'savings' %}{% if goals %}<section class="c ov-goals" aria-labelledby="ov-goals-title">
+      <div class="ov-head"><h2 id="ov-goals-title">Sparemål</h2><a href="{% url 'page' 'sparing' %}?month={{ month|date:'Y-m' }}">Se alle</a></div>
+      {% for item in goals|slice:':3' %}<div class="ov-goal"><div class="ring" style="--p:{{ item.percent|default:0 }}" data-l="{{ item.percent|default:0 }} %"></div><div><b>{{ item.row.name }}</b><small>{{ item.balance|nok }} av {{ item.row.target_ore|nok }}</small></div></div>{% endfor %}
+    </section>{% endif %}{% endwith %}{% endif %}
+  </div>
+</div>
+
 {% include 'budget/money_control.html' %}
 
 <div class="bento" aria-label="Analyse av forbruk og sparing">
@@ -8,11 +31,7 @@
     {% if weekly_bars %}<div class="bento-bars" aria-hidden="true">{% for bar in weekly_bars %}<div class="bento-bar-col"><div class="bento-bar{% if bar.amount < 0 %} is-refund{% endif %}{% if bar.peak %} is-peak{% endif %}{% if bar.weekend %} is-weekend{% endif %}" style="height:{{ bar.height }}px"></div><span>{{ bar.label }}{% if bar.amount < 0 %}<br>− penger tilbake{% endif %}</span></div>{% endfor %}</div>{% else %}<p class="sheet-note">Ingen registrert forbruk siste 7 dager.</p>{% endif %}
     <details><summary>Vis daglige beløp</summary><dl>{% for bar in weekly_bars %}<dt>{{ bar.date|date:"l d.m" }}</dt><dd>{{ bar.amount|nok }}</dd>{% endfor %}</dl></details><p class="sheet-note">Negative beløp betyr at du har fått mer tilbake enn du har brukt. Søylene viser beløpets størrelse.</p>
   </div>
-  <div class="c">
-    <div class="bento-head"><div><h3>Smart budsjett</h3><p class="l">{{ category_count_total }} kategorier</p></div><a class="btn-sec" href="{% url 'page' 'budsjett' %}?month={{ month|date:'Y-m' }}">Alle →</a></div>
-    {% if categories %}<div class="bento-progress">{% for item in categories|slice:':3' %}<div class="bento-progress-row{% if item.budget_status == 'over' %} is-over{% elif item.budget_status == 'warning' %} is-warning{% endif %}"><div class="bento-progress-label"><span>{{ item.row.name }}</span>{% if item.has_limit %}<span>{% if item.pct != None %}{{ item.pct }} % · {% endif %} {% if item.budget_status == 'over' %}Rammen er brukt opp{% elif item.budget_status == 'warning' %}Nær rammen{% else %}Innenfor rammen{% endif %}</span>{% else %}<span>Ingen ramme</span>{% endif %}</div><div class="bar"><i style="width:{{ item.bar_pct }}%;background:{{ item.row.color }}"></i></div></div>{% endfor %}</div>{% else %}<p class="sheet-note">Ingen kategorier eller rammer ennå.</p>{% endif %}
-  </div>
-  <div class="c bento-third">
+    <div class="c bento-third">
     <div class="bento-income-row"><div><p class="l">Inntekt {{ month|date:'F' }}</p><strong>{{ totals.income|nok }} <span class="s act">Faktisk</span></strong></div><div><p class="l">Forventet (ikke i fri bruk)</p><strong>{{ totals.expected|nok }} <span class="s exp">Forventet</span></strong></div></div>
     <div class="bento-income-row"><div><p class="l">Planlagt sparing denne mnd</p><strong>{{ totals.planned_savings|nok }} (allerede satt av)</strong></div><a class="btn-sec" href="{% url 'page' 'sparing' %}?month={{ month|date:'Y-m' }}">Sparing →</a></div>
   </div>

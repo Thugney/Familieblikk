@@ -1,6 +1,7 @@
 {% extends 'budget/base.html' %}
 {% load static %}
 {% block content %}
+<div class="auth-split"><aside class="auth-hero" aria-hidden="true"><div class="auth-hero-brand">{% include 'budget/brand.html' %}</div><div><h2>Familiens økonomi, rolig og oversiktlig.</h2><p>Se hva dere har igjen å bruke, hold styr på regninger og spar til det som betyr noe.</p></div><small>Drives på familiens egen server</small></aside>
 <section class="auth-panel">
   <div class="auth-brand">{% include 'budget/brand.html' %}</div>
   <h1>{{ title }}</h1>
@@ -18,4 +19,5 @@
     <a class="auth-secondary" href="{% url 'login' %}">Send ny kode / endre e-post</a>
   {% endif %}
 </section>
+</div>
 {% endblock %}
