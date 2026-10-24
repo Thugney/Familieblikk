@@ -54,7 +54,7 @@ class BudgetUsabilityTests(TestCase):
         original.save()
         response = self.get('kategorier', category_q='Reise')
         self.assertEqual(response.context['categories'][0]['spent'], -5000)
-        self.assertContains(response, 'Netto refusjon')
+        self.assertContains(response, 'Mer tilbake enn brukt')
         self.assertContains(response, 'width:0.0000%')
 
     def test_overview_and_budget_share_complete_filtered_spending_workspace(self):
@@ -174,7 +174,7 @@ class BudgetUsabilityTests(TestCase):
         Entry.objects.filter(pk=original.pk).update(effective_date=date(2026, 8, 1))
         Entry.objects.create(household=self.house, created_by=self.user, kind='refund', original=original, amount_ore=100, description='Retur', effective_date=self.month)
         response = self.get('kategorier')
-        self.assertContains(response, 'Netto refusjon')
+        self.assertContains(response, 'Mer tilbake enn brukt')
         self.assertContains(response, 'width:0.0000%')
         self.assertNotContains(response, 'positivt netto kategoriforbruk')
 

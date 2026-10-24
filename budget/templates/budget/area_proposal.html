@@ -21,6 +21,6 @@
   {% else %}
     <form method="post">{% csrf_token %}<input type="hidden" name="digest" value="{{ change.digest }}"><button type="submit" class="primary">Jeg bekrefter dette forslaget</button></form>
   {% endif %}
-  <p><a href="{% url 'financial_areas' %}">Til dine budsjetter</a></p>
+  <p><a href="{% url 'financial_areas' %}?manage=1">Til dine budsjetter</a></p>
 </section>
 {% endblock %}

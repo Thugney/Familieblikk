@@ -6,18 +6,18 @@
   <p class="sheet-note">{{ money_control.coverage.warning }}</p>
   <div class="sheet-split">
     <div class="c">
-      <h3>Forbruk etter refusjoner</h3>
+      <h3>Forbruk etter tilbakebetalinger</h3>
       <dl class="calculation-details">
         <dt>Utgifter og sendt utenlands</dt><dd>{{ money_control.ordinary_gross|nok }}</dd>
-        <dt>− Refusjoner av disse utgiftene</dt><dd>{{ money_control.ordinary_refunds|nok }}</dd>
-        <dt>= Netto forbruk</dt><dd>{{ money_control.ordinary_net|nok }}</dd>
+        <dt>− Tilbakebetalinger av disse utgiftene</dt><dd>{{ money_control.ordinary_refunds|nok }}</dd>
+        <dt>= Brukt etter penger tilbake</dt><dd>{{ money_control.ordinary_net|nok }}</dd>
       </dl>
-      <p class="sheet-note">Betalte vanlige regninger er inkludert én gang. Refusjoner vises i måneden de kom inn, også når kjøpet var tidligere.</p>
+      <p class="sheet-note">Betalte vanlige regninger er inkludert én gang. Tilbakebetalinger vises i måneden de kom inn, også når kjøpet var tidligere.</p>
       <details><summary>Vis alle registrerte pengebevegelser</summary>
         <dl class="calculation-details">
           <dt>Mottatt inntekt</dt><dd>{{ money_control.movements.income|default:0|nok }}</dd>
           <dt>Spareuttak</dt><dd>{{ money_control.movements.withdrawal|default:0|nok }}</dd>
-          <dt>Alle refusjoner</dt><dd>{{ money_control.movements.refund|default:0|nok }}</dd>
+          <dt>Alle tilbakebetalinger</dt><dd>{{ money_control.movements.refund|default:0|nok }}</dd>
           <dt>= Registrert inn</dt><dd>{{ money_control.cash_in|nok }}</dd>
           <dt>Utgifter og sendt utenlands</dt><dd>{{ money_control.ordinary_gross|nok }}</dd>
           <dt>Spareinnskudd</dt><dd>{{ money_control.movements.deposit|default:0|nok }}</dd>
@@ -26,7 +26,7 @@
           <dt>= Registrert ut</dt><dd>{{ money_control.cash_out|nok }}</dd>
           <dt>Inn minus ut</dt><dd>{{ money_control.cash_net|nok }}</dd>
         </dl>
-        <p class="sheet-note">Spareinnskudd og spareuttak er flytting av penger, ikke forbruk eller ny inntekt. Denne oversikten over bevegelser skal ikke legges til avsetningene i budsjettet.</p>
+        <p class="sheet-note">Spareinnskudd og spareuttak er flytting av penger, ikke forbruk eller ny inntekt. Ikke legg disse beløpene til pengene som allerede er satt av i budsjettet.</p>
       </details>
     </div>
     <div class="c">
@@ -36,7 +36,7 @@
         <dt>− Rest av kjente kategorirammer</dt><dd>{{ money_control.remaining_categories|nok }}</dd>
         <dt>= Restbeløp i registrerte planer</dt><dd>{{ money_control.plan_remainder|nok }}</dd>
       </dl>
-      <p class="sheet-note">Kategorirammene skal dekke resten av måneden. Ubetalte regninger er allerede reservert i «igjen å bruke» og trekkes ikke en gang til. Manglende rammer og uregistrerte utgifter er ikke med i restbeløpet.</p>
+      <p class="sheet-note">Kategorirammene skal dekke resten av måneden. Penger til ubetalte regninger er allerede satt av i «igjen å bruke» og trekkes ikke en gang til. Manglende rammer og uregistrerte utgifter er ikke med i restbeløpet.</p>
       <p class="sheet-note">Et positivt restbeløp er ikke et løfte om at pengene kan brukes eller spares. Kontroller også kommende og uregelmessige utgifter.</p>
       {% if not money_control.current %}<p class="sheet-note">Historisk oversikt. Restbeløpet overføres ikke automatisk til en ny måned.</p>{% endif %}
     </div>
@@ -47,7 +47,7 @@
       {% for row in money_control.rows %}<div class="c category-card"><h3>{{ row.name }}{% if row.archived %} · Arkivert{% endif %}</h3>
         <dl class="calculation-details">
           <dt>Månedsramme</dt><dd>{% if row.limit != None %}{{ row.limit|nok }}{% else %}Ikke satt{% endif %}</dd>
-          <dt>Netto brukt</dt><dd>{{ row.spent|nok }}</dd>
+          <dt>Brukt etter penger tilbake</dt><dd>{{ row.spent|nok }}</dd>
           <dt>Ubetalte vanlige regninger</dt><dd>{{ row.pending|nok }}</dd>
           <dt>Igjen innen rammen</dt><dd>{% if row.remaining != None %}{{ row.remaining|nok }}{% else %}Ukjent uten ramme{% endif %}</dd>
         </dl>

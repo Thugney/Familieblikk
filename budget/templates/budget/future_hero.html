@@ -1,0 +1,28 @@
+{% load budget_tags %}
+<section class="hero future-forecast" aria-label="Anslag for fremtidig måned">
+  <div class="hero-grid">
+    <div>
+      <p class="hero-eyebrow">{{ month|date:'F Y' }} · Etter kjente faste trekk</p>
+      <div class="hero-main-numbers"><div class="hero-big-amount">{% if future_overview.remainder != None %}{{ future_overview.remainder|nok }}{% else %}Ukjent{% endif %}</div></div>
+      <p class="hero-note">Dette er et anslag for en måned som ikke har startet, ikke penger du kan bruke nå. Mat, transport og annet forbruk må også dekkes hvis det ikke allerede er lagt inn som regninger.</p>
+      {% if future_overview.missing_assets %}<p class="hero-note">Noen spare- eller betalingsplaner mangler beløp. Anslaget tar bare med beløpene som er kjent. Fyll ut resten i månedsplanen.</p>{% endif %}
+      {% if future_overview.remainder < 0 %}<p class="hero-note">Kjente faste trekk er høyere enn forventet inntekt. Se gjennom regningene og planene nedenfor.</p>{% endif %}
+      {% if future_overview.income == None %}<p class="hero-note">Legg inn forventet inntekt i månedsplanen for å se anslaget.</p>{% endif %}
+      <p><a class="chip-btn" href="{% url 'page' 'budsjett' %}?month={{ month|date:'Y-m' }}&amp;tab=planning">{% if request.financial_can_write %}Gjennomgå og rett månedsplanen{% else %}Se månedsplanen{% endif %}</a></p>
+    </div>
+    <div>
+      <h2>Slik henger anslaget sammen</h2>
+      <dl class="calculation-details">
+        <dt>Forventet inntekt</dt><dd>{% if future_overview.income != None %}{{ future_overview.income|nok }}{% else %}Ikke oppgitt{% endif %}</dd>
+        <dt>− Vanlige regninger (uten gjeld og årsutgifter)</dt><dd>{{ future_overview.bills|nok }}</dd>
+        <dt>− Planlagt sparing</dt><dd>{{ future_overview.savings|nok }}</dd>
+        <dt>− Gjeld</dt><dd>{{ future_overview.debt|nok }}</dd>
+        <dt>− Årsutgifter</dt><dd>{{ future_overview.funds|nok }}</dd>
+      </dl>
+      <p class="hero-note">Regninger merket «Gjeldsbetaling» inngår i Gjeld én gang. Hvis månedsplanen eller minstebeløpet for et lån er høyere enn regningen, brukes det høyeste beløpet. Se og rett dette i månedsplanen.</p>
+      <p class="hero-note">{% if future_overview.source == 'existing_plan' %}Inntekten kommer fra den lagrede månedsplanen. Registrerte forventede inntektsposter vises separat nedenfor.{% elif future_overview.source == 'expected_entries' %}Inntekten kommer fra registrerte poster merket «Forventet».{% else %}Forventet inntekt er ikke registrert for denne måneden.{% endif %} Ingen inntekt er markert som mottatt av denne visningen.</p>
+      <p class="hero-note">Feil i tallene? Åpne riktig del:</p>
+      <p class="forecast-correction-links"><a href="{% url 'page' 'poster' %}?month={{ month|date:'Y-m' }}&amp;kind=income">Inntektsposter</a> · <a href="{% url 'page' 'regninger' %}?month={{ month|date:'Y-m' }}">Regninger</a> · <a href="{% url 'page' 'sparing' %}?month={{ month|date:'Y-m' }}">Sparing</a> · <a href="{% url 'page' 'gjeld' %}?month={{ month|date:'Y-m' }}">Gjeld</a></p>
+    </div>
+  </div>
+</section>

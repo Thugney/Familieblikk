@@ -31,7 +31,7 @@ class OverviewMetricsTests(TestCase):
         self.assertIsNone(response.context['trend_budget'])
         self.assertEqual(response.context['daily_days'],28)
         self.assertContains(response,'Ingen kategorirammer registrert')
-        self.assertContains(response,'Netto frigjort sparing')
+        self.assertContains(response,'Penger tatt ut av sparing, etter nye innskudd')
         self.assertContains(response,'Vis daglige beløp')
         self.assertTrue(all(bar['height'] >= 0 for bar in response.context['weekly_bars']))
         self.assertEqual(response.context['weekly_total'],8000)
@@ -83,7 +83,7 @@ class OverviewMetricsTests(TestCase):
         self.assertEqual(response.context['categories'][0]['budget_status'],'normal')
         self.assertEqual(response.context['month_trend'][3]['amount'],-2000)
         self.assertContains(response,'is-refund')
-        self.assertContains(response,'− refusjon')
+        self.assertContains(response,'− penger tilbake')
         with area_scope(self.member,self.area.pk):
             Entry.objects.filter(kind='refund').update(amount_ore=9000)
         response=self.overview()
@@ -95,4 +95,4 @@ class OverviewMetricsTests(TestCase):
         with patch('budget.views.timezone.localdate', return_value=date(2026,10,1)):
             response=self.client.get('/app/oversikt/', {'month':'2026-10','area':self.area.pk})
         self.assertContains(response,'<circle cx="8"')
-        self.assertContains(self.overview('2026-11'),'Ingen inntrufne dager i denne måneden')
+        self.assertContains(self.overview('2026-11'),'Etter kjente faste trekk')

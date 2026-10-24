@@ -13,10 +13,11 @@ from django.utils import timezone
 from .models import (Asset, Audit, BillOccurrence, BillTemplate, Category, Entry,
                      FundTopUp, Household, ImportRecord, Membership, MonthPlan,
                      MonthlyBudgetHeader, PlanningRequest)
-from .services import Conflict, fund_balance, month_start, month_end, next_month, plan_amount
+from .services import Conflict, month_start, month_end, next_month, plan_amount
 from .spending_forms import exact_fields, history_values, month_value, ore_value, uuid_value
 from . import access
-from .work_limits import month_steps, validate_period, validate_financial_work
+from .entry_presentation import history_url
+from .work_limits import validate_period, validate_financial_work
 
 from .financial_areas import current_area, can_write
 
@@ -34,6 +35,19 @@ def membership(actor):
 
 def month_key(value):
     return value.strftime('%Y-%m')
+
+
+def planning_income(household, target):
+    """One explicit monthly plan wins; expected entries are a read-only fallback."""
+    from django.db.models import Sum
+    if current_area().household_id != household.pk:
+        raise PermissionDenied('Budsjettet tilhører en annen familie.')
+    header = MonthlyBudgetHeader.objects.filter(household=household, month=target).first()
+    if header and header.expected_income_ore is not None:
+        return header.expected_income_ore, 'existing_plan'
+    amount = Entry.objects.filter(household=household, active=True, kind='income', received=False,
+        effective_date__range=(target, month_end(target))).aggregate(amount=Sum('amount_ore'))['amount']
+    return amount, 'expected_entries' if amount is not None else 'missing'
 
 
 def digest(value):
@@ -162,7 +176,7 @@ def spending(actor, params, today=None):
         cat = category_info(row_category(row))
         serialized.append({'id': str(row.pk), 'date': row.effective_date.isoformat(), 'description': row.description,
                            'kind': row.kind, 'amount_ore': net_amount(row), 'category_id': cat['id'],
-                           'category_name': cat['name'], 'detail_url': reverse('edit', args=['entry', row.pk])})
+                           'category_name': cat['name'], 'detail_url': history_url(row)})
     income_rows = Entry.objects.filter(active=True, household=household, kind='income', effective_date__range=(first, last))
     forecast = None
     monthly_scope = params.get('period', 'month') != 'custom' or (first.day == 1 and requested == month_end(requested))
@@ -271,34 +285,45 @@ def commitments(household, target):
     return sorted(result, key=lambda b: (b['due_date'], b['id']))
 
 
-def fund_available_before(household, asset, target, bills):
+def fund_available_before(household, asset, target, basis=None):
     from .financial_areas import current_area
     if current_area().household_id != household.pk:
         raise PermissionDenied('Budsjettet tilhorer en annen familie.')
     validate_period(target)
-    before = target - timedelta(days=1)
-    balance = fund_balance(asset, before)
-    # Match prepare_month's known allocation anchors from their effective dates. Missing
-    # past materializations are still known allocations, not a new current-month charge.
-    plans = list(MonthPlan.objects.filter(household=household, asset=asset).order_by('month'))
-    materialized = {row.month for row in plans}
-    anchors = [row for row in plans if not row.derived]
-    implicit_annual_anchor = not anchors and bool(asset.target_ore)
-    cursor = min([row.month for row in anchors], default=month_start(asset.opening_date))
-    month_steps(cursor, target)
-    current = month_start(timezone.localdate())
-    while cursor < target:
-        if asset.archived and cursor > current:
-            break
-        if cursor not in materialized:
-            applicable = [row for row in anchors if row.month <= cursor]
-            amount = plan_amount(applicable[-1], cursor) if applicable else None
-            if amount is None and implicit_annual_anchor and cursor >= month_start(asset.opening_date):
-                amount = asset.target_ore // 12 + (asset.target_ore % 12 if cursor.month == 12 else 0)
-            balance += amount or 0
-        cursor = next_month(cursor)
-    reserved = sum(b['amount_ore'] for b in bills if b['asset_id'] == str(asset.pk) and b['accounting_class'] == 'fund' and b['overdue'])
+    # Samme kronologiske grunnlag som oversikten: gamle påfyll tilhører sin
+    # opprinnelige måned, også før de finnes som lagrede FundTopUp-rader.
+    if basis is None:
+        from .financial_projection import month_basis
+        basis = month_basis(household, target - timedelta(days=1))
+    balance = basis['fund_balances'].get(asset.pk, 0)
+    # Forrige måned inneholder ikke en åpningssaldo som gjelder først i
+    # planmåneden. Den kan finansiere denne månedens regninger én gang.
+    if month_start(asset.opening_date) == month_start(target):
+        balance += asset.opening_ore
+    reserved = sum(b['amount_ore'] for b in basis['pending']
+                   if b['asset_id'] == asset.pk and b['accounting_class'] == 'fund')
     return balance - reserved
+
+
+def fixed_forecast(data):
+    """Known fixed deductions from the same read-only draft used by the planner."""
+    costs = {'bills': sum(b['amount_ore'] for b in data['commitments'] if b['accounting_class'] == 'ordinary'),
+             'savings': 0, 'debt': 0, 'funds': 0}
+    missing = False
+    for asset in data['assets']:
+        amount = asset['amount_ore']
+        missing = missing or amount is None
+        amount = amount or 0
+        if asset['kind'] == 'debt':
+            costs['debt'] += max(amount, asset['obligation_ore'])
+        elif asset['kind'] == 'fund':
+            costs['funds'] += amount + max(asset['obligation_ore'] - asset['available_balance_ore'] - amount, 0)
+        else:
+            costs['savings'] += amount
+    fixed = sum(costs.values())
+    income = data['expected_income_ore']
+    return {**costs, 'income': income, 'source': data['income_source'], 'fixed': fixed,
+            'missing_assets': missing, 'remainder': income - fixed if income is not None else None}
 
 
 def plan_totals(data, category_amounts=None, asset_amounts=None, income=None):
@@ -383,6 +408,10 @@ def planning(actor, target_month=None, history=None, today=None):
         if not candidate.archived or str(candidate.pk) in asset_ids or retained_obligation:
             assets.append(candidate)
     asset_lines = []
+    prior_basis = None
+    if any(asset.kind == 'fund' for asset in assets):
+        from .financial_projection import month_basis
+        prior_basis = month_basis(household, target - timedelta(days=1))
     for asset in assets:
         amount, source, _ = effective_plan(household, target, asset=asset)
         obligation = sum(b['amount_ore'] for b in bills if b['asset_id'] == str(asset.pk) and b['accounting_class'] == asset.kind and (asset.kind != 'fund' or not b['overdue']))
@@ -392,20 +421,20 @@ def planning(actor, target_month=None, history=None, today=None):
             amount, source = max(obligation, asset.minimum_ore), 'confirmed_commitment'
         elif amount is None and asset.kind == 'fund' and asset.target_ore:
             amount, source = asset.target_ore // 12 + (asset.target_ore % 12 if target.month == 12 else 0), 'confirmed_commitment'
-        available = fund_available_before(household, asset, target, bills) if asset.kind == 'fund' else None
+        available = fund_available_before(household, asset, target, prior_basis) if asset.kind == 'fund' else None
         topup = max(obligation - available - amount, 0) if asset.kind == 'fund' and amount is not None else 0
         asset_lines.append({'id': str(asset.pk), 'name': asset.name, 'kind': asset.kind,
                             'amount_ore': amount, 'source': source, 'obligation_ore': obligation,
                             'topup_ore': topup, 'available_balance_ore': available})
-    header = MonthlyBudgetHeader.objects.filter(household=household, month=target).first()
+    expected_income, income_source = planning_income(household, target)
     revision = source_revision(household)
     snapshot = source_snapshot(household, target, histories, revision)
 
     result = {'target_month': month_key(target), 'can_save': can_write(member, current_area(member)), 'snapshot': snapshot,
               'source_revision': revision,
               'history_months': [month_key(x) for x in histories], 'history_options': options, 'coverage': warn,
-              'expected_income_ore': header.expected_income_ore if header else None,
-              'income_source': 'existing_plan' if header and header.expected_income_ore is not None else 'missing',
+              'expected_income_ore': expected_income,
+              'income_source': income_source,
               'categories': category_lines, 'assets': asset_lines, 'commitments': bills,
               'uncategorized_fixed_ore': sum(b['amount_ore'] for b in bills if b['accounting_class'] == 'ordinary' and not b['category_id']),
               'no_savings_goals': not any(a.kind == 'savings' for a in assets)}
@@ -447,6 +476,11 @@ def validated_preview(actor, draft):
         if set(mapping) != {x['id'] for x in data[field]}:
             raise ValidationError('Planlinjene må tilhøre familien og gjeldende plangrunnlag.')
         maps[field] = mapping
+    # Bekreftelsesoversikten og lagringen må vise samme gjeldsbeløp som totalsummen.
+    # Kravet inkluderer minimum eller kjente regninger, aldri begge summert.
+    for asset in data['assets']:
+        if asset['kind'] == 'debt':
+            maps['assets'][asset['id']] = ore_value(max(maps['assets'][asset['id']], asset['obligation_ore']))
     totals = plan_totals(data, maps['categories'], maps['assets'], income)
     changes = [{'kind': 'income', 'id': 'income', 'name': 'Forventet inntekt',
                 'before_ore': data['expected_income_ore'], 'after_ore': income}]

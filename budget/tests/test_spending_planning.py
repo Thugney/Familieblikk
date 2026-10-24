@@ -303,7 +303,7 @@ class SpendingPlanningTests(TestCase):
         self.assertEqual(run_scoped(self.area, sp.preview, self.admin, draft)['totals']['debt_ore'], 25000)
         run_scoped(self.area, sp.save_plan, self.admin, self.save_payload(draft))
         fresh = run_scoped(self.area, sp.planning, self.admin)
-        self.assertEqual(fresh['assets'][0]['amount_ore'], 0)
+        self.assertEqual(fresh['assets'][0]['amount_ore'], 25000)
         self.assertEqual(fresh['assets'][0]['obligation_ore'], 25000)
         self.assertEqual(fresh['totals']['debt_ore'], 25000)
 
@@ -325,19 +325,19 @@ class SpendingPlanningTests(TestCase):
         from budget.services import prepare_month, fund_balance
         fund = Asset.objects.create(household=self.house, created_by=self.admin, kind='fund', name='Årsplan',
                         opening_date=date(2026, 9, 1), opening_ore=0, target_ore=120000)
-        projected = sp.fund_available_before(self.house, fund, date(2026, 12, 1), [])
+        projected = sp.fund_available_before(self.house, fund, date(2026, 12, 1))
         self.assertEqual(projected, 30000)  # September, October and November, including unmaterialized September.
         self.assertEqual(MonthPlan.objects.count(), 0)
         prepare_month(self.house, date(2026, 11, 1))
         self.assertEqual(projected, fund_balance(fund, date(2026, 11, 30)))
-        self.assertEqual(sp.fund_available_before(self.house, fund, date(2026, 12, 1), []), projected)
+        self.assertEqual(sp.fund_available_before(self.house, fund, date(2026, 12, 1)), projected)
 
     def test_fund_forecasts_missing_months_from_explicit_anchor_exactly_once(self):
         from budget.services import prepare_month, fund_balance
         fund = Asset.objects.create(household=self.house, created_by=self.admin, kind='fund', name='Månedsplan',
                         opening_date=date(2026, 8, 1), opening_ore=5000)
         MonthPlan.objects.create(household=self.house, created_by=self.admin, asset=fund, month=date(2026, 8, 1), amount_ore=10000)
-        projected = sp.fund_available_before(self.house, fund, date(2026, 12, 1), [])
+        projected = sp.fund_available_before(self.house, fund, date(2026, 12, 1))
         self.assertEqual(projected, 45000)  # Existing August plus missing September, October and November.
         self.assertEqual(MonthPlan.objects.count(), 1)
         prepare_month(self.house, date(2026, 11, 1))
@@ -348,7 +348,7 @@ class SpendingPlanningTests(TestCase):
         fund = Asset.objects.create(household=self.house, created_by=self.admin, kind='fund', name='Senere plan',
                         opening_date=date(2026, 9, 1), opening_ore=0, target_ore=120000)
         MonthPlan.objects.create(household=self.house, created_by=self.admin, asset=fund, month=date(2026, 11, 1), amount_ore=20000)
-        projected = sp.fund_available_before(self.house, fund, date(2026, 12, 1), [])
+        projected = sp.fund_available_before(self.house, fund, date(2026, 12, 1))
         self.assertEqual(projected, 20000)
         self.assertEqual(MonthPlan.objects.count(), 1)
         prepare_month(self.house, date(2026, 11, 1))

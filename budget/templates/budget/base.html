@@ -78,13 +78,13 @@
     </header>
 
     {% accessible_financial_areas as header_areas %}
-    {% if header_areas %}<div class="fam-bar-wrap"><nav class="fam-bar" aria-label="Dine budsjetter">{% for item in header_areas %}<a class="fam-pill{% if item.is_current %} on{% endif %}" href="{{ item.open_url }}" {% if item.is_current %}aria-current="true"{% endif %}><span class="dot" style="background:{{ item.dot_color }}" aria-hidden="true"></span><span>{{ item.name }}</span><span class="fam-access-tag">{% if not item.can_write %}Kun innsyn{% else %}{{ item.kind_label }}{% endif %}</span></a>{% endfor %}</nav><a class="fam-tilgang" href="{% url 'financial_areas' %}">🔒 Tilgangsregler</a></div>{% endif %}
+    {% if header_areas %}<div class="fam-bar-wrap"><nav class="fam-bar" aria-label="Dine budsjetter">{% for item in header_areas %}<a class="fam-pill{% if item.is_current %} on{% endif %}" href="{{ item.open_url }}" {% if item.is_current %}aria-current="true"{% endif %}><span class="dot" style="background:{{ item.dot_color }}" aria-hidden="true"></span><span>{{ item.name }}</span><span class="fam-access-tag">{% if not item.can_write %}Kun innsyn{% else %}{{ item.kind_label }}{% endif %}</span></a>{% endfor %}</nav><a class="fam-tilgang" href="{% url 'financial_areas' %}?manage=1">🔒 Tilgangsregler</a></div>{% endif %}
 
     {% block hero %}{% endblock %}
 
     <div class="sheet">
       <div class="messages" aria-live="polite">{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}</div>
-      <details class="push-disclosure"{% if page == 'varsler' %} open{% endif %}><summary>Varsler på denne enheten</summary>{% include 'budget/push_preferences.html' %}<p><a href="{% url 'page' 'varsler' %}">Se varsler og enhetsinnstillinger</a></p></details>
+      <details class="push-disclosure" data-push-disclosure{% if page == 'varsler' %} open{% endif %}><summary>Varsler på denne enheten</summary>{% include 'budget/push_preferences.html' %}<p><a href="{% url 'page' 'varsler' %}">Se varsler og enhetsinnstillinger</a></p></details>
 {% else %}
 <div class="auth-shell">
 {% endif %}

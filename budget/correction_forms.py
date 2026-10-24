@@ -16,11 +16,13 @@ class CorrectionForm(forms.Form):
     amount = MoneyField(label='Beløp NOK', required=False)
     due_date = forms.DateField(label='Forfall', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     category = forms.ModelChoiceField(label='Kategori', required=False, queryset=Category.objects.none())
-    start = forms.DateField(label='Virkningsdato (fra og med)', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    start = forms.DateField(label='Endringen gjelder fra og med', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
 
     def __init__(self, *args, member, row, kind, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['category'].queryset = access.category_choices(member, Category.objects.filter(household=member.household))
+        if kind in ('bill', 'series'):
+            self.fields['category'].help_text = 'Du retter en regning, altså penger ut. En lønnskategori gjør den ikke til inntekt. Er dette lønn, avbryt feilført regning og kontroller inntektspostene. Ved gjentakelse må du også stoppe fremtidig serie.'
         if kind == 'bill':
             choices = [('correct', 'Rett denne regningen'), ('cancel', 'Avbryt feilført regning'), ('restore', 'Gjenopprett / angre endring')]
             self.fields.pop('start')
@@ -55,7 +57,7 @@ class ExportForm(forms.Form):
     def __init__(self, *args, member, kind, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['category'].queryset = access.category_choices(member, Category.objects.filter(household=member.household))
-        self.fields['status'].choices = [('', 'Alle')] + ([('unpaid', 'Ubetalt'), ('paid', 'Betalt'), ('cancelled', 'Avbrutt')] if kind == 'bill' else [('active', 'Aktiv'), ('reversed', 'Reversert')])
+        self.fields['status'].choices = [('', 'Alle')] + ([('unpaid', 'Ubetalt'), ('paid', 'Betalt'), ('cancelled', 'Avbrutt')] if kind == 'bill' else [('active', 'Aktiv'), ('reversed', 'Angret')])
 
     def clean(self):
         data = super().clean()

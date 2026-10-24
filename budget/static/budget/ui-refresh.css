@@ -1720,3 +1720,45 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green-pri); ou
     padding: 0;
   }
 }
+
+/* Budget management: reuse the accepted Figtree and green application surfaces. */
+.budget-management { display: grid; gap: 20px; width: 100%; min-width: 0; }
+.budget-management .work-surface { margin: 0; max-width: none; }
+.budget-management-intro > p:not(.section-eyebrow) { max-width: 68ch; color: #52665e; line-height: 1.6; }
+.budget-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 26px; }
+.budget-card { display: flex; flex-direction: column; gap: 18px; padding: 24px; border: 1px solid #dce8e0; border-radius: 18px; background: #fff; min-width: 0; }
+.budget-card-top, .budget-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.budget-card-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 13px; background: #edf5ef; color: #13614a; }
+.budget-card-content { flex: 1; min-width: 0; }
+.budget-management h2 { margin: 0 0 8px; }
+.budget-management h3 { margin: 0 0 6px; font-size: 16px; }
+.budget-card h2 { font-size: 23px; overflow-wrap: anywhere; }
+.budget-card-content p, .budget-proposal-row p, .budget-history-row p { margin: 5px 0; color: #52665e; line-height: 1.5; overflow-wrap: anywhere; }
+.budget-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.budget-sharing-link { color: #13614a; font-weight: 600; padding-block: 10px; }
+.budget-shared-links { display: flex; flex-wrap: wrap; gap: 10px 24px; border-top: 1px solid #e4ebe6; margin-top: 24px; padding-top: 18px; }
+.budget-shared-links a { color: #365b4b; padding-block: 8px; }
+.budget-proposal-row { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 20px 0; border-top: 1px solid #e4ebe6; }
+.budget-proposal-row > div { min-width: 0; }
+.budget-proposal-row .btn-sec { flex-shrink: 0; }
+.budget-proposal-row .budget-proposal-status { color: #13614a; font-weight: 600; }
+.budget-disclosure > summary { cursor: pointer; padding: 6px 0; color: #173b2c; font-weight: 700; line-height: 1.5; }
+.budget-disclosure-hint { display: block; margin: 4px 0 0 18px; color: #52665e; font-size: 14px; font-weight: 400; }
+.budget-disclosure-content { margin-top: 20px; max-width: 760px; }
+.budget-disclosure-content.form-surface { padding: 0; }
+.budget-history-row { padding: 16px 0; border-top: 1px solid #e4ebe6; }
+.budget-history-count { font-weight: 400; }
+.budget-history-reason { font-size: 14px; }
+.budget-empty { grid-column: 1 / -1; padding: 24px; background: #f4f8f4; border-radius: 16px; }
+@media (max-width: 700px) {
+  .budget-card-grid { grid-template-columns: 1fr; }
+  .budget-card { padding: 20px; }
+  .budget-proposal-row { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .budget-card-actions { align-items: stretch; }
+  .budget-card-actions .btn-pri { flex: 1; justify-content: center; }
+}
+
+/* Correction links must remain legible on the green forecast surface. */
+.future-forecast .forecast-correction-links a { color: #fff; text-decoration: underline; text-underline-offset: .2em; }
+.future-forecast .forecast-correction-links { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; }
+.future-forecast .forecast-correction-links a:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }

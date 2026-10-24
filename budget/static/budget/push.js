@@ -2,6 +2,7 @@
   'use strict';
   const root = document.querySelector('[data-push-config]');
   if (!root) return;
+  const disclosure = root.closest('[data-push-disclosure]') || root;
   const restricted = root.dataset.pushRestricted === 'true';
   const status = document.getElementById('push-status');
   const enable = document.getElementById('push-enable');
@@ -20,8 +21,9 @@
   function message(text) { status.textContent = text; }
   function testMessage(text) { testStatus.hidden = false; testStatus.textContent = text; }
   function controls(active) {
-    const hidePanel = !restricted && active && bindingState === 'active' && root.dataset.pushPage !== 'varsler';
-    if (hidePanel && !root.hidden && document.activeElement === enable) document.getElementById('notification-bell').focus();
+    const hidePanel = !restricted && navigator.onLine && active && bindingState === 'active' && root.dataset.pushPage !== 'varsler';
+    if (hidePanel && !disclosure.hidden && disclosure.contains(document.activeElement)) document.getElementById('notification-bell')?.focus();
+    disclosure.hidden = hidePanel;
     root.hidden = hidePanel;
     enable.hidden = active || restricted; disable.hidden = !subscription; test.hidden = !active || restricted;
     if (supported && Notification.permission === 'denied') enable.hidden = true;
@@ -174,7 +176,7 @@
   }
   recheck.addEventListener('click', startReceiptCheck);
   window.addEventListener('online', async () => { await Promise.all([refreshDevice(), refreshUnread(), lastDelivery ? startReceiptCheck() : Promise.resolve()]); });
-  window.addEventListener('offline', () => { controls(Boolean(deviceId)); root.hidden = false; message('Du er frakoblet. Koble til før du endrer varsler.'); });
+  window.addEventListener('offline', () => { controls(Boolean(deviceId)); message('Du er frakoblet. Koble til før du endrer varsler.'); });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden') { refreshDevice(); refreshUnread(); if(lastDelivery) startReceiptCheck(); }
     else { clearTimeout(summaryTimer); unreadGeneration++; clearTimeout(receiptTimer); receiptGeneration++; }

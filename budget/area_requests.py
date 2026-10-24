@@ -75,6 +75,8 @@ def area_boundary(view, name):
         if len(set(values)) > 1 or len(request.GET.getlist('area')) > 1 or len(request.POST.getlist('area')) > 1:
             raise PermissionDenied('Motstridende målbudsjett. Last siden på nytt.')
         area_id = values[0] if values else None
+        if values and not area_id:
+            raise PermissionDenied('Ugyldig målbudsjett. Velg et budsjett på nytt.')
         if not area_id:
             if optional:
                 return view(request, *args, **kwargs)

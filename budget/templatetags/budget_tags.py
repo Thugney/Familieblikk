@@ -18,15 +18,78 @@ def loader_static(name):
 @register.inclusion_tag('budget/workflow_links.html')
 def workflow_links(member, row):
     from budget import access
-    from budget.models import Document, Entry, BillOccurrence, ShoppingTrip
-    documents, trips = [], []
+    from django.core.exceptions import PermissionDenied
+    from django.db.models import Q
+    from budget.models import Document, Entry, BillOccurrence, BillTemplate, ShoppingTrip
+    from budget.entry_presentation import related_url, history_url, row_date, document_label
+    links = []
+    access.require_row(member, row)
+
+    def add(target, label, url, status=''):
+        try:
+            access.require_row(member, target)
+        except PermissionDenied:
+            return
+        links.append({'label': label, 'url': url, 'status': status})
+
+    document_filter = Q(pk__in=[])
     if isinstance(row, Entry):
-        documents = access.safe_rows(member, Document.objects.filter(entry=row))
+        document_filter = Q(entry=row)
+        if row.occurrence_id:
+            bill = row.occurrence
+            add(bill, 'Regning: ' + bill.name, history_url(bill, 'bill'))
+            document_filter |= Q(bill=bill)
+        if row.original_id:
+            original = row.original
+            add(original, 'Opprinnelig betaling: ' + original.description, history_url(original),
+                'Registrert' if original.active else 'Angret – teller ikke i budsjettet')
+        for refund in access.safe_rows(member, row.refunds.all()).order_by('effective_date', 'sequence'):
+            add(refund, 'Penger tilbake: ' + refund.description, history_url(refund),
+                'Registrert' if refund.active else 'Angret – teller ikke i budsjettet')
         if access.allows(member, 'shopping'):
-            trips = ShoppingTrip.objects.filter(household=member.household, entry=row)
-    elif isinstance(row, BillOccurrence):
-        documents = access.safe_rows(member, Document.objects.filter(bill=row))
-    return {'documents': documents, 'trips': trips}
+            for trip in access.safe_rows(member, ShoppingTrip.objects.filter(entry=row)):
+                add(trip, 'Handletur: ' + trip.store,
+                    related_url(row, 'shopping_detail', [trip.shopping_list_id], anchor='trip-' + str(trip.pk)))
+                if trip.receipt_id:
+                    document_filter |= Q(pk=trip.receipt_id)
+    elif isinstance(row, (BillOccurrence, BillTemplate)):
+        if isinstance(row, BillOccurrence):
+            document_filter = Q(bill=row)
+            add(row.template, 'Regningsoppsett: ' + row.name,
+                related_url(row.template, 'correction_history', ['series', row.template_id], day=row.due_date))
+            for payment in access.safe_rows(member, row.payments.all()).order_by('effective_date', 'sequence'):
+                add(payment, 'Betalingspost: ' + payment.description, history_url(payment),
+                    'Registrert' if payment.active else 'Angret – teller ikke i budsjettet')
+    if getattr(row, 'asset_id', None):
+        asset = row.asset
+        page = {'savings': 'sparing', 'debt': 'gjeld', 'fund': 'arsutgifter', 'recipient': 'utland'}.get(asset.kind)
+        label = {'savings': 'Sparemål', 'debt': 'Gjeld', 'fund': 'Årsutgift', 'recipient': 'Mottaker'}.get(asset.kind)
+        if page:
+            anchor = ('debt-' if asset.kind == 'debt' else 'asset-') + str(asset.pk)
+            add(asset, label + ': ' + asset.name, related_url(asset, 'page', [page], day=row_date(row), anchor=anchor))
+    for document in access.safe_rows(member, Document.objects.filter(document_filter)).distinct():
+        add(document, document_label(document), related_url(document, 'document_detail', [document.pk], day=row_date(row)))
+    return {'links': links}
+
+@register.simple_tag
+def detail_url(row, kind='entry'):
+    from budget.entry_presentation import history_url
+    return history_url(row, kind)
+
+@register.filter
+def entry_label(value):
+    from budget.entry_presentation import ENTRY_LABELS
+    return ENTRY_LABELS.get(value, value)
+
+@register.filter
+def asset_label(value):
+    from budget.entry_presentation import ASSET_LABELS
+    return ASSET_LABELS.get(value, value)
+
+@register.filter
+def bill_label(value):
+    from budget.entry_presentation import BILL_LABELS
+    return BILL_LABELS.get(value, value)
 
 @register.filter
 def allows_module(member, module):
@@ -102,7 +165,7 @@ def debt_navigation_query(context):
 @register.simple_tag(takes_context=True)
 def module_navigation(context, member):
     modules = member.household.modules
-    links = [('regninger', 'Regninger & historikk', None), ('gjeld', 'Gjeld & strategi', 'debt'), ('arsutgifter', 'Årsutgifter (Fond)', 'fund'), ('utland', 'Sendt utenlands', 'remittance'), ('arsoversikt', 'Årsoversikt (Matrise)', 'annual_navigation'), ('familie', 'Familie & tilgang', None), ('tilpass', 'Tilpass appen', None), ('varsler', 'Varsler & Web Push', None), ('import', 'Mer / Kildeimport', None)]
+    links = [('regninger', 'Regninger & historikk', None), ('gjeld', 'Gjeld & strategi', 'debt'), ('arsutgifter', 'Årsutgifter', 'fund'), ('utland', 'Sendt utenlands', 'remittance'), ('arsoversikt', 'Årsoversikt', 'annual_navigation'), ('familie', 'Familie & tilgang', None), ('tilpass', 'Tilpass appen', None), ('varsler', 'Varsler', None), ('import', 'Mer / Kildeimport', None)]
     links = [link for link in links if link[0] != 'import' or can_access_private_import(context)]
     from budget.access import visible_page, complete_finance
     return [(key, 'Årsoversikt' if key == 'arsoversikt' and not complete_finance(member) else label)

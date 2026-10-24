@@ -93,7 +93,7 @@ class OverviewPresentationTests(SimpleTestCase):
     def context(self, savings=True):
         today = date(2026, 10, 21)
         bills = [SimpleNamespace(name=f'Regning {i}', due_date=today, payment=None,
-                                 amount_ore=100, accounting_class='ordinary', pk=uuid4()) for i in range(5)]
+                                 amount_ore=100, accounting_class='ordinary', pk=uuid4(), financial_area_id=uuid4()) for i in range(5)]
         return {'totals': dict(ordinary=200, bills=100, savings=50, debt=25, funds=25, available=600,
                                income=1000, expected=100, released=0, daily=None, gross_deposits=50, planned_savings=50),
                 'household': SimpleNamespace(modules={'savings_dashboard': savings}),

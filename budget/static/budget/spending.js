@@ -30,7 +30,16 @@
     return amount;
   }
   function entryUrl(value, origin) {
-    try { const url=new URL(value,origin); return url.origin===origin && /^\/endre\/entry\/[\da-f-]{36}\/$/i.test(url.pathname) ? url.href : null; }
+    try {
+      const url = new URL(value, origin), uuid = '[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}';
+      const area = url.searchParams.getAll('area'), month = url.searchParams.getAll('month');
+      const valid = url.origin === origin && !url.username && !url.password && !url.hash &&
+        new RegExp('^/historikk/entry/' + uuid + '/$', 'i').test(url.pathname) &&
+        area.length === 1 && new RegExp('^' + uuid + '$', 'i').test(area[0]) &&
+        month.length === 1 && /^\d{4}-(0[1-9]|1[0-2])$/.test(month[0]) &&
+        [...url.searchParams.keys()].every(key => key === 'area' || key === 'month');
+      return valid ? url.href : null;
+    }
     catch (_) { return null; }
   }
   // Invalidating at input time prevents a previous response winning during debounce.
@@ -59,8 +68,8 @@
   const spendingGate = requestGate(), annualGate = requestGate(), planningGate = requestGate(), detailGate = requestGate();
   const monthName = value => new Intl.DateTimeFormat('nb-NO', {month:'long',year:'numeric',timeZone:'Europe/Oslo'}).format(new Date(value + '-15T12:00:00Z'));
   const dateName = value => new Intl.DateTimeFormat('nb-NO', {day:'numeric',month:'long',year:'numeric',timeZone:'Europe/Oslo'}).format(new Date(value + 'T12:00:00Z'));
-  const sourceNames = {missing: 'Ukjent – fyll inn beløp', existing_plan: 'Eksisterende målplan', history: 'Valgt historikk', confirmed_commitment: 'Bekreftet forpliktelse', manual: 'Manuelt beløp'};
-  const kindNames = {expense:'Utgift',refund:'Refusjon',remittance:'Overføring til utlandet'};
+  const sourceNames = {missing: 'Ukjent – fyll inn beløp', existing_plan: 'Lagret månedsplan', expected_entries: 'Fra registrert forventet inntekt', history: 'Valgt historikk', confirmed_commitment: 'Kjent betaling eller plan', manual: 'Manuelt beløp'};
+  const kindNames = {expense:'Utgift',refund:'Penger tilbake',remittance:'Overføring til utlandet'};
   function el(tag, attributes = {}, children = []) {
     const node = document.createElement(tag);
     for (const [key, value] of Object.entries(attributes)) {
@@ -130,7 +139,7 @@
       const title=document.createElementNS(ns,'title');title.textContent=monthName(r.month)+': '+(r.amount_ore===null?'Mangler grunnlag':money(r.amount_ore))+(r.status==='partial'?' · ufullstendig måned':'');mark.append(title);
       shape('text',{x:center,y:247,'text-anchor':'middle'},new Intl.DateTimeFormat('nb-NO',{month:'short',timeZone:'Europe/Oslo'}).format(new Date(r.month+'-15T12:00:00Z')));
     });
-    holder.append(p('Beløpsskala: '+money(low)+' til '+money(high)+'.','sp-note'),svg,p('Rødt og minustegn viser netto tilbakebetaling. En strek betyr manglende grunnlag; den betyr ikke 0 kr. Pågående måneder er ufullstendige.'));
+    holder.append(p('Beløpsskala: '+money(low)+' til '+money(high)+'.','sp-note'),svg,p('Rødt og minustegn betyr at du har fått mer tilbake enn du har brukt. En strek betyr manglende grunnlag; den betyr ikke 0 kr. Pågående måneder er ufullstendige.'));
     const details = el('details',{},[el('summary',{text:'Vis månedstall som tekst'})]), list = el('ul',{class:'sp-entries'});
     for (const r of rows) list.append(el('li',{class:'sp-entry'},[el('span',{},[monthName(r.month),el('small',{text:r.status==='partial'?'Ufullstendig måned':r.status==='missing'?'Mangler registrert grunnlag':'Registrerte poster'})]),el('strong',{text:money(r.amount_ore)})]));
     details.append(list); holder.append(details); return holder;
@@ -154,7 +163,7 @@
       metric('Utgifter i valgt utvalg',money(result.total_ore),`${result.pagination.count} poster · ${dateName(result.period.start)} – ${dateName(result.period.end)}`),
       metric(result.restricted_selection ? 'Tillatte utgifter i perioden' : 'Alle utgifter i perioden',money(result.period_total_ore ?? result.total_ore),'Før kategori- og søkefilter'),
       metric('Kategorier med treff',String(result.categories.filter(c=>c.entry_count>0).length),result.period.to_today?'Perioden er avgrenset til i dag':'Hele det valgte tidsrommet')]);
-    const left = el('section',{class:'sp-section'},[el('h2',{text:'Hvor gikk pengene?'}),p('Hele utvalget, kategori for kategori. Trykk for detaljer.'),breakdown(result.categories,c=>openDetail(c,currentFilters())),p('Søylene sammenligner registrerte beløp. Refusjoner reduserer forbruk på refusjonsdatoen. 0 kr betyr registrert null eller ingen treff i dette utvalget.')]);
+    const left = el('section',{class:'sp-section'},[el('h2',{text:'Hvor gikk pengene?'}),p('Hele utvalget, kategori for kategori. Trykk for detaljer.'),breakdown(result.categories,c=>openDetail(c,currentFilters())),p('Søylene sammenligner registrerte beløp. Penger du får tilbake reduserer forbruket på datoen de kom inn. 0 kr betyr registrert null eller ingen treff i dette utvalget.')]);
     const income = el('div',{class:'sp-income'},[el('h3',{text:'Inntekt i perioden'}),p(result.income.label),row('Faktisk mottatt',money(result.income.received_ore)),row('Forventet / ikke mottatt',money(result.income.expected_entries_ore))]);
     if (result.income.forecast_ore !== null) income.append(row('Forventet inntekt i månedsplan',money(result.income.forecast_ore),result.income.forecast_scope||'Planbeløpet gjelder hele budsjettmåneder, separat fra mottatte penger.'));
     const right = el('section',{class:'sp-section'},[el('h2',{text:'Utvikling måned for måned'}),p('Samme periode, kategorier og søketekst'),chart(result.trend,'Utgifter i valgt utvalg'),income]);
@@ -215,28 +224,28 @@
     history.append(options,p('', 'sp-note'),button('Bruk forslag',applyHistory)); history.querySelector('p').id='sp-history-label';
     if(!plan.history_options.length) history.append(p('Ingen avsluttede kildemåneder er tilgjengelige. Legg inn familiens planbeløp manuelt.'));
     const income=el('section',{class:'sp-plan-section'},[el('h3',{text:'1. Forventet inntekt'}),p('Planlagt inntekt er ikke mottatte penger. Beløpet endrer ikke dagens «igjen å bruke».'),amountInput('Forventet samlet inntekt',draft.expected_income_ore,plan.income_source,'income','income')]);
-    const fixed=el('section',{class:'sp-plan-section'},[el('h3',{text:'2. Faste regninger og planer'}),p('Hver forpliktelse trekkes én gang i riktig del av regnestykket. Øvrige kategoribeløp nedenfor kommer i tillegg til ordinære faste regninger.')]);
+    const fixed=el('section',{class:'sp-plan-section'},[el('h3',{text:'2. Faste regninger og planer'}),p('Regninger og planer trekkes fra én gang. Annet planlagt forbruk nedenfor kommer i tillegg til de faste regningene.')]);
     const ordinary=plan.commitments.filter(c=>c.accounting_class==='ordinary');
     for(const item of ordinary)fixed.append(row(item.name,money(item.amount_ore),'Fast regning · '+dateName(item.due_date)+(item.overdue?' · ubetalt fra tidligere måned':'')));
     if(!ordinary.length)fixed.append(p('Ingen ordinære faste regninger er registrert.'));
     for(const asset of plan.assets) {
       const value=draft.assets.find(r=>r.id===asset.id).amount_ore;
-      let note={savings:'Sparing',debt:'Gjeldsplan',fund:'Fondsavsetning / påfyll'}[asset.kind];
-      if(asset.obligation_ore)note+=' · kjent forpliktelse '+money(asset.obligation_ore);
-      if(asset.available_balance_ore!==null)note+=' · eksisterende saldo '+money(asset.available_balance_ore)+' er ikke inntekt';
+      let note={savings:'Sparing',debt:'Gjeldsplan',fund:'Penger til årsutgifter'}[asset.kind];
+      if(asset.obligation_ore)note+=' · kjent betaling '+money(asset.obligation_ore);
+      if(asset.available_balance_ore!==null)note+=' · beregnet beløp til årsutgifter '+money(asset.available_balance_ore)+' (inkluderer tidligere planer; er ikke ny inntekt)';
       fixed.append(amountInput(asset.name,value,asset.source,'asset',asset.id,note));
     }
-    if(!plan.assets.length)fixed.append(p('Ingen sparemål, gjeldsplaner eller fondsavsetninger er konfigurert. Opprett dem via «Sparemål og planer».'));
+    if(!plan.assets.length)fixed.append(p('Ingen sparemål, gjeldsplaner eller planer for årsutgifter er lagt inn. Opprett dem via «Sparemål og planer».'));
     const variable=el('section',{class:'sp-plan-section'},[el('h3',{text:'3. Plan for øvrig forbruk'}),p('Beløpene er den variable delen. Faste regninger ovenfor legges ikke til en gang til.')]);
     for(const category of plan.categories) {
-      const note=`${category.observations} historiske observasjoner`+(category.historical_average_ore!==null?' · netto snitt '+money(category.historical_average_ore):'')+(category.fixed_ore?' · faste regninger '+money(category.fixed_ore)+' vises separat':'');
+      const note=`${category.observations} registrerte poster`+(category.historical_average_ore!==null?' · månedlig gjennomsnitt etter penger tilbake '+money(category.historical_average_ore):'')+(category.fixed_ore?' · faste regninger '+money(category.fixed_ore)+' vises separat':'');
       variable.append(amountInput(category.name,draft.categories.find(r=>r.id===category.id).other_ore,category.source,'category',category.id,note));
     }
     if(!plan.categories.length)variable.append(p('Familien har ingen forbrukskategorier ennå. Opprett kategorier før dere fordeler forbruk.'));
     const unknown=el('section',{class:'sp-plan-section'},[el('h3',{text:'Hva vet vi ikke ennå?'}),p('Ferier, prisendringer og engangsutgifter kan mangle. Uavklarte importutkast inngår ikke. Gå gjennom grunnlaget og egne planer før dere lagrer. Tidligere overskudd overføres ikke som inntekt.')]);
     const ack=el('input',{type:'checkbox',id:'sp-ack',checked:draft.acknowledge_incomplete}); ack.addEventListener('change',()=> { draft.acknowledge_incomplete=ack.checked; markDirty(); updateEquation(); });
     if(plan.coverage.requires_acknowledgement)unknown.append(el('label',{class:'sp-ack',for:'sp-ack'},[ack,'Jeg har gjennomgått det begrensede grunnlaget.']));
-    const summary=el('aside',{class:'sp-plan-summary'},[el('h3',{text:'Slik henger planen sammen'}),el('div',{id:'sp-equation','aria-live':'polite'}),el('div',{class:'sp-actions'},[el('button',{type:'submit',id:'sp-review',text:'Gjennomgå og lagre',hidden:!plan.can_save}),button('Forkast utkast',discardDraft)]),p(plan.can_save?'Ingenting lagres før du bekrefter målmåned og endringsoversikt.':'Alle familiemedlemmer kan lage og drøfte utkast. Bare administrator kan lagre felles plan.')]);
+    const summary=el('aside',{class:'sp-plan-summary'},[el('h3',{text:'Slik henger planen sammen'}),el('div',{id:'sp-equation','aria-live':'polite'}),el('div',{class:'sp-actions'},[el('button',{type:'submit',id:'sp-review',text:'Gjennomgå og lagre',hidden:!plan.can_save}),button('Forkast utkast',discardDraft)]),p(plan.can_save?'Ingenting lagres før du bekrefter målmåned og endringsoversikt.':'Alle familiemedlemmer kan lage og drøfte utkast. Du trenger skrivetilgang til dette budsjettet for å lagre planen.')]);
     $('#sp-plan-content').replaceChildren(cover,history,el('div',{class:'sp-plan-grid'},[el('div',{},[income,fixed,variable,unknown]),summary]));
     updateHistoryLabel(); updateEquation();
   }
@@ -244,12 +253,12 @@
   function equationContent(totals, income) {
     const content=el('div',{class:'sp-equation'});
     content.append(row('Forventet inntekt',money(income)));
-    for(const [key,label] of [['ordinary_fixed_ore','− Faste regninger'],['other_categories_ore','− Øvrig forbruk'],['savings_ore','− Sparing'],['debt_ore','− Gjeldsplan'],['funds_ore','− Fondsavsetning / påfyll']])content.append(row(label,money(totals[key])));
+    for(const [key,label] of [['ordinary_fixed_ore','− Faste regninger'],['other_categories_ore','− Øvrig forbruk'],['savings_ore','− Sparing'],['debt_ore','− Gjeldsplan'],['funds_ore','− Penger til årsutgifter']])content.append(row(label,money(totals[key])));
     if(totals.planned_remainder_ore===null)content.append(p('Fyll ut grunnlaget. Et tomt felt betyr ukjent, ikke 0 kr.','sp-warning'));
     else content.append(el('div',{class:'sp-residual'+(totals.planned_remainder_ore<0?' sp-negative':'')},[p(totals.planned_remainder_ore<0?'Planlagt underskudd':'Ufordelt i månedsplanen','sp-eyebrow'),el('strong',{class:'sp-amount','data-sp-remainder':'',text:money(totals.planned_remainder_ore)}),p(totals.planned_remainder_ore<0?'Planen bruker mer enn forventet inntekt. Juster beløpene eller avklar inntekten.':'Dette er forventet handlingsrom, ikke penger tilgjengelig nå.')]));
     return content;
   }
-  function updateEquation() { const totals=equation(plan,draft); $('#sp-equation').replaceChildren(equationContent(totals,draft.expected_income_ore)); $('#sp-review').disabled=saving||!navigator.onLine||totals.planned_remainder_ore===null||(plan.coverage.requires_acknowledgement&&!draft.acknowledge_incomplete); for(const label of $$('[data-sp-contribution]')){const asset=plan.assets.find(a=>a.id===label.dataset.spContribution),amount=draft.assets.find(a=>a.id===asset.id).amount_ore; label.textContent='Trekk i prognosen: '+money(assetContribution(asset,amount))+(asset.kind==='debt'?' · minst kjent gjeldsforpliktelse':asset.kind==='fund'?' · avsetning og nødvendig påfyll, eksisterende saldo medregnet':' · sparing én gang');} }
+  function updateEquation() { const totals=equation(plan,draft); $('#sp-equation').replaceChildren(equationContent(totals,draft.expected_income_ore)); $('#sp-review').disabled=saving||!navigator.onLine||totals.planned_remainder_ore===null||(plan.coverage.requires_acknowledgement&&!draft.acknowledge_incomplete); for(const label of $$('[data-sp-contribution]')){const asset=plan.assets.find(a=>a.id===label.dataset.spContribution),amount=draft.assets.find(a=>a.id===asset.id).amount_ore; label.textContent='Trekk i månedsplanen: '+money(assetContribution(asset,amount))+(asset.kind==='debt'?' · minst det som skal betales på gjelden':asset.kind==='fund'?' · satt av og nødvendig ekstra beløp, med tidligere planer og beløpet ved start':' · sparing én gang');} }
   async function loadPlan(target, force=false) {
     if(draft && !force)return;
     const token=planningGate.begin(); clearError(); status('Henter planleggingsgrunnlaget…');
@@ -262,10 +271,10 @@
     if(!historySelection.length){error('Velg minst én avsluttet kildemåned før du bruker forslag.',false);return;}
     const token=planningGate.begin(); const fingerprint=JSON.stringify(draft);clearError();status('Beregner forslag fra valgte måneder…');
     try { const result=await api(boot.urls.planning,{target_month:draft.target_month,history:historySelection.join(',')},{signal:token.signal});if(!token.current()||JSON.stringify(draft)!==fingerprint)return;
-      if(result.source_revision!==plan.source_revision){error('Grunnlaget er endret siden du startet utkastet. Hent nytt grunnlag og avstem før du bruker forslag.',false);offerReconcile();return;}
+      if(result.source_revision!==plan.source_revision){error('Grunnlaget er endret siden du startet utkastet. Hent siste tall og sammenlign før du bruker forslag.',false);offerReconcile();return;}
       const suggestedCategories=result.categories.map(c=>({...c,other_ore:c.historical_other_ore===undefined?c.other_ore:c.historical_other_ore}));
       const content=[p('Forslag fra '+result.history_months.map(monthName).join(', ')+'. Disse erstatter bare øvrige kategoribeløp i utkastet. Ingen lagring.'),coverage(result.coverage)];
-      for(const c of suggestedCategories)content.push(row(c.name,money(c.other_ore),`${c.observations} observasjoner · netto snitt ${money(c.historical_average_ore)}`));
+      for(const c of suggestedCategories)content.push(row(c.name,money(c.other_ore),`${c.observations} poster · månedlig gjennomsnitt etter penger tilbake ${money(c.historical_average_ore)}`));
       confirmDialog('Bruke historiske forslag?',content,'Bruk forslag i utkastet',()=> { draft.categories=suggestedCategories.map(c=>({id:c.id,other_ore:c.other_ore})); draft.history_months=result.history_months; draft.snapshot=result.snapshot; plan.categories=suggestedCategories; plan.coverage=result.coverage; draft.acknowledge_incomplete=false;markDirty();$('#sp-confirm').close();renderPlan();status('Forslag er lagt i utkastet. Ingenting er lagret.'); });
     }catch(e){if(token.current()&&e.name!=='AbortError')error(e.message,true,applyHistory);}
   }
@@ -279,7 +288,7 @@
       for(const change of result.changes)content.push(el('div',{class:'sp-change'},[el('span',{text:change.name}),el('strong',{text:money(change.before_ore)+' → '+money(change.after_ore)})]));
       content.push(equationContent(result.totals,result.draft.expected_income_ore));
       confirmDialog('Bekreft plan for '+monthName(result.target_month),content,'Bekreft og lagre månedsplan',savePlan);status('Kontrollert. Bekreft for å lagre.');
-    }catch(e){error(e.status===409?'Målplanen er endret av noen andre. Utkastet beholdes. Bruk «Hent nytt grunnlag og avstem» for å sammenligne før du prøver igjen.':e.message,true,()=>reviewPlan({preventDefault(){}}));if(e.status===409)offerReconcile();}
+    }catch(e){error(e.status===409?'Målplanen er endret av noen andre. Utkastet beholdes. Bruk «Hent siste tall og sammenlign» for å sammenligne før du prøver igjen.':e.message,true,()=>reviewPlan({preventDefault(){}}));if(e.status===409)offerReconcile();}
     finally{saving=false;updateEquation();}
   }
   async function savePlan() {
@@ -287,14 +296,14 @@
     saving=true;$('#sp-confirm-action').disabled=true;$('#sp-confirm-error').hidden=true;updateEquation();
     try { const result=await api(boot.urls.save,{}, {method:'POST',body:JSON.stringify({draft:preview.draft,confirmation_digest:preview.confirmation_digest,confirm:true,key:saveKey})});if(!result.saved)throw new Error('Lagring er ikke bekreftet. Utkastet beholdes.');
       const target=result.target_month;$('#sp-confirm').close();delete form.dataset.dirty;draft=structuredClone(preview.draft);preview=null;saveKey=null;await loadPlan(target,true);status('Månedsplanen for '+monthName(target)+' er lagret. Ingen inntekt eller utgift er bokført.');
-    }catch(e){$('#sp-confirm-error').hidden=false;$('#sp-confirm-error').textContent=e.status===409?'Målplanen har endret seg. Lukk og hent nytt grunnlag for å avstemme. Utkastet beholdes.':e.message+' Utkastet beholdes; prøv igjen for samme lagringsforsøk.';if(e.status===409){preview=null;offerReconcile();}}
+    }catch(e){$('#sp-confirm-error').hidden=false;$('#sp-confirm-error').textContent=e.status===409?'Målplanen har endret seg. Lukk og hent nytt grunnlag for å sammenligne. Utkastet beholdes.':e.message+' Utkastet beholdes; prøv igjen for samme lagringsforsøk.';if(e.status===409){preview=null;offerReconcile();}}
     finally{saving=false;$('#sp-confirm-action').disabled=!preview;updateEquation();}
   }
   function offerReconcile() {
     if($('#sp-reconcile'))return;
-    const b=button('Hent nytt grunnlag og avstem',async()=> {const token=planningGate.begin();try{const fresh=await api(boot.urls.planning,{target_month:draft.target_month,history:draft.history_months.join(',')},{signal:token.signal});if(!token.current())return;
+    const b=button('Hent siste tall og sammenlign',async()=> {const token=planningGate.begin();try{const fresh=await api(boot.urls.planning,{target_month:draft.target_month,history:draft.history_months.join(',')},{signal:token.signal});if(!token.current())return;
       const saved=draft.history_months.length?await api(boot.urls.planning,{target_month:draft.target_month},{signal:token.signal}):fresh;if(!token.current())return;
-      if(saved.source_revision!==fresh.source_revision){error('Grunnlaget ble endret under avstemmingen. Hent det på nytt før du fortsetter.',false);return;}
+      if(saved.source_revision!==fresh.source_revision){error('Grunnlaget ble endret mens tallene ble sammenlignet. Hent det på nytt før du fortsetter.',false);return;}
       const merged=structuredClone(fresh.draft);merged.expected_income_ore=draft.expected_income_ore;
       for(const c of merged.categories){const match=draft.categories.find(r=>r.id===c.id);if(match)c.other_ore=match.other_ore;}
       for(const a of merged.assets){const match=draft.assets.find(r=>r.id===a.id);if(match)a.amount_ore=match.amount_ore;}
@@ -314,7 +323,7 @@
     if (next === 'planning' && boot.can_plan === false || next === 'annual' && boot.can_annual === false) return;
     tab=next;clearError();
     for(const b of $$('[data-sp-tab]')) { const active=b.dataset.spTab===tab;b.setAttribute('aria-selected',active);b.tabIndex=active?0:-1;$('#sp-panel-'+b.dataset.spTab).hidden=!active; }
-    if(tab==='spending')loadSpending();else if(tab==='annual')loadAnnual();else loadPlan();
+    if(tab==='spending')loadSpending();else if(tab==='annual')loadAnnual();else loadPlan(boot.plan_month);
   }
   for(const b of $$('[data-sp-tab]'))b.addEventListener('click',()=>switchTab(b.dataset.spTab));
   $('.sp-tabs').addEventListener('keydown',e=> {const buttons=$$('[data-sp-tab]').filter(b=>!b.hidden),i=buttons.indexOf(document.activeElement);if(i<0||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?buttons.length-1:(i+(e.key==='ArrowRight'?1:buttons.length-1))%buttons.length;switchTab(buttons[next].dataset.spTab);buttons[next].focus();});

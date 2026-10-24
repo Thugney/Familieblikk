@@ -69,7 +69,18 @@ class DebtPaymentLinkTests(TestCase):
         self.assertContains(response, f'id="debt-{self.debt.pk}"')
         self.assertContains(response, f'Anslått restgjeld per {self.today:%d.%m.%Y}')
         self.assertContains(response, '750,00 kr')
-        self.assertContains(response, 'Referansesaldo')
+        self.assertContains(response, 'Beløp ved start')
+
+    def test_recurring_debt_bill_and_higher_plan_are_reserved_once_before_and_after_payment(self):
+        self.bill.template.monthly = True
+        self.bill.template.save()
+        for paid in (False, True):
+            if paid:
+                self.pay()
+            totals = services.calculate(self.house, self.month)
+            self.assertEqual(totals['bills'], 0)
+            self.assertEqual(totals['debt'], 30000)
+            self.assertEqual(totals['available'], -30000)
 
     def test_actual_refund_restores_linked_debt_estimate_without_duplicate_expense(self):
         payment = self.pay()

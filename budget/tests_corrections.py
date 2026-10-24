@@ -481,7 +481,7 @@ class BillCorrectionsTests(TestCase):
         event=CorrectionEvent.objects.filter(object_id=entry.pk).latest('id')
         self.client.force_login(self.user)
         response=self.client.post(reverse('correction',args=['entry',entry.pk]),{'operation':'restore','version':entry.version,'key':str(uuid.uuid4()),'event':event.pk})
-        for label in ('Posttype','Spareinnskudd','Restore goal','Inntektsstatus'):
+        for label in ('Posttype','Satt inn på sparing','Restore goal','Inntektsstatus'):
             self.assertContains(response,label)
         payment=services.pay_bill(self.user,self.bill.pk,self.today,uuid.uuid4(),1)
         corrections.entry_state(self.user,payment.pk,'reverse',1,uuid.uuid4())
@@ -490,7 +490,7 @@ class BillCorrectionsTests(TestCase):
         history=self.client.get(reverse('correction_history',args=['entry',payment.pk]))
         self.assertNotContains(history,f'operation=restore&amp;event={event.pk}')
         self.assertContains(history,'nyere betaling')
-        self.assertContains(history,'Økonomisk virkningsdato')
+        self.assertContains(history,'Dato i budsjettet')
 
 
 from django.test import TransactionTestCase

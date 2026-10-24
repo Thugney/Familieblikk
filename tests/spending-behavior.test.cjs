@@ -73,13 +73,21 @@ test('privacy and explicit confirmation invariants remain in frontend', () => {
   assert.match(source, /breakdown\(result\.categories,c=>openDetail\(c,params\),'sp-annual-breakdown'\)/);
 });
 
-test('category detail links allow the actual entry edit route and reject external or unrelated targets', () => {
+test('category detail links require readable history, exact area and month on the same origin', () => {
   const origin='http://localhost:4180';
-  const route='/endre/entry/01234567-89ab-cdef-0123-456789abcdef/';
+  const path='/historikk/entry/01234567-89ab-cdef-0123-456789abcdef/';
+  const area='abcdef01-2345-6789-abcd-ef0123456789';
+  const route=path+'?area='+area+'&month=2026-09';
   assert.equal(entryUrl(route,origin),origin+route);
+  assert.equal(entryUrl(origin+route,origin),origin+route);
   assert.equal(entryUrl('https://example.com'+route,origin),null);
   assert.equal(entryUrl('javascript:alert(1)',origin),null);
   assert.equal(entryUrl('/endre/asset/01234567-89ab-cdef-0123-456789abcdef/',origin),null);
+  assert.equal(entryUrl(route.replace('/historikk/', '/endre/'),origin),null);
+  for(const invalid of [path, path+'?area='+area, path+'?month=2026-09', route+'&area='+area,
+    route+'&month=2026-10', route.replace('2026-09','2026-13'), route.replace(area,'-'.repeat(36)),
+    route.replace('01234567-89ab-cdef-0123-456789abcdef','-'.repeat(36)), route+'&operation=reverse',
+    route+'#other', 'http://user:password@localhost:4180'+route]) assert.equal(entryUrl(invalid,origin),null,invalid);
 });
 
 test('actual module previews only until explicit confirmation; cancel never saves and confirm saves once',async()=>{
@@ -134,6 +142,12 @@ test('failed preview Retry repeats preview without saving',async()=>{
   await app.$('#sp-retry').click();
   assert.deepEqual(app.requests.filter(r=>r.method==='POST').map(r=>r.path),['/preview','/preview']);
   assert.equal(app.$('#sp-confirm').open,true);
+});
+
+test('future overview opens the selected plan month rather than the default next month',async()=>{
+  const app=await harness({initial_tab:'planning',plan_month:'2026-12'});
+  assert.equal(app.requests.find(r=>r.path==='/planning').target,'2026-12');
+  assert.equal(app.$('#sp-target').value,'2026-12');
 });
 
 test('annual graph supplies a visible monetary scale and exact titles for every month',async()=>{

@@ -39,7 +39,7 @@ function fixture(target='2026-11') {
 async function harness(options={}) {
   const root=new Element('section');root.setAttribute('data-spending-workspace','');
   const add=(id,parent=root,tag='div')=>{const node=new Element(tag);node.id=id;parent.append(node);return node;};
-  const boot=add('spending-boot');boot.textContent=JSON.stringify({initial_tab:options.initial_tab||'planning',can_plan:options.can_plan,can_annual:options.can_annual,month:'2026-10',urls:{spending:'/spending',planning:'/planning',preview:'/preview',save:'/save'}});
+  const boot=add('spending-boot');boot.textContent=JSON.stringify({initial_tab:options.initial_tab||'planning',plan_month:options.plan_month,can_plan:options.can_plan,can_annual:options.can_annual,month:'2026-10',urls:{spending:'/spending',planning:'/planning',preview:'/preview',save:'/save'}});
   const tabs=new Element();tabs.className='sp-tabs';root.append(tabs);
   for(const name of ['spending','annual','planning']){const b=add('sp-tab-'+name,tabs,'button');b.setAttribute('data-sp-tab',name);add('sp-panel-'+name);}
   for(const id of ['sp-status','sp-error','sp-retry','sp-results','sp-search','sp-period','sp-start','sp-end','sp-year','sp-annual-category','sp-annual-results','sp-reset','sp-dates','sp-category-summary','sp-category-options','sp-filters','sp-detail','sp-detail-title','sp-detail-content','sp-confirm','sp-confirm-title','sp-confirm-content','sp-confirm-error','sp-confirm-action'])add(id,root,['sp-detail','sp-confirm'].includes(id)?'dialog':'div');

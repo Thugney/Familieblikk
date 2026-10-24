@@ -12,7 +12,7 @@
 {% include 'budget/form_field_refresh.html' with field=form.received %}
 </div>
 <details class="entry-form-advanced" {% if form.errors or form.kind.value == 'remittance' or form.kind.value == 'refund' %}open{% endif %}>
-<summary>Flere opplysninger <span>Inntekt, refusjon og utenlandsk valuta</span></summary>
+<summary>Flere opplysninger <span>Inntekt, penger tilbake og utenlandsk valuta</span></summary>
 <div class="entry-form-extra">
 {% for field in form.visible_fields %}{% if field.name != 'kind' and field.name != 'amount' and field.name != 'description' and field.name != 'effective_date' and field.name != 'category' and field.name != 'asset' and field.name != 'received' %}
 {% include 'budget/form_field_refresh.html' with field=field %}

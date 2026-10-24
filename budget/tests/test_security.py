@@ -151,7 +151,7 @@ class FinancialWorkSecurityTests(TestCase):
 
     def test_ancient_plan_and_fund_and_debt_anchors_are_bounded(self):
         fund = Asset.objects.create(household=self.house, created_by=self.user, kind='fund', name='Fund', opening_date=date(1, 1, 1), target_ore=12000)
-        for action in (lambda: services.prepare_month(self.house, self.month), lambda: month_basis(self.house, self.month), lambda: fund_available_before(self.house, fund, self.month, [])):
+        for action in (lambda: services.prepare_month(self.house, self.month), lambda: month_basis(self.house, self.month), lambda: fund_available_before(self.house, fund, self.month)):
             with self.assertRaises(FinancialWorkLimit): action()
         self.assertFalse(MonthPlan.objects.exists())
         fund.opening_date = self.month

@@ -134,10 +134,12 @@ class ScanParserTests(SimpleTestCase):
     def test_financial_history_labels_scans_and_preserves_legacy_names(self):
         from types import SimpleNamespace
         from django.template.loader import render_to_string
+        from .entry_presentation import document_label
         rows = [SimpleNamespace(pk=uuid.uuid4(), transient=True, supplier='Testbutikk', filename=''),
                 SimpleNamespace(pk=uuid.uuid4(), transient=True, supplier='', filename=''),
                 SimpleNamespace(pk=uuid.uuid4(), transient=False, supplier='Ignored', filename='legacy.png')]
-        rendered = render_to_string('budget/workflow_links.html', {'documents': rows})
+        rendered = render_to_string('budget/workflow_links.html', {'links': [
+            {'label': document_label(row), 'url': reverse('document_detail', args=[row.pk])} for row in rows]})
         self.assertIn('Skanning: Testbutikk', rendered)
         self.assertIn('Skanning: Gjennomgåtte detaljer', rendered)
         self.assertIn('Dokument: legacy.png', rendered)

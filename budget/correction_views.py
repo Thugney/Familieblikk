@@ -17,7 +17,7 @@ from django.views.decorators.cache import never_cache
 from . import access, services, correction_services as corrections
 from .correction_forms import CorrectionForm, ExportForm
 from .models import BillOccurrence, BillTemplate, Entry, Audit, CorrectionEvent, Category, Asset
-from .views import NAV, error_text
+from .views import NAV, error_text, selected_month
 
 MODELS = {'bill': BillOccurrence, 'entry': Entry, 'series': BillTemplate}
 
@@ -36,7 +36,7 @@ def correction_view(request, kind, row_id):
     member = access.lock_member(request.user)
     row = get_row(member, kind, row_id)
     row.display_name = getattr(row, 'name', getattr(row, 'description', ''))
-    row.display_date = getattr(row, 'due_date', getattr(row, 'effective_date', None))
+    row.display_date = getattr(row, 'due_date', getattr(row, 'effective_date', getattr(row, 'first_due', None)))
     services.authorize(request.user, row)
     initial = {'version': row.version, 'key': uuid.uuid4(), 'operation': request.GET.get('operation', 'correct' if kind == 'bill' else 'revise' if kind == 'series' else 'reverse'),
                'event': request.GET.get('event'), 'name': getattr(row, 'name', ''), 'amount': Decimal(row.amount_ore) / 100,
@@ -121,7 +121,19 @@ def history_view(request, kind, row_id):
     member = access.lock_member(request.user)
     row = get_row(member, kind, row_id)
     row.display_name = getattr(row, 'name', getattr(row, 'description', ''))
-    row.display_date = getattr(row, 'due_date', getattr(row, 'effective_date', None))
+    row.display_date = getattr(row, 'due_date', getattr(row, 'effective_date', getattr(row, 'first_due', None)))
+    series_summary = None
+    if kind == 'series':
+        # The template stores the most recently written revision, which may be
+        # future-dated or inserted out of order. Resolve the displayed date.
+        row.display_date = selected_month(request)
+        enabled, values = corrections.series_state(row, row.display_date)
+        corrections.authorize_snapshot(member, BillTemplate,
+            {**corrections.snapshot(row), **values, 'archived': not enabled})
+        category = get_object_or_404(Category, pk=values['category_id'], household=member.household) if values.get('category_id') else None
+        row.display_name = values['name']
+        series_summary = {'amount_ore': values['amount_ore'], 'category': category,
+                          'enabled': enabled, 'as_of': row.display_date}
     events = corrections.visible_history(member, row)
     for event in events:
         event.display_operation = {'correct':'Regningen er rettet', 'cancel':'Feilført regning avbrutt', 'reverse':'Feilregistrering angret', 'restore':'Tidligere tilstand gjenopprettet', 'edit':'Posten er rettet', 'create':'Post registrert', 'pay':'Betaling registrert', 'archive':'Serie arkivert', 'resume':'Serie gjenopptatt', 'revise':'Fremtidig serie endret', 'series_revision':'Regning endret med serien', 'series_baseline':'Opprinnelig serie bevart'}.get(event.operation, 'Endring registrert')
@@ -130,15 +142,16 @@ def history_view(request, kind, row_id):
         event.can_restore = event.after.get('version') == event.subject.version and event.operation in ('cancel', 'correct', 'reverse', 'edit', 'restore') and event.subject_kind != 'series'
         if event.can_restore and isinstance(event.subject, Entry):
             event.restore_explanation = corrections.payment_restore_conflict(event.subject, event)
-            if event.subject.refunds.filter(active=True).exists(): event.restore_explanation = 'Rett aktive refusjoner før gjenoppretting.'
+            if event.subject.refunds.filter(active=True).exists(): event.restore_explanation = 'Rett aktive tilbakebetalinger før gjenoppretting.'
             if event.restore_explanation: event.can_restore = False
         elif event.can_restore and isinstance(event.subject, BillOccurrence) and event.subject.payment:
             event.restore_explanation = 'Angre feilregistrert betaling før denne regningen kan gjenopprettes.'
             event.can_restore = False
     # Legacy audit has no full snapshots and is never represented as restorable.
     legacy = Audit.objects.filter(household=member.household, object_id=row.pk).exists()
-    return render(request, 'budget/correction_history.html', {'title': 'Historikk', 'member': member, 'nav': NAV, 'row': row,
-        'kind': kind, 'events': events, 'legacy': legacy})
+    return render(request, 'budget/correction_history.html', {'title': 'Detaljer og endringer', 'member': member, 'nav': NAV, 'row': row,
+        'kind': kind, 'events': events, 'legacy': legacy, 'series_summary': series_summary, 'month': services.month_start(row.display_date),
+        'back_page': access.entry_page(member, row) if kind == 'entry' else 'regninger'})
 
 
 def filtered_rows(member, kind, data):
@@ -219,11 +232,11 @@ def entry_edit_preview(request, member, form, candidate):
 
 def financial_changes(member, before, after):
     labels = {'name':'Navn', 'description':'Beskrivelse', 'kind':'Posttype', 'amount_ore':'Beløp NOK',
-        'category_id':'Kategori', 'asset_id':'Mål, gjeld, fond eller mottaker', 'original_id':'Opprinnelig betaling',
-        'occurrence_id':'Tilknyttet regning', 'effective_date':'Økonomisk dato', 'due_date':'Forfall',
+        'category_id':'Kategori', 'asset_id':'Sparemål, gjeld, årsutgift eller mottaker', 'original_id':'Opprinnelig betaling',
+        'occurrence_id':'Tilknyttet regning', 'effective_date':'Dato i budsjettet', 'due_date':'Forfall',
         'received':'Inntektsstatus', 'income_attribution':'Inntekten tilhører', 'currency':'Valuta',
         'original_amount':'Opprinnelig valutabeløp', 'exchange_rate':'NOK per valutaenhet', 'fee_ore':'Gebyr NOK',
-        'accounting_class':'Regnskapsklasse', 'first_due':'Første forfall', 'monthly':'Gjentakelse',
+        'accounting_class':'Hva gjelder regningen?', 'first_due':'Første forfall', 'monthly':'Gjentakelse',
         'active':'Poststatus', 'cancelled':'Regningsstatus', 'archived':'Seriestatus'}
 
     def display(field, value):
@@ -236,10 +249,12 @@ def financial_changes(member, before, after):
             if not related: return 'Utilgjengelig kobling'
             if field != 'category_id': access.require_row(member, related)
             return getattr(related, 'name', getattr(related, 'description', ''))
-        if field == 'kind': return dict(Entry.KINDS).get(value, value)
-        if field == 'accounting_class': return {'ordinary':'Vanlig regning', 'debt':'Gjeld', 'fund':'Årsfond'}.get(value, value)
+        if field == 'kind':
+            from .entry_presentation import ENTRY_LABELS
+            return ENTRY_LABELS.get(value, value)
+        if field == 'accounting_class': return {'ordinary':'Vanlig regning', 'debt':'Gjeld', 'fund':'Penger til årsutgifter'}.get(value, value)
         if field == 'received': return 'Mottatt' if value else 'Forventet'
-        if field == 'active': return 'Aktiv' if value else 'Reversert'
+        if field == 'active': return 'Registrert' if value else 'Angret – teller ikke i budsjettet'
         if field == 'cancelled': return 'Avbrutt' if value else 'Ikke avbrutt'
         if field == 'archived': return 'Stoppet fra valgt dato' if value else 'Aktiv fra valgt dato'
         if field == 'monthly': return 'Månedlig' if value else 'Engangsregning'

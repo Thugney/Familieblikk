@@ -187,7 +187,8 @@ def page_view(request, page='oversikt'):
     if not member: return redirect('family_gate')
     month = selected_month(request)
     # The explicit annual matrix is a read-only report, including future months.
-    if page != 'arsoversikt' and getattr(request, 'financial_can_write', False): services.prepare_month(member.household, month)
+    future_overview_page = page == 'oversikt' and month > services.month_start(timezone.localdate())
+    if page != 'arsoversikt' and not future_overview_page and getattr(request, 'financial_can_write', False): services.prepare_month(member.household, month)
     house = member.household
     full_finance = access.complete_finance(member)
     totals = services.calculate(house, month) if full_finance else {}
@@ -390,9 +391,16 @@ def page_view(request, page='oversikt'):
     ctx = {'member': member, 'household': house, 'nav': NAV, 'page': page, 'title': TITLES[page], 'month': month, 'totals': totals, 'entries': entries, 'categories': categories, 'assets': assets, 'bills': bills, 'overview_filter': overview_filter, 'overview_bills': overview_bills, 'overview_entries': overview_entries, 'today': timezone.localdate(), 'comparison': comparison, 'updated': timezone.now(), 'kind_choices': Entry.KINDS, 'chart': chart, 'weekly_bars': weekly_bars, 'weekly_total': weekly_total, 'pace': pace, 'filter_form': filter_form, 'page_obj': page_obj, 'entry_query': entry_query, 'entry_scope_has_rows': entry_scope_has_rows, 'poster_status': poster_status, 'has_positive_category_spending': positive_spending > 0, 'category_count_total': category_count_total, 'category_matched_count': category_matched_count, 'category_q': category_q, 'category_status': category_status, 'category_show_all': category_show_all, 'category_expand_query': category_expand_query}
     if page == 'oversikt':
         ctx['money_control'] = money_info
+        if month > services.month_start(timezone.localdate()) and full_finance:
+            from .spending_services import planning, fixed_forecast
+            future_plan = planning(request.user, month.strftime('%Y-%m'))
+            ctx['future_overview'] = fixed_forecast(future_plan)
+            ctx['future_commitments'] = future_plan['commitments']
         ctx.update(trend_has_actual=any(point["amount"] is not None for point in month_trend), month_trend=month_trend, trend_budget=trend_budget, daily_days=daily_days, weekly_start=weekly_bars[0]["date"] if weekly_bars else None, weekly_end=weekly_bars[-1]["date"] if weekly_bars else None)
         ctx['spending_embedded'] = True
         ctx['spending_boot'] = {'initial_tab': 'spending', 'month': month.strftime('%Y-%m'), 'can_save': getattr(request, 'financial_can_write', False), 'urls': {'spending': reverse('spending_data'), 'planning': reverse('planning_data'), 'preview': reverse('planning_preview'), 'save': reverse('planning_save')}}
+        if ctx.get('future_overview'):
+            ctx['spending_boot'].update(initial_tab='planning', plan_month=month.strftime('%Y-%m'))
     if page == 'familie':
         ctx.update(members=Membership.objects.filter(household=house).select_related('user'), invitations=Invitation.objects.filter(household=house, accepted=False, revoked=False), invite_form=forms.EmailForm(), email_invitations_enabled=settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend' and bool(settings.EMAIL_HOST))
     if page == 'varsler':

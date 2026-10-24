@@ -238,8 +238,8 @@ class PlansModulesTests(TestCase):
         self.assertEqual(category['periods'][1]['budget'], 250)
         self.assertEqual(category['ytd'], 500)
         self.assertEqual(category['actual'], 500)  # Future-dated actuals wait until their effective date.
-        self.assertContains(response, 'Foreløpig disponering')
-        self.assertContains(response, 'kjente gjentakende regninger og beregnet fondspåfyll, også før månedspostene er opprettet')
+        self.assertContains(response, 'Igjen etter planer')
+        self.assertContains(response, 'kjente gjentakende regninger og penger satt av til årsutgifter, også før månedspostene er opprettet')
         december = response.context['year_rows'][11]
         self.assertFalse(december['has_data'])
         self.assertTrue(december['has_values'])

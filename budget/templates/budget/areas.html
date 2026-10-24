@@ -1,12 +1,31 @@
-{% extends 'budget/base.html' %}{% block content %}
-<section class="work-surface"><h1>Dine budsjetter</h1><p>Velg budsjettet du vil bruke. Valget gjelder denne fanen. Kalender og handlelister er felles for familien.</p>
-{% for area in areas %}<article class="row"><div><h2>{{ area.name }}</h2><p>{{ area.get_kind_display }} · {% if area.can_write %}Kan administrere{% else %}Kun innsyn{% endif %}</p><a class="button primary" href="{{ area.open_url }}">Åpne budsjett</a>{% if area.owner_id == member.pk or member.role == 'admin' %} <a href="{% url 'financial_sharing' area.pk %}">Endre deling</a>{% endif %}</div></article>{% empty %}<p>Du har ingen aktive budsjettilganger ennå. Administratorrollen gir ikke automatisk innsyn.</p>{% endfor %}
-<p><a href="{% url 'calendar' %}">Felles kalender</a> · <a href="{% url 'shopping_lists' %}">Felles handlelister</a> · <a href="{% url 'page' 'familie' %}">Familie og medlemmer</a></p></section>
-<section class="work-surface"><h2>Forslag til budsjett og deling</h2>
-<p>Den som sender forslaget, bekrefter samtidig. Den andre personen åpner samme forslag og bekrefter fra sin egen konto.</p>
-{% for proposal in proposals %}<article class="row"><div><h3><a href="{% url 'financial_proposal' proposal.pk %}">{% if proposal.kind == 'legacy' %}Oppsett av eksisterende budsjett{% else %}{{ proposal.area.name }} – endring av deling{% endif %}</a></h3>
-<p>Eier: {{ proposal.owner.user.get_full_name|default:proposal.owner.user.email }}.</p>
-{% if proposal.problem %}<p class="notice">Må gjennomgås på nytt. {{ proposal.problem }}</p>{% elif proposal.confirmed_by_me %}<p>Du har bekreftet. Venter på den andre personen.</p>{% else %}<p>Venter på din bekreftelse.</p>{% endif %}
-</div></article>{% empty %}<p>Ingen ventende forslag.</p>{% endfor %}</section>
-{% if pending %}<section class="work-surface form-surface"><h2>Fordel eksisterende budsjett</h2><p>Eksisterende økonomidata er bevart. Velg eier og eventuell deling før de åpnes i det nye budsjettsystemet. Når du sender forslaget, bekrefter du valgt eier og tilgang. Oppsettet aktiveres når eieren og én annen person har bekreftet. Finnes forslaget allerede ovenfor, åpne det for å se status.</p>{% if setup_form %}<form method="post">{% csrf_token %}{{ setup_form.as_p }}<button class="primary">Bekreft og send forslag</button></form>{% else %}<p>Familieadministratoren må starte oppsettet.</p>{% endif %}</section>{% endif %}
-{% if create_form %}<section class="work-surface form-surface"><h2>Opprett et tomt budsjett</h2><p>Du blir eier. Ingen eksisterende poster kopieres inn.</p><form method="post">{% csrf_token %}<input type="hidden" name="action" value="create">{{ create_form.as_p }}<button class="primary">Opprett budsjett</button></form></section>{% endif %}{% endblock %}
+{% extends 'budget/base.html' %}{% load budget_tags %}{% block content %}
+<div class="budget-management">
+  <section class="work-surface budget-management-intro">
+    <p class="section-eyebrow">Familie og tilgang</p>
+    <h1>Dine budsjetter</h1>
+    <p>Her ser du budsjettene du har tilgang til, og hvem som kan bruke dem. Kalender og handlelister er felles for familien.</p>
+    <div class="budget-card-grid">
+      {% for area in areas %}
+      <article class="budget-card">
+        <div class="budget-card-top"><span class="budget-card-icon" aria-hidden="true">{% nav_icon 'budsjett' %}</span><span class="s {% if area.can_write %}act{% else %}res{% endif %}">{% if area.can_write %}Kan administrere{% else %}Kun innsyn{% endif %}</span></div>
+        <div class="budget-card-content"><h2>{{ area.name }}</h2><p>{{ area.get_kind_display }} budsjett</p><p>Eier: {{ area.owner.user.get_full_name|default:area.owner.user.email }}</p></div>
+        <div class="budget-card-actions"><a class="btn-pri" href="{{ area.open_url }}">Åpne budsjett <span aria-hidden="true">→</span></a>{% if area.owner_id == member.pk or member.role == 'admin' %}<a class="budget-sharing-link" href="{% url 'financial_sharing' area.pk %}">Endre deling</a>{% endif %}</div>
+      </article>
+      {% empty %}<div class="budget-empty"><h2>Ingen tilgjengelige budsjetter ennå</h2><p>Et budsjett vises her når du eier det eller har fått tilgang. Å administrere familien gir ikke automatisk innsyn i andres økonomi.</p></div>{% endfor %}
+    </div>
+    <nav class="budget-shared-links" aria-label="Felles i familien"><a href="{% url 'calendar' %}">Felles kalender</a><a href="{% url 'shopping_lists' %}">Handlelister</a><a href="{% url 'page' 'familie' %}">Familie og medlemmer</a></nav>
+  </section>
+
+  {% if proposals %}<section class="work-surface budget-proposals" aria-labelledby="budget-proposals-heading">
+    <div class="budget-section-heading"><div><p class="section-eyebrow">Trenger bekreftelse</p><h2 id="budget-proposals-heading">Forslag til budsjett og deling</h2></div><span class="s res">{{ proposals|length }} ventende</span></div>
+    <p>Den som sender forslaget, bekrefter samtidig. Den andre personen åpner samme forslag og bekrefter fra sin egen konto.</p>
+    {% for proposal in proposals %}<article class="budget-proposal-row"><div><h3>{% if proposal.kind == 'legacy' %}Oppsett av eksisterende budsjett{% else %}{{ proposal.area.name }} – endring av deling{% endif %}</h3><p>Eier: {{ proposal.owner.user.get_full_name|default:proposal.owner.user.email }}</p><p class="budget-proposal-status">{% if proposal.confirmed_by_me %}Du har bekreftet. Venter på den andre personen.{% else %}Venter på din bekreftelse.{% endif %}</p></div><a class="btn-sec" href="{% url 'financial_proposal' proposal.pk %}">{% if proposal.confirmed_by_me %}Se status{% else %}Se gjennom forslag{% endif %}</a></article>{% endfor %}
+  </section>{% endif %}
+
+  {% if pending %}<section class="work-surface form-surface budget-setup"><h2>Fordel eksisterende budsjett</h2><p>Eksisterende økonomidata er bevart. Velg eier og eventuell deling før de åpnes i det nye budsjettsystemet. Når du sender forslaget, bekrefter du valgt eier og tilgang. Oppsettet aktiveres når eieren og én annen person har bekreftet. Finnes forslaget allerede ovenfor, åpne det for å se status.</p>{% if setup_form %}<form method="post">{% csrf_token %}{{ setup_form.as_p }}<button class="btn-pri">Bekreft og send forslag</button></form>{% else %}<p>Familieadministratoren må starte oppsettet.</p>{% endif %}</section>{% endif %}
+
+  {% if create_form %}<details class="work-surface budget-disclosure" {% if create_form.errors %}open{% endif %}><summary><span>Opprett et tomt budsjett</span><span class="budget-disclosure-hint">Et eget budsjett eller et felles budsjett</span></summary><div class="budget-disclosure-content form-surface"><p>Du blir eier. Ingen eksisterende poster kopieres inn.</p><form method="post">{% csrf_token %}<input type="hidden" name="action" value="create">{{ create_form.as_p }}<button class="btn-pri">Opprett budsjett</button></form></div></details>{% endif %}
+
+  {% if proposal_history %}<details class="work-surface budget-disclosure budget-proposal-history"><summary><span>Tidligere forslag <span class="budget-history-count">({{ proposal_history|length }})</span></span><span class="budget-disclosure-hint">Gjennomførte og utdaterte forslag</span></summary><div class="budget-disclosure-content"><p>Historikken er bevart. Utdaterte forslag endrer ingen tilganger og kan ikke bekreftes.</p>{% for proposal in proposal_history %}<article class="budget-history-row"><h3><a href="{% url 'financial_proposal' proposal.pk %}">{% if proposal.kind == 'legacy' %}Oppsett av eksisterende budsjett{% else %}{{ proposal.area.name }} – endring av deling{% endif %}</a></h3><p>{{ proposal.history_status }} · Eier: {{ proposal.owner.user.get_full_name|default:proposal.owner.user.email }}</p>{% if proposal.problem %}<p class="budget-history-reason">{{ proposal.problem }}</p>{% endif %}</article>{% endfor %}</div></details>{% endif %}
+</div>
+{% endblock %}

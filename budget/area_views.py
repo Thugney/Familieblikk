@@ -89,38 +89,51 @@ def index(request):
                 form.add_error(None, error)
             except IntegrityError:
                 form.add_error(None, ACTIVATION_ERROR)
-    proposals = list(AreaAccessChange.objects.filter(household=member.household, applied=False).select_related('owner__user', 'admin_confirmation__user', 'area'))
+    proposals = list(AreaAccessChange.objects.filter(household=member.household).select_related('owner__user', 'admin_confirmation__user', 'area'))
     if member.role != 'admin':
         proposals = [proposal for proposal in proposals if proposal.owner_id == member.pk or member.pk in participant_ids(proposal)]
     proposals.sort(key=lambda proposal: bool(proposal.owner_confirmation_id) + bool(proposal.admin_confirmation_id), reverse=True)
-    unique = {}
+    actionable, history, unique = [], [], set()
     for proposal in proposals:
         proposal.problem = areas.proposal_problem(proposal)
         proposal.confirmed_by_me = member.pk in (proposal.owner_confirmation_id, proposal.admin_confirmation_id)
-        key = (proposal.digest, bool(proposal.problem))
-        unique.setdefault(key, proposal)
-    proposals = list(unique.values())
+        if proposal.applied:
+            proposal.history_status = 'Gjennomført'
+            history.append(proposal)
+        elif proposal.problem:
+            proposal.history_status = 'Utdatert – kan ikke bekreftes'
+            history.append(proposal)
+        elif proposal.digest in unique:
+            continue
+        else:
+            unique.add(proposal.digest)
+            actionable.append(proposal)
     from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
     from django.urls import resolve, Resolver404
     from .area_requests import financial_url, FINANCIAL_NAMES, OPTIONAL_NAMES, NONFINANCIAL_PAGES, WRITE_FORM_NAMES
     destination = request.GET.get('next', '/app/oversikt/')
-    parts = urlsplit(destination)
     try:
+        parts = urlsplit(destination)
         match = resolve(parts.path)
         valid = not parts.scheme and not parts.netloc and parts.path.startswith('/') and (match.url_name in FINANCIAL_NAMES | OPTIONAL_NAMES or match.url_name == 'page' and match.kwargs.get('page') not in NONFINANCIAL_PAGES)
-    except Resolver404:
+    except (Resolver404, ValueError):
         valid = False
     if not valid:
         destination = '/app/oversikt/'
     else:
         destination = urlunsplit(('', '', parts.path, urlencode([(key, value) for key, value in parse_qsl(parts.query) if key != 'area']), parts.fragment))
-    available = list(areas.allowed_areas(member))
+    available = list(areas.allowed_areas(member).select_related('owner__user').order_by('name', 'pk'))
     if valid and match.url_name in WRITE_FORM_NAMES:
         available = [area for area in available if areas.can_write(member, area)]
     for area in available:
         area.can_write = areas.can_write(member, area)
         area.open_url = financial_url(destination, area.pk)
-    return render(request, 'budget/areas.html', context(member, areas=available, pending=pending, setup_form=form, create_form=create_form, proposals=proposals))
+    # Selection is encoded in the destination URL, never remembered as authority
+    # across tabs. POST validation and explicit management always stay visible.
+    if request.method in ('GET', 'HEAD') and request.GET.get('manage') != '1' and not pending and len(available) == 1:
+        return redirect(available[0].open_url)
+    return render(request, 'budget/areas.html', context(member, areas=available, pending=pending, setup_form=form,
+        create_form=create_form, proposals=actionable, proposal_history=history))
 
 @login_required
 def sharing(request, area_id):
@@ -140,7 +153,7 @@ def sharing(request, area_id):
             form.add_error(None, ACTIVATION_ERROR)
     return render(request, 'budget/form.html', context(member, title='Foreslå endret deling', form=form,
         explanation='Når du sender forslaget, bekrefter du den valgte tilgangen. Delingen aktiveres når budsjetteieren og én annen person har bekreftet samme forslag.',
-        submit_label='Bekreft og send forslag', back='/budsjetter/'))
+        submit_label='Bekreft og send forslag', back='/budsjetter/?manage=1'))
 
 @login_required
 def proposal(request, proposal_id):

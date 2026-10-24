@@ -70,15 +70,15 @@
   <section class="work-surface">
     <h2>Fullførte turer</h2>
     {% for trip in trips %}
-    <article class="row shopping-trip-row">
+    <article class="row shopping-trip-row" id="trip-{{ trip.id }}" tabindex="-1">
       <div>
         <h3>{{ trip.store }}</h3>
         <details><summary>Varer i denne turen</summary><ul>{% for item in trip.items %}<li>{{ item.name }} · {{ item.quantity }} · {% if item.purchased %}Kjøpt{% else %}Ikke krysset av{% endif %}</li>{% empty %}<li>Ingen bevarte varer.</li>{% endfor %}</ul></details>
         {% if trip.entry %}
           <p>{{ trip.entry.effective_date }} · <strong>{{ trip.entry.amount_ore|nok }}</strong> · <span class="ui-status {% if trip.entry.active %}actual{% else %}neutral{% endif %}">{% if trip.entry.active %}Bokført{% else %}Angret{% endif %}</span></p>
-          <p><a href="{% url 'correction_history' 'entry' trip.entry.pk %}">Utgift, retting og historikk</a></p>
+          <p><a href="{% detail_url trip.entry %}">Utgift, retting og historikk</a></p>
           {% if trip.receipt %}<p><a class="button secondary" href="{% url 'document_detail' trip.receipt.pk %}">Se koblet kvittering</a></p>{% endif %}
-          {% if trip.can_attach %}<p><a class="button secondary scan-shortcut" href="{% url 'shopping_receipt' trip.id %}">{% nav_icon 'dokumenter' %}<span>Legg til sen kvittering</span></a></p>{% endif %}
+          {% if request.financial_can_write and trip.can_attach %}<p><a class="button secondary scan-shortcut" href="{% url 'shopping_receipt' trip.id %}">{% nav_icon 'dokumenter' %}<span>Legg til sen kvittering</span></a></p>{% endif %}
         {% else %}
           <p>Fullført. Økonomiopplysninger krever separat tilgang.</p>
         {% endif %}

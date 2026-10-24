@@ -8,7 +8,7 @@ const flush = async () => { for (let n = 0; n < 6; n++) await new Promise(resolv
 
 function setup({permission='default', online=true, supported=true, ios=false, installed=false, serverState=null, browserSubscription=false, statusMode='', readyStalled=false, permissionStalled=false, unread=0, receiptState='pending', pushPage='varsler', subscriptionDeferred=false, calendarRestricted=false}={}) {
   const calls = [], requests = [], handlers = {}, controls = {}, timers = new Map(); let timerId=0, stalledAction='';
-  for (const name of ['status','enable','disable','test','recheck','test-status','notification-badge','notification-count-text','notification-bell']) controls[name] = {hidden:name !== 'status', disabled:false, textContent:'', focus(){document.activeElement=this;calls.push('focus:'+name)}, setAttribute(name,value){this[name]=value}, handlers:{}};
+  for (const name of ['status','enable','disable','test','recheck','test-status','disclosure-summary','disclosure-link','notification-badge','notification-count-text','notification-bell']) controls[name] = {hidden:name !== 'status', disabled:false, textContent:'', focus(){document.activeElement=this;calls.push('focus:'+name)}, setAttribute(name,value){this[name]=value}, handlers:{}};
   for (const name of ['enable','disable','test','recheck']) controls[name].addEventListener = (event, fn) => controls[name].handlers[event] = fn;
   const subscription = {endpoint:'https://fcm.googleapis.com/fcm/send/synthetic', options:{}, toJSON(){return {endpoint:this.endpoint,keys:{p256dh:'synthetic-public',auth:'synthetic-auth'}}}, async unsubscribe(){calls.push('unsubscribe'); current=null; return true;}};
   let current = serverState || browserSubscription ? subscription : null;
@@ -16,7 +16,8 @@ function setup({permission='default', online=true, supported=true, ios=false, in
   const reg = {pushManager:{async getSubscription(){if(subscriptionDeferred){subscriptionDeferred=false;return new Promise(resolve=>{deferredSubscription=resolve})}return current},async subscribe(options){calls.push({subscribe:options});current=subscription;return current}}};
   const navigator = {onLine:online, userAgent:ios?'iPhone':'Synthetic Browser', platform:'', maxTouchPoints:0, serviceWorker:{async register(){calls.push('register');return reg},ready:readyStalled?new Promise(()=>{}):Promise.resolve(reg)}};
   const Notification = {permission,requestPermission(){calls.push('permission');if(permissionStalled)return new Promise(()=>{});Notification.permission='granted';return Promise.resolve('granted')}};
-  const root = {hidden:true,dataset:{pushConfig:'/push/config/',pushDevice:'/push/device/',pushReceipt:'/push/receipt/',pushSummary:'/push/summary/',pushPage,pushRestricted:calendarRestricted?'true':''},querySelector(){return {value:'csrf-synthetic'}}};
+  const disclosure = {hidden:false,contains(element){return Object.entries(controls).some(([name,value])=>!name.startsWith('notification-')&&value===element)}};
+  const root = {hidden:true,dataset:{pushConfig:'/push/config/',pushDevice:'/push/device/',pushReceipt:'/push/receipt/',pushSummary:'/push/summary/',pushPage,pushRestricted:calendarRestricted?'true':''},querySelector(){return {value:'csrf-synthetic'}},closest(selector){assert.equal(selector,'[data-push-disclosure]');return disclosure}};
   let failure = false, deniedReads = null;
   const document = {visibilityState:'visible',addEventListener(name,fn){handlers[name]=fn},querySelector(){return root},getElementById(id){return controls[id.replace('push-','')]}};
   const context = {document, navigator, Notification, AbortController, setTimeout(fn,delay){timers.set(++timerId,{fn,delay});return timerId},clearTimeout(id){timers.delete(id)},window:{isSecureContext:supported,PushManager:function(){},Notification,matchMedia(){return {matches:installed}},addEventListener(name,fn){handlers[name]=fn}},Uint8Array,Promise,atob:s=>Buffer.from(s,'base64').toString('binary'),fetch:async(url,options)=>{
@@ -35,10 +36,10 @@ function setup({permission='default', online=true, supported=true, ios=false, in
     if(url==='/push/receipt/')return stalledAction==='receipt'?new Promise(()=>{}):{ok:true,json:async()=>({state:receiptState})};
     if(data.action===stalledAction || (data.action==='status'&&statusMode==='stall'))return new Promise(()=>{});
     if(data.action==='status'&&statusMode==='reject')throw Error('Synthetic rejected status');
-    return {ok:true,json:async()=>data.action==='status' ? {state:serverState || 'disabled',active:!!serverState,id:'device-id'} : {id:'device-id',state:data.action==='test'?'queued':'active',delivery_id:'test-job'}};
+    return {ok:true,json:async()=>data.action==='status' ? {state:serverState || 'disabled',active:['active','failed','retrying'].includes(serverState),id:'device-id'} : {id:'device-id',state:data.action==='test'?'queued':'active',delivery_id:'test-job'}};
   }};
   vm.runInNewContext(source,context);
-  return {calls,requests,handlers,controls,navigator,Notification,root,document,denyReads(format='json'){deniedReads=format},deferSubscription(){subscriptionDeferred=true},releaseSubscription(value=current){deferredSubscription(value)},focus(name){controls[name].focus()},setUnread(n){unread=n},setReceipt(state){receiptState=state},fail(){failure=true},stall(action){stalledAction=action},expire(delay=10000){for(const [id,t]of [...timers])if(t.delay===delay){timers.delete(id);t.fn()}},click(name){return controls[name].handlers.click()}};
+  return {calls,requests,handlers,controls,navigator,Notification,root,disclosure,document,denyReads(format='json'){deniedReads=format},deferSubscription(){subscriptionDeferred=true},releaseSubscription(value=current){deferredSubscription(value)},focus(name){controls[name].focus()},setServerState(state){serverState=state},setUnread(n){unread=n},setReceipt(state){receiptState=state},fail(){failure=true},stall(action){stalledAction=action},expire(delay=10000){for(const [id,t]of [...timers])if(t.delay===delay){timers.delete(id);t.fn()}},click(name){return controls[name].handlers.click()}};
 }
 
 test('push permission is requested only by explicit activation; test and disable target this device',async()=>{
@@ -183,18 +184,50 @@ test('failed and retrying active device warnings remain actionable on ordinary p
     assert.match(h.controls.status.textContent,serverState==='failed'?/feilet/:/forsinket/);
   }
 });
+test('the entire disclosure hides only after healthy binding and returns when health changes',async()=>{
+  const h=setup({pushPage:'oversikt',permission:'granted',serverState:'active',subscriptionDeferred:true});
+  assert.equal(h.disclosure.hidden,false);await flush();assert.equal(h.disclosure.hidden,false);
+  h.releaseSubscription();await flush();assert.equal(h.disclosure.hidden,true);
+  for(const state of ['failed','retrying','expired','disabled','unknown']){
+    h.setServerState(state);await h.handlers.online();
+    assert.equal(h.disclosure.hidden,false,state);assert.equal(h.root.hidden,false,state);
+    assert.equal(h.controls.disable.hidden,false,state);
+    h.setServerState('active');await h.handlers.online();assert.equal(h.disclosure.hidden,true);
+  }
+  h.navigator.onLine=false;h.handlers.offline();
+  assert.equal(h.disclosure.hidden,false);assert.equal(h.root.hidden,false);assert.equal(h.controls.disable.disabled,true);
+  h.navigator.onLine=true;await h.handlers.online();assert.equal(h.disclosure.hidden,true);
+  h.fail();await h.handlers.online();
+  assert.equal(h.disclosure.hidden,false);assert.equal(h.root.hidden,false);
+  assert.match(h.controls.status.textContent,/Status er ukjent/);
+  assert.equal(h.controls.disable.disabled,false);
+  assert.ok(!h.calls.includes('permission'));
+  assert.ok(!h.calls.some(x=>x&&typeof x==='object'&&(x.action==='subscribe'||x.action==='test'||x.action==='disable')));
+  const template=fs.readFileSync('budget/templates/budget/base.html','utf8');
+  assert.match(template,/<details[^>]*class="push-disclosure"[^>]*data-push-disclosure/);
+});
+test('dedicated notification settings keep the whole disclosure visible for a healthy active device',async()=>{
+  const h=setup({pushPage:'varsler',permission:'granted',serverState:'active'});await flush();
+  assert.equal(h.disclosure.hidden,false);assert.equal(h.root.hidden,false);
+  assert.equal(h.controls.disable.hidden,false);assert.equal(h.controls.test.hidden,false);
+  h.handlers.pageshow();await flush();assert.equal(h.disclosure.hidden,false);
+  assert.ok(!h.calls.includes('permission'));
+});
+
 test('delayed old getSubscription cannot overwrite a successful activation',async()=>{
   const h=setup({pushPage:'oversikt',permission:'granted'});await flush();h.deferSubscription();
   const refreshing=h.handlers.online();await flush();await h.click('enable');assert.equal(h.root.hidden,true);
   h.releaseSubscription(null);await refreshing;assert.equal(h.root.hidden,true);assert.equal(h.controls.disable.hidden,false);
   await h.click('disable');assert.ok(h.calls.some(x=>x.action==='disable'&&x.endpoint.endsWith('/synthetic')));assert.ok(h.calls.includes('unsubscribe'));
 });
-test('hiding activated panel moves focused activation to bell but preserves focus moved elsewhere',async()=>{
-  for(const moved of [false,true]){
-    const h=setup({pushPage:'oversikt',permission:'granted'});await flush();h.focus('enable');
-    const activating=h.click('enable');if(moved)h.focus('status');await activating;
-    assert.equal(h.root.hidden,true);assert.equal(h.document.activeElement,h.controls[moved?'status':'notification-bell']);
-    assert.equal(h.calls.filter(x=>x==='focus:notification-bell').length,moved?0:1);
+test('hiding the disclosure moves any focused descendant to the bell and preserves outside focus',async()=>{
+  for(const focused of ['enable','status','disable','recheck','disclosure-summary','disclosure-link','notification-count-text']){
+    const h=setup({pushPage:'oversikt',permission:'granted'});await flush();
+    const activating=h.click('enable');h.focus(focused);await activating;
+    const outside=focused==='notification-count-text';
+    assert.equal(h.root.hidden,true);assert.equal(h.disclosure.hidden,true);
+    assert.equal(h.document.activeElement,h.controls[outside?focused:'notification-bell']);
+    assert.equal(h.calls.filter(x=>x==='focus:notification-bell').length,outside?0:1);
   }
 });
 test('badge keeps private server count, caps display and refreshes on visibility and online',async()=>{

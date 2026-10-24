@@ -70,9 +70,12 @@ def shell_context(request, initial_tab='spending'):
         selected = month_value(request.GET.get('month') or service.month_key(timezone.localdate()))
     except ValidationError:
         raise Http404('Ugyldig måned') from None
+    future_month = selected > service.month_start(timezone.localdate())
+    if initial_tab != 'annual' and access.complete_finance(member) and (future_month or request.GET.get('tab') == 'planning'):
+        initial_tab = 'planning'
     return {'member': member, 'nav': NAV, 'page': 'arsoversikt' if initial_tab == 'annual' else 'budsjett',
             'title': 'Året i bilder' if initial_tab == 'annual' else 'Forbruk og plan', 'month': selected,
-            'spending_boot': {'initial_tab': initial_tab, 'urls': service.URLS, 'month': service.month_key(selected), 'can_save': getattr(request, 'financial_can_write', False),
+            'spending_boot': {'initial_tab': initial_tab, 'urls': service.URLS, 'month': service.month_key(selected), 'plan_month': service.month_key(selected) if future_month else None, 'can_save': getattr(request, 'financial_can_write', False),
                               'can_plan': access.complete_finance(member), 'can_annual': access.allows(member, 'annual'),
                               'restricted_selection': not access.complete_finance(member)}}
 

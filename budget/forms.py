@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Asset, BillTemplate, Category, Entry, MonthPlan
 from .identity import LOGIN_ERROR, MAX_PASSWORD_LENGTH
+from .entry_presentation import ENTRY_LABELS, ASSET_LABELS, BILL_LABELS
 
 
 class MoneyField(forms.DecimalField):
@@ -24,7 +25,7 @@ class EmailForm(forms.Form):
 
 class EntryFilterForm(forms.Form):
     q = forms.CharField(label='Søk i poster', max_length=120, required=False, widget=forms.TextInput(attrs={'placeholder': 'Beskrivelse, kategori eller mål'}))
-    kind = forms.ChoiceField(label='Type', required=False, choices=[('', 'Alle typer')] + Entry.KINDS)
+    kind = forms.ChoiceField(label='Type', required=False, choices=[('', 'Alle typer')] + list(ENTRY_LABELS.items()))
     category = forms.ModelChoiceField(label='Kategori', required=False, queryset=Category.objects.none(), empty_label='Alle kategorier')
     creator = forms.ChoiceField(label='Registrert av', required=False)
     date_from = forms.DateField(label='Fra dato', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
@@ -35,7 +36,7 @@ class EntryFilterForm(forms.Form):
         from .services import month_end
         super().__init__(*args, **kwargs)
         if remittances_only:
-            self.fields['kind'].choices = [('', 'Alle typer')] + [(key, label) for key, label in Entry.KINDS if key in ('remittance', 'refund')]
+            self.fields['kind'].choices = [('', 'Alle typer')] + [(key, label) for key, label in ENTRY_LABELS.items() if key in ('remittance', 'refund')]
             self.fields.pop('status')
         self.fields['category'].queryset = Category.objects.filter(household=household).order_by('name', 'id')
         self.fields['creator'].choices = [('', 'Alle familiemedlemmer')] + [(str(member.user_id), member.user.get_full_name() or member.user.email) for member in Membership.objects.filter(household=household).select_related('user').order_by('user__email', 'user_id')]
@@ -122,6 +123,12 @@ class RowForm(forms.ModelForm):
         for name, field in self.fields.items():
             if isinstance(field, forms.ModelChoiceField): field.queryset = field.queryset.model.objects.filter(household=household)
             if isinstance(field, forms.DateField): field.widget = forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d')
+        if 'kind' in self.fields and isinstance(self.instance, Entry):
+            self.fields['kind'].choices = list(ENTRY_LABELS.items())
+        if 'accounting_class' in self.fields:
+            self.fields['accounting_class'].choices = list(BILL_LABELS.items())
+            self.fields['accounting_class'].help_text = 'For lån og kredittkort: velg Gjeldsbetaling og koble til riktig gjeld. Da inngår regningen i gjeldsbeløpet én gang. En høyere månedsplan for gjelden reserverer også det planlagte ekstrabeløpet.'
+            self.fields['category'].help_text = 'En regning er penger ut. Kategorien endrer ikke dette. Lønn og andre penger inn registreres som Inntekt under Ny post.'
     def clean(self):
         result = super().clean()
         if result.get('amount') is not None: self.instance.amount_ore = int(result['amount'] * 100)
@@ -134,7 +141,7 @@ class EntryForm(RowForm):
     class Meta:
         model = Entry
         fields = ['kind', 'description', 'effective_date', 'category', 'asset', 'received', 'income_attribution', 'original', 'original_amount', 'currency', 'exchange_rate', 'fee_ore']
-        labels = {'kind': 'Type', 'description': 'Beskrivelse', 'effective_date': 'Dato', 'category': 'Kategori', 'asset': 'Mål / gjeld / fond / mottaker', 'received': 'Inntekten er mottatt', 'income_attribution': 'Inntekten tilhører (frivillig tekst)', 'original': 'Opprinnelig betaling ved refusjon', 'original_amount': 'Opprinnelig valutabeløp', 'currency': 'ISO-valuta, f.eks. EUR', 'exchange_rate': 'Bekreftet NOK per valutaenhet (tom ved faktisk NOK)', 'fee_ore': 'Separat gebyr i øre'}
+        labels = {'kind': 'Type', 'description': 'Beskrivelse', 'effective_date': 'Dato', 'category': 'Kategori', 'asset': 'Sparemål / gjeld / årsutgift / mottaker', 'received': 'Inntekten er mottatt', 'income_attribution': 'Inntekten tilhører (frivillig tekst)', 'original': 'Hvilken betaling fikk du penger tilbake for?', 'original_amount': 'Opprinnelig valutabeløp', 'currency': 'ISO-valuta, f.eks. EUR', 'exchange_rate': 'Bekreftet NOK per valutaenhet (tom ved faktisk NOK)', 'fee_ore': 'Separat gebyr i øre'}
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['command_key'].required = not self.instance._state.adding
@@ -159,7 +166,7 @@ class CategoryForm(forms.ModelForm):
 
 class AssetForm(forms.ModelForm):
     version = forms.IntegerField(widget=forms.HiddenInput, required=False, initial=0)
-    opening = MoneyField(label='Åpningssaldo / referansesaldo NOK', required=False, min_value=Decimal('0'))
+    opening = MoneyField(label='Beløp ved start i NOK', required=False, min_value=Decimal('0'))
     target = MoneyField(label='Målbeløp / årsbeløp NOK', required=False, min_value=Decimal('0'))
     plan = MoneyField(label='Månedsplan / minimum NOK', required=False, min_value=Decimal('0'))
     plan_month = forms.DateField(label='Planen gjelder fra måned (første dag)', required=False, initial=lambda: timezone.localdate().replace(day=1), widget=forms.DateInput(attrs={'type': 'date'}))
@@ -168,8 +175,13 @@ class AssetForm(forms.ModelForm):
     class Meta:
         model = Asset
         fields = ['kind', 'name', 'opening_date', 'target_date', 'annual_rate', 'country', 'archived']
-        labels = {'kind': 'Type', 'name': 'Navn', 'opening_date': 'Dato for dokumentert åpning / saldo', 'target_date': 'Måldato / forfall', 'annual_rate': 'Årlig rente i prosent', 'country': 'Land / notat', 'archived': 'Arkiver fra neste måned'}
+        labels = {'kind': 'Type', 'name': 'Navn', 'opening_date': 'Dato for beløpet ved start', 'target_date': 'Måldato / forfall', 'annual_rate': 'Årlig rente i prosent', 'country': 'Land / notat', 'archived': 'Arkiver fra neste måned'}
         widgets = {'opening_date': forms.DateInput(attrs={'type': 'date'}), 'target_date': forms.DateInput(attrs={'type': 'date'})}
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['kind'].choices = list(ASSET_LABELS.items())
+        self.fields['opening'].help_text = 'Beløpet som allerede var spart, satt av eller skyldig på startdatoen.'
+        self.fields['plan'].help_text = 'Beløpet du planlegger å sette av eller betale hver måned.'
     def clean(self):
         data = super().clean()
         self.instance.opening_ore = int((data.get('opening') or 0) * 100)
@@ -188,7 +200,7 @@ class PlanForm(RowForm):
     class Meta:
         model = MonthPlan
         fields = ['month', 'category', 'asset']
-        labels = {'month': 'Måned (første dag)', 'category': 'Kategori', 'asset': 'Mål / gjeld / fond'}
+        labels = {'month': 'Måned (første dag)', 'category': 'Kategori', 'asset': 'Sparemål / gjeld / årsutgift'}
     def clean_month(self):
         day = self.cleaned_data['month']
         if day.day != 1: raise ValidationError('Velg første dag i måneden.')
@@ -199,7 +211,7 @@ class BillForm(RowForm):
     class Meta:
         model = BillTemplate
         fields = ['name', 'first_due', 'monthly', 'category', 'accounting_class', 'asset', 'archived']
-        labels = {'name': 'Navn', 'first_due': 'Første forfall', 'monthly': 'Gjenta månedlig', 'category': 'Kategori', 'accounting_class': 'Regnskapsklasse', 'asset': 'Koblet gjeld / årsfond', 'archived': 'Stopp nye forekomster'}
+        labels = {'name': 'Navn', 'first_due': 'Første forfall', 'monthly': 'Gjenta månedlig', 'category': 'Kategori', 'accounting_class': 'Hva gjelder regningen?', 'asset': 'Koblet gjeld / penger til årsutgifter', 'archived': 'Stopp nye forekomster'}
     def clean(self):
         data = super().clean()
         kind, asset = data.get('accounting_class'), data.get('asset')
