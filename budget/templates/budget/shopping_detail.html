@@ -1,5 +1,5 @@
 {% extends 'budget/base.html' %}{% load static budget_tags %}{% block content %}
-<section class="work-surface" data-shopping-revision="{{ listing.version }}" data-preserved-draft="{% if recovered or form.is_bound %}true{% else %}false{% endif %}" data-revision-url="{% url 'shopping_revision' listing.pk %}">
+<section class="work-surface bare" data-shopping-revision="{{ listing.version }}" data-preserved-draft="{% if recovered or form.is_bound %}true{% else %}false{% endif %}" data-revision-url="{% url 'shopping_revision' listing.pk %}">
   <div class="shopping-header-top">
     <a class="back-pill" href="{% url 'shopping_lists' %}">← Alle lister</a>
     <span class="ui-status reserved">Synkronisert i familien</span>
