@@ -567,6 +567,8 @@ def edit_view(request, kind, row_id=None):
     if not row_id:
         # URL hints supply GET defaults only; submitted values use normal validation.
         if kind == 'entry' and request.GET.get('entry_kind') in dict(Entry.KINDS): initial['kind'] = request.GET['entry_kind']
+        if kind == 'entry' and initial.get('kind') == 'income' and month > services.month_start(timezone.localdate()):
+            initial['received'] = False
         if kind == 'entry' and request.GET.get('original'):
             try: original_id = uuid.UUID(request.GET['original'])
             except ValueError: raise Http404

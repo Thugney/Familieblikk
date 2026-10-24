@@ -23,6 +23,7 @@
       <p class="hero-note">{% if future_overview.source == 'existing_plan' %}Inntekten kommer fra den lagrede månedsplanen. Registrerte forventede inntektsposter vises separat nedenfor.{% elif future_overview.source == 'expected_entries' %}Inntekten kommer fra registrerte poster merket «Forventet».{% else %}Forventet inntekt er ikke registrert for denne måneden.{% endif %} Ingen inntekt er markert som mottatt av denne visningen.</p>
       <p class="hero-note">Feil i tallene? Åpne riktig del:</p>
       <p class="forecast-correction-links"><a href="{% url 'page' 'poster' %}?month={{ month|date:'Y-m' }}&amp;kind=income">Inntektsposter</a> · <a href="{% url 'page' 'regninger' %}?month={{ month|date:'Y-m' }}">Regninger</a> · <a href="{% url 'page' 'sparing' %}?month={{ month|date:'Y-m' }}">Sparing</a> · <a href="{% url 'page' 'gjeld' %}?month={{ month|date:'Y-m' }}">Gjeld</a></p>
+      {% if request.financial_can_write %}<p><a class="chip-btn" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to=oversikt&amp;entry_kind=income">Legg til lønn / inntekt</a></p>{% endif %}
     </div>
   </div>
 </section>

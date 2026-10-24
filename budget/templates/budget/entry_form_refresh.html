@@ -1,4 +1,5 @@
 {{ form.non_field_errors }}
+{% if form.kind.value == 'income' %}<p class="entry-form-note"><strong>Lønn og annen inntekt</strong> registreres her som penger inn. Kryss av «Inntekten er mottatt» bare når pengene har kommet. Hvis lønnen allerede finnes som forventet inntekt, åpne og oppdater den posten i stedet for å legge den inn på nytt.</p>{% endif %}
 {% for field in form.hidden_fields %}{{ field.errors }}{{ field }}{% endfor %}
 <div class="entry-form-main">
 {% include 'budget/form_field_refresh.html' with field=form.kind %}

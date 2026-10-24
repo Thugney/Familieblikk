@@ -134,3 +134,27 @@ class FutureOverviewTests(TestCase):
         plan = self.client.get('/app/budsjett/', {'area': self.area.pk, 'month': '2026-10', 'tab': 'planning'})
         self.assertEqual(plan.context['spending_boot']['initial_tab'], 'planning')
         self.assertIsNone(plan.context['spending_boot']['plan_month'])
+
+    def test_salary_shortcuts_open_income_in_selected_month_without_posting_receipt(self):
+        for page in ('regninger', 'oversikt'):
+            response = self.client.get(f'/app/{page}/', {'area': self.area.pk, 'month': '2026-11'})
+            self.assertContains(response, 'Legg til lønn / inntekt')
+            self.assertContains(response, 'entry_kind=income')
+        response = self.client.get('/ny/entry/', {'area': self.area.pk, 'month': '2026-11', 'entry_kind': 'income'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['form']['kind'].value(), 'income')
+        self.assertFalse(response.context['form']['received'].value())
+        self.assertContains(response, 'i stedet for å legge den inn på nytt')
+        self.assertEqual(response.context['month'], self.month)
+        with area_scope(self.member, self.area.pk):
+            self.assertFalse(Entry.objects.exists())
+        current = self.client.get('/ny/entry/', {'area': self.area.pk, 'month': '2026-10', 'entry_kind': 'income'})
+        self.assertTrue(current.context['form']['received'].value())
+
+    def test_salary_shortcut_respects_budget_module_access(self):
+        self.member.module_access = {'budget': False}
+        self.member.save()
+        bills = self.client.get('/app/regninger/', {'area': self.area.pk, 'month': '2026-11'})
+        self.assertNotContains(bills, 'Legg til lønn / inntekt')
+        denied = self.client.get('/ny/entry/', {'area': self.area.pk, 'month': '2026-11', 'entry_kind': 'income'})
+        self.assertEqual(denied.status_code, 403)
