@@ -467,6 +467,29 @@ def debt_projection(assets, strategy='avalanche', extra_ore=0):
     return {'error': 'Ikke nedbetalt innen 30 år.'}
 
 
+def debt_balance_curve(assets, strategy='avalanche', extra_ore=0):
+    """Outstanding total at start and after each month, from the same simulation as debt_projection.
+
+    Display only: it never feeds a saved plan, and returns [] whenever debt_projection would not finish.
+    """
+    if any(a.annual_rate is None for a in assets): return []
+    balances = {str(a.pk): a.opening_ore for a in assets}
+    if not any(balances.values()): return []
+    ordered = sorted(assets, key=lambda a: (-a.annual_rate, str(a.pk)) if strategy == 'avalanche' else (a.opening_ore, str(a.pk)))
+    budget = sum(getattr(a, 'minimum_ore', 0) for a in assets) + extra_ore
+    curve = [sum(balances.values())]
+    for _ in range(360):
+        for asset in assets:
+            key = str(asset.pk)
+            balances[key] += int((Decimal(balances[key]) * asset.annual_rate / Decimal(1200)).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+        amounts, _left = debt_month_allocation(assets, balances, budget, ordered)
+        for key, paid in amounts.items():
+            balances[key] -= paid
+        curve.append(sum(balances.values()))
+        if curve[-1] == 0: return curve
+    return []
+
+
 @transaction.atomic
 @financial_work_operation
 def allocate_debt_plan(actor, month, strategy, extra_ore):

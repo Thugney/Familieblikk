@@ -496,6 +496,10 @@ def page_view(request, page='oversikt'):
             if ctx['projection'] and baseline and 'interest_ore' in baseline and 'interest_ore' in ctx['projection']:
                 ctx['projection']['saved_interest'] = baseline['interest_ore'] - ctx['projection']['interest_ore']
                 ctx['projection']['completion'] = add_calendar_months(timezone.localdate(), ctx['projection']['months'])
+                curve = services.debt_balance_curve(debts, strategy, extra)
+                if len(curve) > 1 and curve[0] > 0:
+                    points = sorted({round(i * (len(curve) - 1) / 11) for i in range(12)})
+                    ctx['projection']['bars'] = [{'height': max(round(curve[i] * 100 / curve[0]), 2), 'amount': curve[i], 'month': add_calendar_months(timezone.localdate(), i)} for i in points]
         ctx['extra'] = Decimal(extra) / 100
         ctx['strategy'] = strategy
         ctx['debt_plan_form'] = forms.DebtPlanForm(initial={'month': month, 'strategy': strategy, 'extra': Decimal(extra) / 100})

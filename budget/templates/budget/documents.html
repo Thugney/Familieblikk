@@ -1,5 +1,5 @@
 {% extends 'budget/base.html' %}{% load static %}{% block head_extra %}<style>#camera-scan-form [hidden]{display:none!important}</style>{% endblock %}{% block content %}
-<section class="work-surface form-surface"><h1>Skann kvittering eller faktura</h1>
+<section class="work-surface form-surface">{% include 'budget/scan_steps.html' with step=1 %}<h1>Skann kvittering eller faktura</h1>
 <p>Ta et tydelig bilde. Vi foreslår beløp, dato og betalingsmottaker – du kontrollerer og bekrefter før noe bokføres.</p>
 <p class="note"><svg class="note-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Bildet sendes midlertidig til familiens egen server for tekstgjenkjenning og slettes etter behandling. Vi beholder bare nødvendige felt. Ingen ekstern OCR-tjeneste brukes.</span></p>
 {% if request.financial_can_write %}<form id="camera-scan-form" method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}

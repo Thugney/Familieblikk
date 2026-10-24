@@ -683,6 +683,61 @@ a { text-underline-offset: 3px; }
 .money-control { margin-top: 28px; }
 .money-control .sheet-head { margin-bottom: 10px; }
 
+
+/* ───────── Debt payoff chart ───────── */
+.tl { display: flex; align-items: flex-end; gap: 6px; height: 120px; margin-top: 14px; }
+.tl i { flex: 1; background: var(--brand); border-radius: 6px 6px 0 0; opacity: .85; min-height: 4px; }
+.tl i:hover { opacity: 1; }
+.tl-l { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-3); font-weight: 600; margin-top: 6px; }
+
+
+/* ───────── Command palette (Ctrl/Cmd-K) ───────── */
+.cmdk { position: fixed; inset: 0; z-index: 300; background: rgba(15, 31, 26, .45); display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 0; }
+.cmdk-box { width: min(560px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: 0 24px 60px -12px rgba(15, 31, 26, .35); overflow: hidden; }
+.cmdk-box input { width: 100%; height: 56px; border: 0; border-bottom: 1px solid var(--line); padding: 0 20px; font-size: 16px; background: transparent; outline: 0; border-radius: 0; }
+.cmdk-box ul { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow: auto; }
+.cmdk-box a { display: flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: var(--r-sm); color: var(--ink); text-decoration: none; font-weight: 600; }
+.cmdk-box a:hover, .cmdk-box a:focus-visible { background: var(--bg); }
+
+
+/* ───────── Budsjett workspace: category cards like the preview ───────── */
+.spending-workspace .sp-grid { display: block; }
+.spending-workspace .sp-grid > .sp-section:first-child { background: transparent; border: 0; box-shadow: none; padding: 0 0 8px; }
+.spending-workspace .sp-grid > .sp-section:first-child > p { margin: 4px 0 14px; }
+.spending-workspace #sp-breakdown { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.spending-workspace #sp-breakdown .sp-category { margin: 0; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-1); grid-template-columns: 1fr; gap: 10px; transition: transform .15s var(--ease), box-shadow .15s; }
+.spending-workspace #sp-breakdown .sp-category:hover { transform: translateY(-1px); box-shadow: var(--sh-2); background: var(--surface); }
+.spending-workspace #sp-breakdown .sp-category:last-child { border-bottom: 1px solid var(--line); }
+.spending-workspace #sp-breakdown .sp-cat-name { font-size: 15px; font-weight: 700; }
+.spending-workspace #sp-breakdown .sp-dot { width: 12px; height: 12px; min-width: 12px; }
+.spending-workspace #sp-breakdown .sp-cat-value { order: 2; text-align: left; font-size: 24px; font-weight: 800; letter-spacing: -.03em; }
+.spending-workspace #sp-breakdown .sp-cat-value small { display: block; font-size: 12px; font-weight: 600; letter-spacing: 0; color: var(--ink-3); }
+.spending-workspace #sp-breakdown .sp-bar-track { order: 3; }
+.spending-workspace .sp-grid > .sp-section + section { margin-top: 16px; }
+
+
+/* ───────── Scan: three-step header and review ───────── */
+.scan-steps { list-style: none; display: flex; gap: 8px; margin: 0 0 18px; padding: 0; }
+.scan-steps li { flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--ink-3); }
+.scan-steps li::before { content: ""; height: 5px; border-radius: 9px; background: var(--bg-2); }
+.scan-steps li.on { color: var(--ink); }
+.scan-steps li.on::before { background: var(--brand); }
+.scan-steps li span { display: none; }
+.scan-steps li[aria-current='step']::after { content: ""; }
+.sheet .work-surface dl:not(.calculation-details) { display: grid; grid-template-columns: minmax(110px, auto) 1fr; gap: 8px 18px; margin: 12px 0; padding: 14px 16px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); }
+.sheet .work-surface dl:not(.calculation-details) dt { color: var(--ink-3); font-weight: 700; font-size: 13px; }
+.sheet .work-surface dl:not(.calculation-details) dd { margin: 0; font-weight: 700; }
+.work-surface .notice { border-radius: var(--r-md); }
+#camera-scan-form input[type='file'] { background: var(--surface-2); }
+
+
+/* ───────── Checkbox rows in forms ───────── */
+.form-field-check { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 14px; padding: 6px 0; }
+.form-field-check label { margin: 0 !important; font-weight: 600; flex: 1; min-width: 0; font-size: 14.5px !important; }
+.form-field-check .helptext { flex-basis: 100%; color: var(--ink-3); font-size: 12.5px; }
+.form-field .helptext { color: var(--ink-3); font-size: 12.5px; }
+.errorlist { color: var(--neg); list-style: none; padding: 0; margin: 4px 0; font-size: 13px; font-weight: 600; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
 /* ───────── Tablet ───────── */

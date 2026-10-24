@@ -134,4 +134,50 @@
     if (apply) apply.hidden = true;
     input.addEventListener('change', () => { if (input.value) { if (form.requestSubmit) form.requestSubmit(); else form.submit(); } });
   });
+  // Ctrl/Cmd-K: jump to any page or action. Entries come from the real navigation, so permissions are respected.
+  if (document.addEventListener && document.createElement && document.body) {
+    let overlay = null;
+    const close = () => { if (overlay) { overlay.remove(); overlay = null; } };
+    const open = () => {
+      if (overlay) return;
+      const seen = new Set();
+      const entries = [];
+      document.querySelectorAll('.pc-nav-btn, .header-quick-add, #notification-bell').forEach(link => {
+        const label = (link.getAttribute('aria-label') || link.textContent || '').replace(/\s+/g, ' ').trim();
+        const href = link.getAttribute('href');
+        if (!label || !href || seen.has(href + label)) return;
+        seen.add(href + label);
+        entries.push({label, href});
+      });
+      overlay = document.createElement('div');
+      overlay.className = 'cmdk';
+      overlay.innerHTML = '<div class="cmdk-box" role="dialog" aria-modal="true" aria-label="Gå til side eller handling"><input type="search" placeholder="Gå til side eller handling…" aria-label="Søk"><ul></ul></div>';
+      document.body.appendChild(overlay);
+      const input = overlay.querySelector('input');
+      const list = overlay.querySelector('ul');
+      const render = () => {
+        const q = input.value.trim().toLowerCase();
+        list.innerHTML = '';
+        entries.filter(e => !q || e.label.toLowerCase().includes(q)).forEach(entry => {
+          const item = document.createElement('li');
+          const anchor = document.createElement('a');
+          anchor.href = entry.href;
+          anchor.textContent = entry.label;
+          item.appendChild(anchor);
+          list.appendChild(item);
+        });
+      };
+      input.addEventListener('input', render);
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') { const first = list.querySelector('a'); if (first) window.location.href = first.href; }
+      });
+      overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
+      render();
+      input.focus();
+    };
+    document.addEventListener('keydown', event => {
+      if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'k') { event.preventDefault(); overlay ? close() : open(); }
+      else if (event.key === 'Escape' && overlay) { event.preventDefault(); close(); }
+    });
+  }
 })();
