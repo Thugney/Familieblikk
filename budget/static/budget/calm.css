@@ -1110,6 +1110,38 @@ table.mx th { background: transparent; font-size: 11.5px; }
 .fam-card table.mx th, .fam-card table.mx td { padding: 10px 4px; font-size: 12.5px; overflow-wrap: anywhere; vertical-align: middle; }
 .fam-card table.mx th { font-size: 10.5px; }
 .fam-card table.mx td .ov-tag { font-size: 11px; padding: 3px 7px; white-space: normal; text-align: center; }
+/* ───────── Pro UI, round 3: fixes from the page-by-page check ───────── */
+
+/* Poster: round category icon with the letter centred */
+.row.tx .tx-icon, .tx-icon { width: 44px; height: 44px; min-width: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 15px; text-transform: uppercase; text-decoration: none; padding: 0; line-height: 1; }
+.row.tx .tx-icon { grid-column: 1; grid-row: 1; }
+
+/* One green primary colour: no black "active" buttons */
+.calendar-view button[aria-pressed=true], .calendar-filters a[aria-current], .fchip.on, .pill.on,
+.filter-actions button, .category-filters button, .entry-filters button, form.entry-filters button {
+  background: var(--pro-brand); border-color: var(--pro-brand); color: #fff;
+}
+.calendar-view button[aria-pressed=true] { box-shadow: none; }
+
+/* Kalender: "I dag" fits inside its pill */
+.calendar-period a.calendar-today, .calendar-today { white-space: nowrap; min-width: 0; display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 99px; border: 1px solid var(--pro-line); background: var(--pro-surface); color: var(--pro-brand); font-weight: 600; font-size: 13px; }
+.calendar-period { flex-wrap: wrap; }
+
+/* Varsler page: plain sections get the same heading rhythm as the other pages */
+.page-body > h2, .page-body > section > h2 { font-size: 18px; font-weight: 700; color: var(--pro-ink); margin: 26px 0 6px; letter-spacing: -.01em; }
+.page-body > h3, .page-body > section > h3 { font-size: 15px; font-weight: 700; color: var(--pro-ink); margin: 16px 0 4px; }
+.page-body > p, .page-body > section > p { font-size: 14px; color: var(--pro-ink-2); line-height: 1.55; margin: 6px 0; }
+.page-body > a { color: var(--pro-brand); font-weight: 600; text-decoration: none; }
+.page-body > .last-updated { color: var(--pro-ink-3); font-size: 12.5px; margin-top: 24px; }
+
+/* Tilpass: toggles read as settings rows */
+.sheet form p:has(> input[type='checkbox']) { border-top: 1px solid var(--pro-line); padding: 12px 0; margin: 0; }
+.sheet form p:has(> input[type='checkbox']) label { font-weight: 600; color: var(--pro-ink); font-size: 14.5px; }
+
+/* Change-record pages: no card inside a card; links read as calm buttons */
+.work-surface .c { background: var(--pro-bg); box-shadow: none; border-radius: 18px; padding: 16px 18px; margin-top: 10px; }
+.work-surface p > a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; margin: 4px 8px 4px 0; border-radius: 99px; background: var(--pro-surface); border: 1px solid var(--pro-line); color: var(--pro-ink); font-weight: 600; font-size: 13.5px; text-decoration: none; }
+.work-surface p > a:hover { background: var(--pro-bg); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
 /* ───────── Tablet ───────── */
