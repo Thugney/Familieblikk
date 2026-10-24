@@ -86,5 +86,5 @@
 </div>
 {% endblock %}
 
-{% block head_extra %}{% if page == 'oversikt' %}<link rel="stylesheet" href="{% static 'budget/spending.css' %}">{% endif %}{% endblock %}
-{% block scripts_extra %}{% if page == 'oversikt' %}<script src="{% static 'budget/spending.js' %}" defer></script>{% endif %}{% endblock %}
+{% block head_extra %}{% if page == 'oversikt' and spending_embedded %}<link rel="stylesheet" href="{% app_static 'spending.css' %}">{% endif %}{% endblock %}
+{% block scripts_extra %}{% if page == 'oversikt' and spending_embedded %}<script src="{% app_static 'spending.js' %}" defer></script>{% endif %}{% endblock %}

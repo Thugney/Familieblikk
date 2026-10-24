@@ -1,0 +1,23 @@
+{% load budget_tags %}
+<div class="future-dashboard">
+  <section class="future-panel future-bills" aria-labelledby="future-bills-title">
+    <div class="future-panel-heading"><div><p class="section-eyebrow">Neste forfall</p><h2 id="future-bills-title">Regninger <span class="future-count">{{ future_bills.count }}</span></h2></div>{% if future_bills.expanded %}<a class="future-text-link" href="{% url 'page' 'oversikt' %}?month={{ month|date:'Y-m' }}#future-bills-title">Vis færre <span aria-hidden="true">↑</span></a>{% else %}<a class="future-text-link" href="{% url 'page' 'oversikt' %}?month={{ month|date:'Y-m' }}&amp;bills=all#future-bills-title">Se alle <span aria-hidden="true">→</span></a>{% endif %}</div>
+    <p class="future-panel-note">Ubetalte regninger til og med {{ month|date:'F' }}. Gjeldsbetalinger er med i gjeldsbeløpet én gang.</p>
+    <ul class="future-bill-list">
+      {% for bill in future_bills.rows %}<li><a class="future-bill-link" href="{{ bill.url }}"><span class="future-bill-info"><strong>{{ bill.name }}</strong><span class="future-bill-meta"><span>Forfall {{ bill.day|date:'d.m.Y' }}</span><span class="future-bill-type">{{ bill.type_label }}</span>{% if bill.overdue %}<span>Fra tidligere måned</span>{% endif %}</span></span><span class="future-bill-value">{{ bill.amount_ore|nok }}<span aria-hidden="true">›</span></span></a></li>{% empty %}<li class="future-empty"><strong>Ingen ubetalte regninger</strong><p>Det er ingen kjente regninger frem til slutten av denne måneden.</p></li>{% endfor %}
+    </ul>
+    {% if future_bills.remaining %}<a class="future-panel-footer" href="{% url 'page' 'oversikt' %}?month={{ month|date:'Y-m' }}&amp;bills=all#future-bills-title">Se alle {{ future_bills.count }} regninger <span aria-hidden="true">→</span></a>{% elif future_bills.expanded %}<a class="future-panel-footer" href="{% url 'page' 'oversikt' %}?month={{ month|date:'Y-m' }}#future-bills-title">Vis bare de neste fem <span aria-hidden="true">↑</span></a>{% endif %}
+  </section>
+  <div class="future-secondary">
+    <section class="future-panel future-plan" aria-labelledby="future-plan-title">
+      <p class="section-eyebrow">Planlegg resten</p><h2 id="future-plan-title">Månedsplan for {{ month|date:'F' }}</h2>
+      <p>Se inntekt, faste trekk og det dere vil bruke på mat, transport og andre behov.</p>
+      {% if future_missing_count %}<p class="future-plan-status">{{ future_missing_count }} beløp er ikke fylt ut</p>{% else %}<p class="future-plan-status">Kontroller at alle beløp fortsatt stemmer.</p>{% endif %}
+      <a class="btn-pri" href="{% url 'page' 'budsjett' %}?month={{ month|date:'Y-m' }}&amp;tab=planning">{% if request.financial_can_write %}Gjennomgå månedsplan{% else %}Se månedsplan{% endif %} <span aria-hidden="true">→</span></a>
+    </section>
+    <section class="future-panel future-recent" aria-labelledby="future-recent-title">
+      <div class="future-panel-heading"><div><p class="section-eyebrow">Denne måneden</p><h2 id="future-recent-title">Siste poster</h2></div><a class="future-text-link" href="{% url 'page' 'poster' %}?month={{ month|date:'Y-m' }}">Se alle <span aria-hidden="true">→</span></a></div>
+      {% if overview_entries %}{% include 'budget/entry_list.html' with entries=overview_entries page='oversikt' %}{% else %}<p class="future-empty">Ingen registrerte poster ennå.</p>{% endif %}
+    </section>
+  </div>
+</div>

@@ -396,11 +396,21 @@ def page_view(request, page='oversikt'):
             future_plan = planning(request.user, month.strftime('%Y-%m'))
             ctx['future_overview'] = fixed_forecast(future_plan)
             ctx['future_commitments'] = future_plan['commitments']
+            from .overview_presentation import bill_preview
+            all_bills = request.GET.get('bills') == 'all'
+            ctx['future_bills'] = bill_preview(future_plan['commitments'], request.financial_area.pk, month,
+                limit=None if all_bills else 5)
+            ctx['future_bills']['expanded'] = all_bills
+            ctx['future_missing_count'] = (int(future_plan['expected_income_ore'] is None)
+                + sum(row['other_ore'] is None for row in future_plan['categories'])
+                + sum(row['amount_ore'] is None for row in future_plan['assets']))
+            ctx['overview_entries'] = list(entries[:3])
         ctx.update(trend_has_actual=any(point["amount"] is not None for point in month_trend), month_trend=month_trend, trend_budget=trend_budget, daily_days=daily_days, weekly_start=weekly_bars[0]["date"] if weekly_bars else None, weekly_end=weekly_bars[-1]["date"] if weekly_bars else None)
         ctx['spending_embedded'] = True
         ctx['spending_boot'] = {'initial_tab': 'spending', 'month': month.strftime('%Y-%m'), 'can_save': getattr(request, 'financial_can_write', False), 'urls': {'spending': reverse('spending_data'), 'planning': reverse('planning_data'), 'preview': reverse('planning_preview'), 'save': reverse('planning_save')}}
         if ctx.get('future_overview'):
             ctx['spending_boot'].update(initial_tab='planning', plan_month=month.strftime('%Y-%m'))
+            ctx['spending_embedded'] = False
     if page == 'familie':
         ctx.update(members=Membership.objects.filter(household=house).select_related('user'), invitations=Invitation.objects.filter(household=house, accepted=False, revoked=False), invite_form=forms.EmailForm(), email_invitations_enabled=settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend' and bool(settings.EMAIL_HOST))
     if page == 'varsler':

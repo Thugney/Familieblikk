@@ -1,6 +1,7 @@
 {% load budget_tags ui_tags %}
+{% if future_overview %}{% include 'budget/future_sections.html' %}{% else %}
 {% include 'budget/money_control.html' %}
-{% if not future_overview %}
+
 <div class="bento" aria-label="Analyse av forbruk og sparing">
   <div class="c">
     <div class="bento-head"><div><h3>Daglig bruk</h3><p class="l">{% if weekly_start %}{{ weekly_start|date:"d.m" }}–{{ weekly_end|date:"d.m.Y" }}{% else %}Ingen inntrufne dager{% endif %}</p></div><strong>{{ weekly_total|nok }}</strong></div>
@@ -16,19 +17,9 @@
     <div class="bento-income-row"><div><p class="l">Planlagt sparing denne mnd</p><strong>{{ totals.planned_savings|nok }} (allerede satt av)</strong></div><a class="btn-sec" href="{% url 'page' 'sparing' %}?month={{ month|date:'Y-m' }}">Sparing →</a></div>
   </div>
 </div>
-{% endif %}
 
 <div class="sheet-split">
   <section>
-    {% if future_overview %}
-    <div class="attention-head"><p class="section-eyebrow">Regninger i anslaget</p><a class="btn-sec" href="{% url 'page' 'regninger' %}?month={{ month|date:'Y-m' }}">Se og rett regninger →</a></div>
-    <div class="c overview-items">
-      <p class="sheet-note">Planlagte og ubetalte regninger frem til slutten av måneden. Gjeld og årsutgifter er gruppert hver for seg i anslaget.</p>
-      <dl>{% for bill in future_commitments %}<dt>{{ bill.name }} · {{ bill.due_date }}{% if bill.overdue %} · Fra tidligere måned{% endif %}</dt><dd>{{ bill.amount_ore|nok }}</dd>{% empty %}<dt>Ingen kjente ubetalte regninger i anslaget.</dt>{% endfor %}</dl>
-    </div>
-    <p class="section-eyebrow">Registrerte poster denne måneden</p>
-    <div class="c overview-items">{% if overview_entries %}{% include 'budget/entry_list.html' with entries=overview_entries page='oversikt' %}{% else %}<p class="sheet-note">Ingen registrerte poster ennå.</p>{% endif %}</div>
-    {% else %}
     <div class="attention-head">
       <div><p class="section-eyebrow">Trenger oppmerksomhet &amp; poster</p></div>
       <div class="pills" role="group" aria-label="Filtrer oversikten"><a class="pill{% if overview_filter == 'alle' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;overview=alle">Alle</a><a class="pill{% if overview_filter == 'obs' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;overview=obs">Obs</a><a class="pill{% if overview_filter == 'faste' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;overview=faste">Faste</a><a class="pill{% if overview_filter == 'siste' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;overview=siste">Siste</a></div>
@@ -38,10 +29,11 @@
       {% if overview_entries %}{% include 'budget/entry_list.html' with entries=overview_entries page='oversikt' %}{% endif %}
       {% if not overview_bills and not overview_entries %}<p class="sheet-note">Ingen poster eller regninger i dette utvalget.</p>{% endif %}
     </div>
-    {% endif %}
   </section>
   <section>
     <p class="section-eyebrow">Analyse &amp; planlegging</p>
     {% include 'budget/spending_workspace.html' %}
   </section>
 </div>
+
+{% endif %}

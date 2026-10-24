@@ -4,6 +4,17 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 @register.simple_tag
+def app_static(name):
+    """Keep the app's browser/CDN asset version aligned with the rendered page."""
+    from hashlib import sha256
+    from pathlib import Path
+    from django.templatetags.static import static
+    if name not in ('ui-refresh.css', 'spending.css', 'spending.js'):
+        raise ValueError('Unknown application asset')
+    path = Path(__file__).resolve().parents[1] / 'static' / 'budget' / name
+    return static('budget/' + name) + '?v=' + sha256(path.read_bytes()).hexdigest()[:16]
+
+@register.simple_tag
 def loader_static(name):
     """A new loader release must not reuse an older browser/CDN asset URL."""
     from hashlib import sha256

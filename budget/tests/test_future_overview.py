@@ -158,3 +158,77 @@ class FutureOverviewTests(TestCase):
         self.assertNotContains(bills, 'Legg til lønn / inntekt')
         denied = self.client.get('/ny/entry/', {'area': self.area.pk, 'month': '2026-11', 'entry_kind': 'income'})
         self.assertEqual(denied.status_code, 403)
+
+    def test_compact_preview_limits_rows_without_reducing_the_financial_basis(self):
+        from urllib.parse import parse_qs, urlsplit
+        from budget.models import BillOccurrence
+        with area_scope(self.member, self.area.pk):
+            self.income(1000000)
+            templates = []
+            for day in range(7, 0, -1):
+                templates.append(BillTemplate.objects.create(household=self.house, created_by=self.user,
+                    name=f'Preview bill {day}', first_due=date(2026, 11, day), monthly=False, amount_ore=10000))
+        response = self.client.get('/app/oversikt/', {'area': self.area.pk, 'month': '2026-11'})
+        preview = response.context['future_bills']
+        self.assertEqual((preview['count'], preview['remaining']), (7, 2))
+        self.assertEqual([row['name'] for row in preview['rows']], [f'Preview bill {day}' for day in range(1, 6)])
+        self.assertEqual(response.context['future_overview']['bills'], 70000)
+        self.assertEqual(response.context['future_overview']['remainder'], 930000)
+        self.assertContains(response, 'Se alle 7 regninger')
+        self.assertContains(response, 'Forfall 01.11.2026')
+        self.assertNotContains(response, 'Preview bill 6')
+        self.assertNotContains(response, 'id="sp-plan-form"')
+        self.assertNotContains(response, '/static/budget/spending.js')
+        url = preview['rows'][0]['url']
+        self.assertEqual(parse_qs(urlsplit(url).query), {'area': [str(self.area.pk)], 'month': ['2026-11']})
+        self.assertEqual(self.client.get(url).status_code, 200)
+        with area_scope(self.member, self.area.pk):
+            self.assertFalse(BillOccurrence.objects.exists())
+
+    def test_stored_bill_preview_opens_exact_read_only_history(self):
+        with area_scope(self.member, self.area.pk):
+            template = BillTemplate.objects.create(household=self.house, created_by=self.user,
+                name='Stored exact bill', first_due=self.month, monthly=False, amount_ore=10000)
+            services.materialize_template(template, self.month)
+            bill = template.billoccurrence_set.get()
+        response = self.client.get('/app/oversikt/', {'area': self.area.pk, 'month': '2026-11'})
+        url = response.context['future_bills']['rows'][0]['url']
+        self.assertIn(f'/historikk/bill/{bill.pk}/', url)
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_reader_can_open_all_virtual_bills_without_creating_occurrences(self):
+        from django.contrib.auth import get_user_model
+        from budget.models import FinancialAreaGrant, BillOccurrence
+        with area_scope(self.member, self.area.pk):
+            for day in range(1, 8):
+                BillTemplate.objects.create(household=self.house, created_by=self.user, name=f'Reader bill {day}',
+                    first_due=date(2026, 11, day), monthly=False, amount_ore=10000)
+        user = get_user_model().objects.create_user('compact-reader')
+        member = Membership.objects.create(household=self.house, user=user, role='member')
+        FinancialAreaGrant.objects.create(area=self.area, member=member, role='reader')
+        self.client.force_login(user)
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get('/app/oversikt/', {'area': self.area.pk, 'month': '2026-11', 'bills': 'all'})
+        self.assertEqual(len(response.context['future_bills']['rows']), 7)
+        self.assertContains(response, 'Reader bill 7')
+        self.assertContains(response, 'Vis bare de neste fem')
+        self.assertNotContains(response, 'Legg til lønn / inntekt')
+        self.assertFalse(any(q['sql'].lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')) for q in queries))
+        self.assertEqual(self.client.get(response.context['future_bills']['rows'][-1]['url']).status_code, 200)
+        with area_scope(self.member, self.area.pk):
+            self.assertFalse(BillOccurrence.objects.exists())
+
+    def test_compact_empty_state_and_versioned_assets(self):
+        from pathlib import Path
+        from budget.templatetags.budget_tags import app_static
+        response = self.client.get('/app/oversikt/', {'area': self.area.pk, 'month': '2026-11'})
+        self.assertContains(response, 'Ingen ubetalte regninger')
+        original = Path.read_bytes
+        for name in ('ui-refresh.css', 'spending.css', 'spending.js'):
+            before = app_static(name)
+            def changed(path):
+                return original(path) + b'new-version' if path.name == name else original(path)
+            with patch.object(Path, 'read_bytes', changed):
+                self.assertNotEqual(app_static(name), before)
+        with self.assertRaises(ValueError):
+            app_static('../../.env')

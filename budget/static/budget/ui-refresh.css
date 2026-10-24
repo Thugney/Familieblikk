@@ -1782,3 +1782,61 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green-pri); ou
   .heading-actions { width: 100%; }
   .heading-actions > a { flex: 1 1 140px; min-width: 0; min-height: 44px; white-space: normal; text-align: center; }
 }
+
+/* Compact future overview; financial figures keep their existing basis. */
+.future-dashboard { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 18px; }
+.future-panel { min-width: 0; padding: 22px; background: var(--cream); border: 1px solid var(--border); border-radius: var(--radius-card); }
+.future-panel h2 { font-size: 21px; line-height: 1.25; letter-spacing: -.025em; margin: 5px 0 0; }
+.future-panel-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.future-count { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; min-height: 28px; padding: 3px 8px; margin-left: 5px; border-radius: 99px; font-size: 13px; vertical-align: middle; background: var(--mint-light); color: var(--green-dark); }
+.future-text-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--green-pri); font-size: 13px; font-weight: 750; text-decoration: none; }
+.future-panel-note { color: var(--text-muted); font-size: 13px; line-height: 1.55; margin: 14px 0 4px; }
+.future-bill-list { list-style: none; margin: 0; padding: 0; }
+.future-bill-list li + li { border-top: 1px solid var(--border-strong); }
+.future-bill-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 76px; padding: 16px 0; color: var(--text-main); text-decoration: none; }
+.future-bill-info { min-width: 0; }
+.future-bill-info > strong { display: block; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.future-bill-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; color: var(--text-muted); font-size: 12px; line-height: 1.4; }
+.future-bill-type { display: inline-block; border: 1px solid var(--border-strong); border-radius: 6px; padding: 2px 5px; font-size: 10px; font-weight: 700; }
+.future-bill-value { display: flex; align-items: center; gap: 8px; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 750; }
+.future-bill-value > span { color: var(--green-pri); font-size: 12px; }
+.future-bill-link:hover .future-bill-info > strong, .future-text-link:hover { color: var(--green-pri); text-decoration: underline; text-underline-offset: 3px; }
+.future-panel-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border-strong); color: var(--green-pri); font-weight: 750; font-size: 13px; text-decoration: none; }
+.future-secondary { display: grid; gap: 20px; min-width: 0; }
+.future-plan { background: var(--mint-light); border-color: #d4e5d8; }
+.future-plan > p:not(.section-eyebrow) { margin-top: 12px; font-size: 14px; line-height: 1.55; color: var(--text-muted); }
+.future-plan .future-plan-status { font-weight: 700; color: var(--green-dark); }
+.future-plan .btn-pri { margin-top: 18px; gap: 12px; }
+.future-recent .entry-main { flex-basis: 100%; }
+.future-recent .entry-actions { flex: 1 1 100%; width: 100%; max-width: 100%; flex-wrap: wrap; }
+.future-recent .entry-actions > a { min-height: 44px; white-space: normal; }
+.future-empty { padding: 24px 0; font-size: 14px; line-height: 1.5; color: var(--text-muted); }
+.future-empty p { margin-top: 8px; }
+.future-forecast .hero-grid { align-items: center; }
+.future-forecast h2 { font-size: 18px; }
+.future-forecast .hero-note { max-width: 54ch; font-size: 13px; line-height: 1.6; }
+.future-hero-status { display: inline-block; margin-top: 12px; padding: 6px 10px; border: 1px solid #ffffff66; border-radius: 8px; font-size: 12px; font-weight: 700; color: #fff; }
+.future-hero-action { margin-top: 18px; }
+.future-forecast .calculation-details { margin-top: 14px; font-size: 13px; gap: 10px 14px; }
+.future-explanation { margin: 12px 0; font-size: 12px; color: #fff; }
+.future-explanation summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.future-explanation summary::before { content: '+'; margin-right: 8px; }
+.future-explanation[open] summary::before { content: '−'; }
+.future-explanation p + p { margin-top: 10px; }
+.future-explanation > div { line-height: 1.65; padding-bottom: 12px; }
+.future-forecast .forecast-correction-links { font-size: 12px; gap: 6px 12px; }
+.future-forecast .forecast-correction-links a { display: inline-flex; align-items: center; min-height: 44px; }
+@media (max-width: 850px) {
+  .future-dashboard { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .future-secondary { gap: 16px; }
+  .future-panel { padding: 18px; }
+  .future-forecast .hero-grid { gap: 26px; }
+}
+@media (max-width: 380px) {
+  .future-bill-link { gap: 8px; }
+  .future-bill-value { font-size: 13px; gap: 4px; }
+  .future-bill-meta { font-size: 11px; }
+}
+
+.future-forecast .calculation-details dt:last-of-type, .future-forecast .calculation-details dd:last-of-type { border-top: 0; padding-top: 0; }
+.future-forecast .calculation-details dt:last-of-type { font-weight: inherit; }
