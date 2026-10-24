@@ -214,4 +214,22 @@
       requestAnimationFrame(() => requestAnimationFrame(() => { line.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(.2,.7,.2,1)'; line.style.strokeDashoffset = '0'; }));
     });
   }
+  // Long explanations stay available but out of the way: one "Forklaring" toggle per page.
+  if (document.createElement && document.body) {
+    const notes = Array.from(document.querySelectorAll('.page-body .sheet-note')).filter(note => note.textContent.trim().length > 110);
+    const head = document.querySelector('.page-body .sheet-head');
+    if (notes.length && head && document.body.dataset && document.body.dataset.page !== 'oversikt') {
+      notes.forEach(note => note.classList.add('is-explainer'));
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'info-toggle';
+      toggle.setAttribute('aria-pressed', 'false');
+      toggle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Forklaring';
+      toggle.addEventListener('click', () => {
+        const on = document.body.classList.toggle('show-notes');
+        toggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      head.appendChild(toggle);
+    }
+  }
 })();
