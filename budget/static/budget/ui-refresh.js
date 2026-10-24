@@ -108,4 +108,30 @@
       if (e.key === 'Escape' && !sheet.hidden) { e.preventDefault(); setOpen(false, true); }
     });
   });
+  // Month stepper: previous/next arrows and auto-submit around the native month input.
+  document.querySelectorAll('.header-month-form').forEach(form => {
+    const input = form.querySelector('input[type="month"]');
+    if (!input || !document.createElement) return;
+    const shift = delta => {
+      const match = /^(\d{4})-(\d{2})$/.exec(input.value);
+      if (!match) return;
+      const date = new Date(Date.UTC(+match[1], +match[2] - 1 + delta, 1));
+      input.value = date.getUTCFullYear() + '-' + String(date.getUTCMonth() + 1).padStart(2, '0');
+      if (form.requestSubmit) form.requestSubmit(); else form.submit();
+    };
+    const arrow = (label, delta, path) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'month-step';
+      button.setAttribute('aria-label', label);
+      button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"/></svg>';
+      button.addEventListener('click', () => shift(delta));
+      return button;
+    };
+    form.insertBefore(arrow('Forrige måned', -1, 'm15 6-6 6 6 6'), form.firstChild);
+    input.after(arrow('Neste måned', 1, 'm9 6 6 6-6 6'));
+    const apply = form.querySelector('button:not(.month-step)');
+    if (apply) apply.hidden = true;
+    input.addEventListener('change', () => { if (input.value) { if (form.requestSubmit) form.requestSubmit(); else form.submit(); } });
+  });
 })();

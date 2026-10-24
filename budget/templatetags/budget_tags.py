@@ -9,7 +9,7 @@ def app_static(name):
     from hashlib import sha256
     from pathlib import Path
     from django.templatetags.static import static
-    if name not in ('ui-refresh.css', 'spending.css', 'spending.js'):
+    if name not in ('ui-refresh.css', 'calm.css', 'spending.css', 'spending.js'):
         raise ValueError('Unknown application asset')
     path = Path(__file__).resolve().parents[1] / 'static' / 'budget' / name
     return static('budget/' + name) + '?v=' + sha256(path.read_bytes()).hexdigest()[:16]

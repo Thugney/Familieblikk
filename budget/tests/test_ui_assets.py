@@ -7,6 +7,7 @@ class UiAssetTests(SimpleTestCase):
     def test_stylesheet_and_bundled_font_are_public_in_production(self):
         for name, mime, signature in (
             ('ui-refresh.css', 'text/css', b'@font-face'),
+            ('calm.css', 'text/css', b'Calm Ledger'),
             ('ui-refresh.js', 'application/javascript', b'entry-form-advanced'),
             ('figtree-latin.woff2', 'font/woff2', b'wOF2'),
         ):

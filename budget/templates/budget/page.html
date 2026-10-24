@@ -4,7 +4,7 @@
   <div class="sheet-head">
     {% if page == 'poster' %}
     <div><p class="section-eyebrow">Transaksjoner, regninger &amp; historikk</p><h1>Alle poster · {{ request.financial_area.name }}</h1><p class="l">Viser {% if page_obj %}{{ page_obj.paginator.count }}{% else %}{{ entries|length }}{% endif %} poster i valgt utvalg · Eksport og CSV følger nøyaktig dette området</p></div>
-    <div class="heading-actions"><a class="btn-sec" href="{% url 'correction_export' 'entry' %}">Endringer &amp; CSV</a>{% if request.financial_can_write %}<a class="btn-pri" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to={{ page }}">+ Ny post</a>{% endif %}</div>
+    <div class="heading-actions"><a class="btn-sec" href="{% url 'correction_export' 'entry' %}">Endringer &amp; CSV</a></div>
     {% elif page == 'regninger' %}
     <div><p class="section-eyebrow">Faste og variable regninger</p><h1>{{ title }}</h1></div>
     <div class="heading-actions"><a class="btn-sec" href="{% url 'correction_export' 'bill' %}">Endringer &amp; CSV</a>{% if request.financial_can_write %}<a class="btn-pri" href="{% url 'create' 'bill' %}?month={{ month|date:'Y-m' }}&amp;return_to=regninger">+ Ny regning</a>{% if member|allows_module:'budget' %}<a class="btn-sec" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to=regninger&amp;entry_kind=income">Legg til lønn / inntekt</a>{% endif %}{% endif %}</div>
@@ -14,7 +14,7 @@
     {% else %}
     <div><p class="section-eyebrow">{{ month|date:'F Y' }}</p><h1>{% if page == "oversikt" %}{{ request.financial_area.name }}{% else %}{{ title }}{% endif %}</h1></div>
     {% if request.financial_can_write %}
-      {% if page == 'oversikt' or page == 'utland' %}<div class="heading-actions"><a class="btn-pri" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to={{ page }}{% if page == 'utland' %}&amp;entry_kind=remittance{% endif %}">Ny post</a></div>
+      {% if page == 'utland' %}<div class="heading-actions"><a class="btn-pri" href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to={{ page }}&amp;entry_kind=remittance">Ny post</a></div>
       {% elif page == 'sparing' or page == 'gjeld' or page == 'arsutgifter' %}<a class="btn-pri" href="{% url 'create' 'asset' %}?month={{ month|date:'Y-m' }}&amp;asset_kind={% if page == 'gjeld' %}debt{% elif page == 'arsutgifter' %}fund{% else %}savings{% endif %}{% if debt_query %}&amp;{{ debt_query }}{% endif %}">Nytt oppsett</a>
       {% endif %}
     {% endif %}
@@ -27,14 +27,14 @@
     {% if restricted_selection %}<div class="access-banner readonly">Utvalg: bare poster fra tillatte moduler vises. Skjulte opplysninger og summer er utelatt.</div>{% endif %}
     {% include 'budget/entry_filters.html' %}<p class="sheet-note">Forventet inntekt gir ingen tilgjengelige penger. Sparing, gjeld og årsutgifter vises hver for seg.</p>
     {% if page == "utland" %}<div class="stat-strip"><div><span>Hittil i valgt år</span><strong>{{ remittance_ytd|nok }}</strong></div><div><span>Snitt per kalendermåned i perioden</span><strong>{{ remittance_average|nok }}</strong></div><div><span>Andel av mottatt inntekt</span><strong>{% if member|allows_module:"budget" %}{{ remittance_share|default_if_none:"Ingen mottatt inntekt" }} %{% else %}Krever budsjettilgang{% endif %}</strong></div></div><h3>Mottakere</h3>{% for recipient in recipients %}<p id="asset-{{ recipient.pk }}" tabindex="-1">{{ recipient.name }} · {{ recipient.country }}{% if request.financial_can_write %} · <a href="{% url 'edit' 'asset' recipient.pk %}?month={{ month|date:'Y-m' }}">Rediger mottaker</a>{% endif %} · {% if request.financial_can_write %}<a href="{% url 'create' 'entry' %}?month={{ month|date:'Y-m' }}&amp;return_to=utland&amp;entry_kind=remittance&amp;asset={{ recipient.pk }}">Registrer overføring</a>{% endif %}</p>{% empty %}<p>Ingen mottakere.</p>{% endfor %}{% if request.financial_can_write %}<a class="btn-sec" href="{% url 'create' 'asset' %}?month={{ month|date:'Y-m' }}&amp;asset_kind=recipient">Ny mottaker</a>{% endif %}{% endif %}
-    {% include 'budget/entry_list.html' %}
+    <div class="list-card">{% include 'budget/entry_list.html' %}</div>
   {% elif page == 'budsjett' or page == 'kategorier' %}
     {% if request.financial_can_write %}<div class="actions">{% if request.financial_can_write %}<a class="btn-pri" href="{% url 'create' 'category' %}?month={{ month|date:'Y-m' }}&amp;return_to=kategorier">Ny kategori</a>{% endif %}{% if request.financial_can_write %}<a class="btn-sec" href="{% url 'create' 'plan' %}?month={{ month|date:'Y-m' }}&amp;return_to=kategorier">Sett månedsramme</a>{% endif %}</div>{% else %}<p class="sheet-note">Du har lesetilgang til kategorier og rammer.</p>{% endif %}
     {% if restricted_selection %}<div class="access-banner readonly">Utvalg: bare poster fra tillatte moduler vises. Skjulte opplysninger og summer er utelatt.</div>{% endif %}
     {% include 'budget/category_list.html' %}
   {% elif page == 'regninger' or page == 'varsler' %}
     {% if page == 'varsler' %}{% include 'budget/notifications.html' %}{% endif %}
-    {% if member|allows_module:'bills' %}{% if page == 'varsler' %}{% include 'budget/bill_alerts.html' %}{% else %}{% if restricted_bills_selection %}<div class="access-banner readonly">Utvalg: bare regninger fra tillatte moduler vises. Skjulte opplysninger og summer er utelatt.</div>{% endif %}<p class="sheet-note">Her vises alle regningstyper. I oversikten inngår vanlige regninger under Vanlige regninger, gjeldsbetalinger under Gjeld og årsutgifter under Årsutgifter. En koblet gjeldsregning trekkes én gang. En høyere månedsplan for gjelden reserverer også ekstrabeløpet. Betaling registrerer oppgjøret i budsjettet. Appen betaler ingen regning.</p>{% include 'budget/bill_list.html' %}{% endif %}{% endif %}
+    {% if member|allows_module:'bills' %}{% if page == 'varsler' %}{% include 'budget/bill_alerts.html' %}{% else %}{% if restricted_bills_selection %}<div class="access-banner readonly">Utvalg: bare regninger fra tillatte moduler vises. Skjulte opplysninger og summer er utelatt.</div>{% endif %}<p class="sheet-note">Her vises alle regningstyper. I oversikten inngår vanlige regninger under Vanlige regninger, gjeldsbetalinger under Gjeld og årsutgifter under Årsutgifter. En koblet gjeldsregning trekkes én gang. En høyere månedsplan for gjelden reserverer også ekstrabeløpet. Betaling registrerer oppgjøret i budsjettet. Appen betaler ingen regning.</p><div class="list-card">{% include 'budget/bill_list.html' %}</div>{% endif %}{% endif %}
   {% elif page == 'sparing' %}
     <div class="sparing-cards">
       {% for item in assets %}
