@@ -128,10 +128,13 @@
       button.addEventListener('click', () => shift(delta));
       return button;
     };
+    const pick = input.closest('.month-pick') || input;
     form.insertBefore(arrow('Forrige måned', -1, 'm15 6-6 6 6 6'), form.firstChild);
-    input.after(arrow('Neste måned', 1, 'm9 6 6 6-6 6'));
+    pick.after(arrow('Neste måned', 1, 'm9 6 6 6-6 6'));
     const apply = form.querySelector('button:not(.month-step)');
     if (apply) apply.hidden = true;
+    // The visible title is Norwegian text; the native control sits on top of it and opens the picker.
+    if (pick !== input) input.addEventListener('click', () => { try { if (input.showPicker) input.showPicker(); } catch (_) { /* picker opens natively */ } });
     input.addEventListener('change', () => { if (input.value) { if (form.requestSubmit) form.requestSubmit(); else form.submit(); } });
   });
   // Ctrl/Cmd-K: jump to any page or action. Entries come from the real navigation, so permissions are respected.
@@ -216,7 +219,7 @@
   }
   // Long explanations stay available but out of the way: one "Forklaring" toggle per page.
   if (document.createElement && document.body) {
-    const notes = Array.from(document.querySelectorAll('.page-body .sheet-note')).filter(note => note.textContent.trim().length > 110);
+    const notes = Array.from(document.querySelectorAll('.page-body .sheet-note')).filter(note => note.textContent.trim().length > 80);
     const head = document.querySelector('.page-body .sheet-head');
     if (notes.length && head && document.body.dataset && document.body.dataset.page !== 'oversikt') {
       notes.forEach(note => note.classList.add('is-explainer'));
@@ -232,4 +235,16 @@
       head.appendChild(toggle);
     }
   }
+  // Utgifter / Inntekter on Oversikt. Without script both lists stay visible.
+  document.querySelectorAll('.pro-seg').forEach(group => {
+    const buttons = Array.from(group.querySelectorAll('[data-seg]'));
+    const panels = Array.from(document.querySelectorAll('[data-seg-panel]'));
+    if (!buttons.length || !panels.length) return;
+    const show = key => {
+      buttons.forEach(b => b.setAttribute('aria-pressed', b.getAttribute('data-seg') === key ? 'true' : 'false'));
+      panels.forEach(p => { p.hidden = p.getAttribute('data-seg-panel') !== key; });
+    };
+    buttons.forEach(b => b.addEventListener('click', () => show(b.getAttribute('data-seg'))));
+    show('out');
+  });
 })();

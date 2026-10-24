@@ -1,40 +1,41 @@
-{% load budget_tags ui_tags %}{% if future_overview %}{% include 'budget/future_hero.html' %}{% else %}<section class="hero" aria-label="Månedens overskudd">
-  <div class="hero-grid">
-    <div>
-      <div class="hero-eyebrow-row">
-        <span class="hero-eyebrow">Igjen å bruke · {{ month|date:'F' }} ({{ request.financial_area.name }}){% if not request.financial_can_write %} · KUN INNSYN{% endif %}</span>
-        {% if pace %}<span class="hero-delta-badge">Forbruk {{ pace.delta }} % vs. {{ pace.label }}</span>{% endif %}
-      </div>
-      <div class="hero-main-numbers">
-        <div class="hero-big-amount">{{ totals.available|nok }}</div>
-        <div class="hero-per-day"><span>Veiledende dagsbeløp</span><br><b>{% if totals.daily != None %}{{ totals.daily|nok }}{% else %}—{% endif %}</b></div>
-      </div>
-      <p class="hero-short">Et budsjettanslag, ikke kontosaldo.</p>
-      {% if totals.available < 0 %}<p class="hero-note">Underskudd</p>{% endif %}
-      <div class="hero-calc-row">
-        <details class="calc-drawer">
-          <summary>Slik beregnes beløpet</summary>
-          <div class="calc-drawer-body">
-            <p class="hero-note">Beløpet skal dekke det du har planlagt å bruke resten av måneden. Dagsbeløpet er ikke ekstra lommepenger.</p>
-            <p class="hero-note">Mottatt inntekt: <b>{{ totals.income|nok }}</b> · Forventet holdes utenfor til mottatt</p>
-            <p>Et budsjettanslag fra registrerte poster, ikke saldoen i banken. Beløpet skal også dekke det du har planlagt å bruke resten av måneden. Dagsbeløpet er ikke et forslag om ekstra forbruk. Gammelt overskudd inngår ikke i ny måned.</p>
-            <dl class="calculation-details">
-              <dt>Mottatt inntekt</dt><dd>{{ totals.income|nok }}</dd>
-              <dt>+ Penger tatt ut av sparing, etter nye innskudd</dt><dd>{{ totals.released|nok }}</dd>
-              <dt>− Forbruk etter tilbakebetalinger</dt><dd>{{ totals.ordinary|nok }}</dd>
-              <dt>− Vanlige regninger (uten gjeld og årsutgifter)</dt><dd>{{ totals.bills|nok }}</dd>
-              <dt>− Sparing (satt av én gang)</dt><dd>{{ totals.savings|nok }}</dd>
-              <dt>− Gjeld</dt><dd>{{ totals.debt|nok }}</dd>
-              <dt>− Penger satt av til årsutgifter</dt><dd>{{ totals.funds|nok }}</dd>
-              <dt>= Igjen å bruke</dt><dd>{{ totals.available|nok }}</dd>
-            </dl>
-            <p>Regninger merket «Gjeldsbetaling» inngår bare i Gjeld. For hvert lån brukes det høyeste av månedsplanen og betalte eller ubetalte gjeldsregninger.</p>
-            {% if daily_days %}<p>Dagsbeløp: {{ totals.available|nok }} delt på {{ daily_days }} gjenstående dager, inkludert i dag = {{ totals.daily|nok }}.</p>{% else %}<p>Dagsbeløp vises bare for inneværende måned.</p>{% endif %}
-          </div>
-        </details>
-        
-      </div>
+{% load budget_tags ui_tags %}{% if future_overview %}{% include 'budget/future_hero.html' %}{% else %}<section class="hero pro-summary" aria-label="Månedens overskudd">
+  {% donut_segments categories as segments %}
+  <div class="pro-summary-top">
+    <div class="pro-donut pro-donut-lg">
+      <svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--pro-bg)" stroke-width="4.2"/>{% for seg in segments %}<circle cx="18" cy="18" r="15.9" fill="none" stroke="{{ seg.color }}" stroke-width="4.2" stroke-dasharray="{{ seg.dash }}" stroke-dashoffset="{{ seg.offset }}"/>{% endfor %}</svg>
+      <div class="pro-donut-c"><span class="hero-big-amount pro-donut-val">{{ totals.available|nok }}</span><span class="pro-donut-lbl">Igjen{% if not request.financial_can_write %} · kun innsyn{% endif %}</span></div>
     </div>
-    <div>{% include 'budget/distribution_refresh.html' %}</div>
+    {% if segments %}<ul class="pro-legend" aria-label="Fordeling av forbruket">{% for seg in segments %}<li><i style="background:{{ seg.color }}" aria-hidden="true"></i><span class="pro-legend-name">{{ seg.label }}</span><span class="pro-legend-pct">{{ seg.percent }} %</span></li>{% endfor %}</ul>{% else %}<p class="pro-legend-empty">Ingen utgifter registrert ennå denne måneden.</p>{% endif %}
   </div>
+  {% if totals.available < 0 %}<p class="hero-note pro-deficit">Underskudd</p>{% endif %}
+  <dl class="pro-mini">
+    <div><dt>Per dag</dt><dd>{% if totals.daily != None %}{{ totals.daily|nok }}{% else %}—{% endif %}</dd></div>
+    <div><dt>Inn</dt><dd>{{ totals.income|nok }}</dd></div>
+    <div><dt>Brukt</dt><dd>{{ totals.ordinary|nok }}</dd></div>
+    <div><dt>Satt av</dt><dd>{{ totals.bills|add:totals.savings|add:totals.debt|add:totals.funds|nok }}</dd></div>
+  </dl>
+  <div class="pro-summary-foot">
+    <span class="hero-short">Et budsjettanslag, ikke kontosaldo.</span>
+    {% if pace %}<span class="hero-delta-badge">Forbruk {{ pace.delta }} % vs. {{ pace.label }}</span>{% endif %}
+  </div>
+  <details class="calc-drawer">
+    <summary>Slik beregnes beløpet</summary>
+    <div class="calc-drawer-body">
+      <p class="hero-note">Beløpet skal dekke det du har planlagt å bruke resten av måneden. Dagsbeløpet er ikke ekstra lommepenger.</p>
+      <p class="hero-note">Mottatt inntekt: <b>{{ totals.income|nok }}</b> · Forventet holdes utenfor til mottatt</p>
+      <p>Et budsjettanslag fra registrerte poster, ikke saldoen i banken. Beløpet skal også dekke det du har planlagt å bruke resten av måneden. Dagsbeløpet er ikke et forslag om ekstra forbruk. Gammelt overskudd inngår ikke i ny måned.</p>
+      <dl class="calculation-details">
+        <dt>Mottatt inntekt</dt><dd>{{ totals.income|nok }}</dd>
+        <dt>+ Penger tatt ut av sparing, etter nye innskudd</dt><dd>{{ totals.released|nok }}</dd>
+        <dt>− Forbruk etter tilbakebetalinger</dt><dd>{{ totals.ordinary|nok }}</dd>
+        <dt>− Vanlige regninger (uten gjeld og årsutgifter)</dt><dd>{{ totals.bills|nok }}</dd>
+        <dt>− Sparing (satt av én gang)</dt><dd>{{ totals.savings|nok }}</dd>
+        <dt>− Gjeld</dt><dd>{{ totals.debt|nok }}</dd>
+        <dt>− Penger satt av til årsutgifter</dt><dd>{{ totals.funds|nok }}</dd>
+        <dt>= Igjen å bruke</dt><dd>{{ totals.available|nok }}</dd>
+      </dl>
+      <p>Regninger merket «Gjeldsbetaling» inngår bare i Gjeld. For hvert lån brukes det høyeste av månedsplanen og betalte eller ubetalte gjeldsregninger.</p>
+      {% if daily_days %}<p>Dagsbeløp: {{ totals.available|nok }} delt på {{ daily_days }} gjenstående dager, inkludert i dag = {{ totals.daily|nok }}.</p>{% else %}<p>Dagsbeløp vises bare for inneværende måned.</p>{% endif %}
+    </div>
+  </details>
 </section>{% endif %}

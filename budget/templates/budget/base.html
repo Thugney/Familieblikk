@@ -68,9 +68,22 @@
         {% if month %}<span class="brand-month-pill">{{ month|date:'F Y'|capfirst }}</span>{% endif %}
       </div>
       <div class="header-actions">
-        <form class="header-month-form" method="get">{% month_navigation_context as navigation_context %}{% for key,value in navigation_context.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}<label class="sr-only" for="month">Velg måned</label><input id="month" name="month" type="month" value="{{ navigation_month }}"><button class="chip-btn">Vis</button></form>
+        <form class="header-month-form" method="get">{% month_navigation_context as navigation_context %}{% for key,value in navigation_context.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}<label class="sr-only" for="month">Velg måned</label><span class="month-pick"><span class="month-title" aria-hidden="true">{% if month %}{{ month|date:'F Y'|capfirst }}{% else %}{% now 'F Y' as now_title %}{{ now_title|capfirst }}{% endif %}</span><input id="month" name="month" type="month" value="{{ navigation_month }}"></span><button class="chip-btn">Vis</button></form>
         {% unread_notifications member as unread %}<a class="icon-btn" id="notification-bell" href="{% url 'page' 'varsler' %}?month={{ navigation_month }}" aria-label="Varsler, {% if unread %}{{ unread }} uleste{% else %}ingen uleste{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 17V11a6 6 0 1112 0v6l1.5 2h-15zM10 21h4"/></svg>{% if unread %}<span class="notif-dot" aria-hidden="true"></span>{% endif %}</a>
         {% if page == 'kalender' and member|allows_module:'calendar' %}<button type="button" class="chip-btn cta-light header-quick-add" data-calendar-quick-create hidden>+ Ny familieavtale</button>{% elif request.financial_can_write %}<a class="chip-btn cta-light header-quick-add" href="{% url 'create' 'entry' %}?month={{ navigation_month }}&amp;return_to={{ page|default:'oversikt' }}">+ Ny post</a>{% elif not request.financial_area %}<a class="chip-btn cta-light header-quick-add" href="{% url 'financial_areas' %}">Velg budsjett for ny post</a>{% endif %}
+        {% if request.financial_can_write or member|allows_module:'shopping' or not request.financial_area %}
+        <div class="quick-add" data-mobile-quick-actions>
+          <button type="button" class="dock-fab" data-mobile-fab aria-expanded="false" aria-controls="mobile-quick-sheet" aria-label="Åpne hurtigvalg"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6Z"/></svg></button>
+          <div class="dock-speed-list" id="mobile-quick-sheet" data-mobile-sheet aria-label="Hurtigvalg" hidden>
+            {% if request.financial_can_write %}<a class="dock-speed-item" href="{% url 'create' 'entry' %}?month={{ navigation_month }}&amp;return_to={{ page|default:'oversikt' }}"><span>{% nav_icon 'poster' %}</span><strong>Utgift / ny post</strong></a>{% endif %}
+            {% if request.financial_can_write and member|allows_module:'bills' %}<a class="dock-speed-item" href="{% url 'create' 'bill' %}?month={{ navigation_month }}&amp;return_to=regninger"><span>{% nav_icon 'regninger' %}</span><strong>Regning</strong></a>{% endif %}
+            {% if not request.financial_area %}<a class="dock-speed-item" href="{% url 'financial_areas' %}"><span>{% nav_icon 'budsjett' %}</span><strong>Velg budsjett for ny post</strong></a>{% endif %}
+            {% if member|allows_module:'documents' %}<a class="dock-speed-item" href="{% url 'documents' %}"><span>{% nav_icon 'dokumenter' %}</span><strong>Skann kvittering</strong></a>{% endif %}
+            {% if member|allows_module:'shopping' %}<a class="dock-speed-item" href="{% url 'shopping_lists' %}"><span>{% nav_icon 'handlelister' %}</span><strong>Handleliste</strong></a>{% endif %}
+            {% if member|allows_module:'calendar' %}<a class="dock-speed-item" href="{% url 'page' 'kalender' %}?month={{ navigation_month }}"><span>{% nav_icon 'kalender' %}</span><strong>Familieavtale</strong></a>{% endif %}
+          </div>
+        </div>
+        {% endif %}
       </div>
     </header>
 
@@ -78,7 +91,6 @@
 
     <div class="sheet">
       <div class="messages" aria-live="polite">{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}</div>
-      <details class="push-disclosure" data-push-disclosure><summary>Varsler på denne enheten</summary>{% include 'budget/push_preferences.html' %}<p><a href="{% url 'page' 'varsler' %}">Se varsler og enhetsinnstillinger</a></p></details>
 {% else %}
 <div class="auth-shell">
 {% endif %}
@@ -86,22 +98,12 @@
 {% block content %}{% endblock %}
 
 {% if member %}
+      <details class="push-disclosure" data-push-disclosure><summary>Varsler på denne enheten</summary>{% include 'budget/push_preferences.html' %}<p><a href="{% url 'page' 'varsler' %}">Se varsler og enhetsinnstillinger</a></p></details>
     </div>
 
-    <nav class="dock-wrap" aria-label="Mobilmeny" data-mobile-quick-actions>
+    <nav class="dock-wrap" aria-label="Mobilmeny">
       {% dock_links member as dock %}
       {% for key,label in dock.left %}<a class="dock-item{% if page == key %} on{% endif %}" href="{% url 'page' key %}?month={{ navigation_month }}" {% if page == key %}aria-current="page"{% endif %} title="{{ label }}" aria-label="{{ label }}">{% nav_icon key %}<span>{{ label }}</span></a>{% endfor %}
-      {% if request.financial_can_write or member|allows_module:'shopping' or not request.financial_area %}
-      <div class="dock-speed-list" id="mobile-quick-sheet" data-mobile-sheet aria-label="Hurtigvalg" hidden>
-        {% if request.financial_can_write %}<a class="dock-speed-item" href="{% url 'create' 'entry' %}?month={{ navigation_month }}&amp;return_to={{ page|default:'oversikt' }}"><span>{% nav_icon 'poster' %}</span><strong>Utgift / ny post</strong></a>{% endif %}
-        {% if request.financial_can_write and member|allows_module:'bills' %}<a class="dock-speed-item" href="{% url 'create' 'bill' %}?month={{ navigation_month }}&amp;return_to=regninger"><span>{% nav_icon 'regninger' %}</span><strong>Regning</strong></a>{% endif %}
-        {% if not request.financial_area %}<a class="dock-speed-item" href="{% url 'financial_areas' %}"><span>{% nav_icon 'budsjett' %}</span><strong>Velg budsjett for ny post</strong></a>{% endif %}
-        {% if member|allows_module:'documents' %}<a class="dock-speed-item" href="{% url 'documents' %}"><span>{% nav_icon 'dokumenter' %}</span><strong>Skann kvittering</strong></a>{% endif %}
-        {% if member|allows_module:'shopping' %}<a class="dock-speed-item" href="{% url 'shopping_lists' %}"><span>{% nav_icon 'handlelister' %}</span><strong>Handleliste</strong></a>{% endif %}
-        {% if member|allows_module:'calendar' %}<a class="dock-speed-item" href="{% url 'page' 'kalender' %}?month={{ navigation_month }}"><span>{% nav_icon 'kalender' %}</span><strong>Familieavtale</strong></a>{% endif %}
-      </div>
-      <button type="button" class="dock-fab" data-mobile-fab aria-expanded="false" aria-controls="mobile-quick-sheet" aria-label="Åpne hurtigvalg"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6Z"/></svg></button>
-      {% endif %}
       {% for key,label in dock.right %}<a class="dock-item{% if page == key %} on{% endif %}" href="{% url 'page' key %}?month={{ navigation_month }}" {% if page == key %}aria-current="page"{% endif %} title="{{ label }}" aria-label="{{ label }}">{% nav_icon key %}<span>{{ label }}</span></a>{% endfor %}
     </nav>
   </main>

@@ -350,3 +350,29 @@ def donut_segments(categories, limit=5):
                          'dash': format(share, '.2f') + ' ' + format(100 - share, '.2f'), 'offset': format(-offset, '.2f')})
         offset += share
     return segments
+
+
+@register.simple_tag
+def income_rows(entries):
+    """This month's income entries the page already loaded (permission-filtered), with each one's share. Display only."""
+    rows = []
+    try:
+        for entry in entries:
+            if getattr(entry, 'kind', None) == 'income':
+                rows.append({'description': entry.description, 'date': entry.effective_date,
+                             'received': entry.received, 'amount': entry.amount_ore})
+    except TypeError:
+        return []
+    total = sum(row['amount'] for row in rows)
+    for row in rows:
+        row['share'] = round(row['amount'] * 100 / total) if total else 0
+    rows.sort(key=lambda row: (-row['amount'], row['description']))
+    return rows
+
+
+@register.filter
+def nok_short(value):
+    """Like nok, but whole kroner drop ",00" (exact: amounts with øre keep both decimals)."""
+    if value is None or value == '': return nok(value) if value is None else ''
+    if int(value) % 100: return nok(value)
+    return f'{int(value) // 100:,}'.replace(',', ' ') + ' kr'
