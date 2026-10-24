@@ -227,12 +227,14 @@
       toggle.type = 'button';
       toggle.className = 'info-toggle';
       toggle.setAttribute('aria-pressed', 'false');
-      toggle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Forklaring';
+      toggle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Forklaring</span>';
+      toggle.title = 'Vis eller skjul forklaringer';
       toggle.addEventListener('click', () => {
         const on = document.body.classList.toggle('show-notes');
         toggle.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
-      head.appendChild(toggle);
+      const title = head.querySelector('h1');
+      if (title) title.after(toggle); else head.appendChild(toggle);
     }
   }
   // Utgifter / Inntekter on Oversikt. Without script both lists stay visible.

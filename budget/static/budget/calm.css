@@ -1408,3 +1408,169 @@ body[data-page='oversikt'] .push-disclosure { max-width: 760px; }
 .info-toggle { min-height: 36px; padding: 0 12px; font-size: 13px; }
 .hero.pro-summary { width: min(760px, calc(100% - 44px)); box-sizing: border-box; align-self: center; }
 @media (max-width: 850px) { .hero.pro-summary { width: calc(100% - 28px); margin-left: 14px; margin-right: 14px; } }
+
+/* ── Budsjett / Årsoversikt workspace in the preview style ────────────────── */
+.work-surface.spending-surface { background: transparent; box-shadow: none; padding: 0; }
+.spending-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 6px 0 16px; }
+.spending-heading .eyebrow { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.spending-heading > a.button { min-height: 40px; padding: 0 16px; font-size: 13.5px; }
+.spending-workspace { background: transparent !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important; }
+.spending-workspace .sp-tabs { display: flex; width: 100%; overflow-x: auto; scrollbar-width: none; background: var(--pro-surface); border-radius: 99px; padding: 4px; box-shadow: var(--pro-shadow); margin: 0 0 14px; }
+.spending-workspace .sp-tabs::-webkit-scrollbar { display: none; }
+.spending-workspace .sp-tabs button { flex: 1 0 auto; min-height: 42px; padding: 0 14px; font-size: 14px; font-weight: 700; color: var(--pro-ink-2); }
+.spending-workspace .sp-tabs button[aria-selected=true] { background: var(--pro-brand); color: #fff; box-shadow: none; }
+.spending-workspace .sp-status { font-size: 12.5px; color: var(--pro-ink-3); margin: 0 4px 10px; }
+.spending-workspace .sp-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.2fr) auto; gap: 10px; align-items: end; margin: 0 0 14px; }
+.spending-workspace .sp-filters label { font-size: 12px; color: var(--pro-ink-3); font-weight: 600; margin: 0 0 4px 4px; display: block; }
+.spending-workspace .sp-filters input[type=search], .spending-workspace .sp-filters select, .spending-workspace #sp-categories { width: 100%; min-height: 44px; border: 0 !important; border-radius: 99px !important; background: var(--pro-surface) !important; box-shadow: var(--pro-shadow); padding: 0 16px; }
+.spending-workspace #sp-categories > summary { min-height: 44px; padding: 0; display: flex; align-items: center; font-size: 14px; }
+.spending-workspace .sp-filters > button { min-height: 44px; border-radius: 99px; }
+@media (max-width: 850px) {
+  .spending-workspace .sp-filters { grid-template-columns: 1fr 1fr; }
+  .spending-workspace .sp-filters > div:first-child { grid-column: 1 / -1; }
+  .spending-workspace .sp-filters > button { grid-column: auto; justify-self: start; }
+}
+.spending-workspace .sp-metrics { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 !important; margin: 0 0 16px !important; background: var(--pro-surface); border-radius: var(--pro-r-row); box-shadow: var(--pro-shadow); overflow: hidden; }
+.spending-workspace .sp-metric { background: transparent !important; border-radius: 0 !important; padding: 14px 14px !important; min-width: 0; grid-column: auto !important; }
+.spending-workspace .sp-metric + .sp-metric { border-left: 1px solid var(--pro-line); }
+.spending-workspace .sp-metric .sp-eyebrow { font-size: 11.5px; margin: 0; }
+.spending-workspace .sp-metric .sp-amount { font-size: 15px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spending-workspace .sp-metric small { font-size: 11.5px; line-height: 1.35; }
+.spending-workspace .sp-section, .spending-workspace .sp-section + section { background: transparent !important; border: 0 !important; margin: 0 !important; padding: 8px 0 0 !important; }
+.spending-workspace .sp-section h2, .spending-workspace .sp-section-head h2 { font-size: 17px; font-weight: 700; margin: 6px 4px 4px; }
+.spending-workspace .sp-section > p, .spending-workspace .sp-section-head p { margin: 0 4px 10px; font-size: 12.5px; color: var(--pro-ink-3); }
+.spending-workspace #sp-breakdown .sp-category { margin: 0 0 8px !important; padding: 14px 16px !important; background: var(--pro-surface) !important; border: 0 !important; border-radius: var(--pro-r-row) !important; box-shadow: var(--pro-shadow) !important; }
+.spending-workspace #sp-breakdown .sp-cat-name { font-size: 15px; font-weight: 700; gap: 10px; }
+.spending-workspace #sp-breakdown .sp-dot { width: 12px; height: 12px; min-width: 12px; }
+.spending-workspace #sp-breakdown .sp-cat-value { font-size: 15px; }
+.spending-workspace .sp-section + section > *:not(h2):not(p):not(.sp-section-head) { background: var(--pro-surface); border-radius: var(--pro-r-card); }
+.spending-workspace .sp-chart { background: var(--pro-surface); border-radius: var(--pro-r-card); padding: 12px; box-shadow: var(--pro-shadow); }
+.spending-workspace .sp-income { background: var(--pro-surface); border-radius: var(--pro-r-row); padding: 16px; box-shadow: var(--pro-shadow); border: 0; margin-top: 14px; }
+.spending-workspace .sp-coverage { border-radius: var(--pro-r-row); }
+.spending-workspace .sp-maintenance { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 16px 0 0; }
+.spending-workspace .sp-maintenance a { min-height: 40px; padding: 0 14px; border-radius: 99px; background: var(--pro-surface); box-shadow: var(--pro-shadow); border: 0; font-size: 13.5px; }
+.spending-workspace .sp-plan-section, .spending-workspace .sp-plan-summary { background: var(--pro-surface); border-radius: var(--pro-r-card); box-shadow: var(--pro-shadow); border: 0; }
+.spending-workspace .sp-plan-summary { background: var(--pro-brand-soft); box-shadow: none; }
+@media (max-width: 850px) { .spending-workspace .sp-metric small { display: none; } }
+
+/* Bills: on phones the amount and "Merk som betalt" get their own line under the name */
+@media (max-width: 600px) {
+  .row.bill-row { grid-template-columns: 44px minmax(0, 1fr) 36px !important; row-gap: 8px; }
+  .row.bill-row .date-tile { grid-column: 1; grid-row: 1; }
+  .row.bill-row .entry-body { grid-column: 2; grid-row: 1; min-width: 0; }
+  .row.bill-row .tx-menu { grid-column: 3; grid-row: 1; }
+  .row.bill-row .entry-amount { grid-column: 2 / 4 !important; grid-row: 2; display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: space-between; gap: 10px; width: 100%; }
+  .row.bill-row .entry-amount .ov-pay { margin: 0; }
+}
+.row.bill-row .entry-body b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row.bill-row .entry-body .l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* "Forklaring": a small round info button right after the page title */
+.sheet-head h1, .work-surface h1, .section-heading h1 { display: inline-block; vertical-align: middle; }
+.info-toggle { display: inline-flex; vertical-align: middle; width: 32px; height: 32px; min-height: 32px; padding: 0; margin: 0 0 0 8px; justify-content: center; border-radius: 50%; border: 0; background: var(--pro-surface); box-shadow: var(--pro-shadow); color: var(--pro-ink-2); }
+.info-toggle span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.info-toggle svg { width: 18px; height: 18px; }
+.info-toggle[aria-pressed='true'] { background: var(--pro-brand); color: #fff; }
+
+/* Page actions: slightly smaller pills so they fit one row more often */
+.heading-actions > a, .heading-actions > button, .page-body > .actions > a { min-height: 38px; padding: 0 14px; font-size: 13px; }
+
+/* Category filter bar like Poster: no card, pill fields */
+.category-filters { background: transparent !important; box-shadow: none !important; padding: 0 !important; border: 0 !important; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: end; margin: 0 0 12px; }
+.category-filters label { font-size: 12px; color: var(--pro-ink-3); margin: 0 0 4px 4px; }
+.category-filters input, .category-filters select { min-height: 44px; border: 0 !important; border-radius: 99px !important; background: var(--pro-surface) !important; box-shadow: var(--pro-shadow); padding: 0 16px; }
+.category-filters button { min-height: 44px; border-radius: 99px; padding: 0 18px; }
+@media (max-width: 600px) { .category-filters { grid-template-columns: 1fr 1fr; } .category-filters > div:first-of-type { grid-column: 1 / -1; } }
+/* Gjeld: stack the strategy form and the result on phones */
+@media (max-width: 700px) { .gj-top { grid-template-columns: 1fr !important; } }
+.gj-form button, .gj-top .gj-form button { width: auto; justify-self: start; padding: 0 20px; min-height: 42px; border-radius: 99px; }
+/* Kalender header like the other pages */
+.calendar-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 6px 0 14px; }
+.calendar-heading .eyebrow { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 600px) { .calendar-heading p:not(.eyebrow) { display: none; } }
+.calendar-heading .button, #calendar-create { min-height: 40px; padding: 0 16px; border-radius: 99px; font-size: 13.5px; font-weight: 700; background: var(--pro-brand); color: #fff; border: 0; box-shadow: none; }
+.calendar-toolbar { gap: 10px; }
+.calendar-period { background: var(--pro-surface); border-radius: 99px; box-shadow: var(--pro-shadow); padding: 4px 6px; }
+.calendar-period h2 { font-size: 16px; }
+.calendar-period > a.button { min-height: 34px; width: 34px; padding: 0; justify-content: center; border-radius: 50%; border: 0; background: transparent; box-shadow: none; }
+.calendar-view { background: var(--pro-surface); border-radius: 99px; padding: 4px; box-shadow: var(--pro-shadow); }
+.calendar-view button { border: 0; min-height: 36px; }
+.calendar-privacy { background: transparent; padding: 0 4px; font-size: 12px; color: var(--pro-ink-3); }
+.agenda-event { border: 0; box-shadow: var(--pro-shadow); border-radius: var(--pro-r-row); }
+/* Family: the access table always fits its card; avatars centred; logout is a quiet button */
+.fam-card .table-region, .fam-card table.mx { min-width: 0 !important; width: 100% !important; max-width: 100%; }
+.fam-card table.mx thead th:first-child, .fam-card table.mx tbody th { width: 38%; }
+.av { display: inline-grid !important; place-items: center; text-align: center; line-height: 1; flex: none; }
+.page-body form[action*='utlogging'] button, .page-body form[action$='/utlogging/'] button { background: var(--pro-surface) !important; color: var(--pro-ink) !important; border: 1px solid var(--pro-line) !important; box-shadow: none; border-radius: 99px; min-height: 40px; padding: 0 16px; font-weight: 600; }
+/* Form fields: one look everywhere (white, soft border, rounded) */
+.sheet input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']):not([type='range']):not([type='month']),
+.sheet select, .sheet textarea,
+.form-surface input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']), .form-surface select, .form-surface textarea {
+  background: var(--pro-surface) !important; border: 1px solid var(--pro-line) !important; border-radius: 14px !important; min-height: 46px; color: var(--pro-ink); box-shadow: none;
+}
+.sheet textarea, .form-surface textarea { min-height: 96px; padding: 12px 14px; }
+.sheet input:focus, .sheet select:focus, .sheet textarea:focus { border-color: var(--pro-brand) !important; box-shadow: 0 0 0 3px rgba(30,107,83,.15) !important; outline: 0; }
+/* Varsler: each section is a card with row cards inside, like the preview lists */
+.page-body > section.panel { background: transparent; border: 0; box-shadow: none; padding: 0; margin: 0 0 22px; }
+.page-body > section.panel > h2 { font-size: 17px; font-weight: 700; margin: 4px 4px 4px; }
+.page-body > section.panel > p { font-size: 12.5px; color: var(--pro-ink-3); margin: 0 4px 10px; }
+.notification-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; margin: 0 0 8px; background: var(--pro-surface); border: 0; border-radius: var(--pro-r-row); box-shadow: var(--pro-shadow); }
+.notification-row h3 { font-size: 15px; font-weight: 700; margin: 0 0 2px; }
+.notification-row p { margin: 0; font-size: 13px; color: var(--pro-ink-2); }
+.notification-row a { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--pro-brand); text-decoration: none; }
+.notification-row button.secondary { min-height: 34px; padding: 0 12px; font-size: 12.5px; }
+.page-body > section.panel > p:only-of-type + p, .page-body > section.panel > p:last-child { background: var(--pro-surface); border-radius: var(--pro-r-row); padding: 14px 16px; box-shadow: var(--pro-shadow); color: var(--pro-ink-2); font-size: 13.5px; margin: 0; }
+/* Tilpass: no divider above the first toggle */
+.sheet form[action*='preferanser'] p:has(> input[type='checkbox']):first-of-type { border-top: 0; }
+.notification-row > div { padding: 0 !important; margin: 0 !important; min-width: 0; }
+
+/* ── Bottom bar: the "+" is back in the middle (Oversikt · Poster · + · Kalender · Mer) ── */
+@media (max-width: 850px) {
+  .dock-wrap { grid-template-columns: repeat(2, minmax(0, 1fr)) 72px repeat(2, minmax(0, 1fr)); }
+  .dock-wrap .quick-add { order: 0; position: static; display: flex; justify-content: center; align-items: center; }
+  .dock-wrap .quick-add .dock-fab { width: 58px; height: 58px; margin: -30px 0 0; border: 5px solid var(--pro-bg); border-radius: 50%; background: var(--pro-brand); color: #fff; box-shadow: 0 10px 22px -8px rgba(30, 107, 83, .9); display: grid; place-items: center; transition: transform .18s ease; }
+  .dock-wrap .quick-add .dock-fab svg { width: 24px; height: 24px; fill: currentColor; }
+  .dock-wrap .quick-add .dock-fab[aria-expanded='true'] { background: var(--pro-brand); color: #fff; transform: rotate(45deg); }
+  .dock-wrap .quick-add .dock-speed-list { position: absolute; top: auto; bottom: 84px; left: 50%; right: auto; transform: translateX(-50%); width: min(320px, calc(100vw - 28px)); max-height: calc(100vh - 140px); overflow-y: auto; }
+}
+
+/* ── Kalender: one month control, no duplicate links in the header ── */
+body[data-page='kalender'] .app-header .header-month-form { display: none !important; }
+.calendar-toolbar > a.btn-sec { display: none; }
+.calendar-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 14px; }
+.calendar-heading p:not(.eyebrow) { display: none; }
+.calendar-heading #calendar-create { flex: none; min-height: 40px; padding: 0 16px; font-size: 13.5px; border-radius: 99px; }
+.calendar-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 0; background: transparent; border: 0; box-shadow: none; }
+.calendar-period { display: flex; align-items: center; gap: 6px; }
+.calendar-period h2 { margin: 0 4px; font-size: 17px; font-weight: 700; text-transform: capitalize; }
+.calendar-period .button { width: 36px; height: 36px; min-height: 0; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--pro-surface); border: 0; box-shadow: var(--pro-shadow); }
+.calendar-today { font-size: 13px; font-weight: 600; color: var(--pro-brand); margin-left: 4px; }
+.calendar-view { display: flex; background: var(--pro-surface); border-radius: 99px; padding: 3px; box-shadow: var(--pro-shadow); }
+.calendar-view button { min-height: 34px; padding: 0 14px; border: 0; border-radius: 99px; background: transparent; font-size: 13px; font-weight: 600; color: var(--pro-ink-2); box-shadow: none; }
+.calendar-view button[aria-pressed='true'] { background: var(--pro-brand); color: #fff; }
+.calendar-privacy { font-size: 12px; color: var(--pro-ink-3); margin: 8px 4px 10px; }
+
+/* ── Handleliste: round tick circles that stay round on every screen ── */
+.shopping-item-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.shopping-item-main .tick-form { display: flex; flex: 0 0 auto; margin: 0; }
+button.shopping-check-badge, .shopping-check-badge { box-sizing: border-box; width: 30px !important; height: 30px !important; min-width: 30px; max-width: 30px; min-height: 0 !important; max-height: 30px; padding: 0 !important; flex: 0 0 30px; aspect-ratio: 1 / 1; border-radius: 50% !important; border: 2px solid var(--pro-line-2, #C9D1CB); background: var(--pro-surface); color: #fff; font-size: 15px; line-height: 1; display: grid; place-items: center; }
+button.shopping-check-badge.checked, .shopping-check-badge.checked { background: var(--pro-brand); border-color: var(--pro-brand); }
+
+/* "Ferdig å handle?" as one calm card under the list */
+.shopping-complete-banner { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin: 16px 0 0; padding: 16px; border: 0; border-radius: var(--pro-r-row); background: var(--pro-brand-soft); box-shadow: none; }
+.shopping-complete-banner strong { font-size: 15px; color: var(--pro-ink); }
+.shopping-complete-banner p { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--pro-ink-2); }
+.shopping-complete-banner .heading-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.shopping-add-panel h2, .shopping-items-panel h2 { margin-top: 0; font-size: 17px; }
+
+/* Fullførte turer / Fjernede varer: heading on the page, content in white cards */
+.shopping-history-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 22px; }
+.shopping-history-columns > .work-surface { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; min-height: 0; }
+.shopping-history-columns h2 { font-size: 17px; font-weight: 700; margin: 0 4px 10px; }
+.shopping-history-columns > .work-surface > p { margin: 0; padding: 16px; border-radius: var(--pro-r-row); background: var(--pro-surface); box-shadow: var(--pro-shadow); font-size: 13.5px; color: var(--pro-ink-3); text-align: center; }
+.shopping-history-columns .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 8px; padding: 14px 16px; border: 0; border-radius: var(--pro-r-row); background: var(--pro-surface); box-shadow: var(--pro-shadow); }
+.shopping-history-columns .row h3 { margin: 0 0 4px; font-size: 15px; }
+.shopping-history-columns .row p { margin: 6px 0 0; font-size: 13px; }
+.shopping-history-columns .row .button { min-height: 36px; padding: 0 14px; font-size: 13px; border-radius: 99px; }
+@media (max-width: 850px) { .shopping-history-columns { grid-template-columns: 1fr; gap: 14px; } }
+body[data-page='kalender'] .app-header [data-calendar-quick-create] { display: none !important; }
