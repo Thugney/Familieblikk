@@ -959,10 +959,10 @@ table.mx th, table.mx td, .table-region th, .table-region td { border-color: var
 
 /* Oversikt donut and icon rows */
 .pro-donut-row { display: flex; align-items: center; gap: 18px; margin: 4px 0 18px; }
-.pro-donut { position: relative; width: 150px; height: 150px; flex: none; }
+.pro-donut { position: relative; width: 170px; height: 170px; flex: none; }
 .pro-donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .pro-donut-c { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
-.pro-donut-c b { display: block; white-space: nowrap; font-size: 14px; font-weight: 800; letter-spacing: -.02em; color: var(--pro-ink); }
+.pro-donut-c b { display: block; white-space: nowrap; font-size: 12.5px; font-weight: 800; letter-spacing: -.02em; color: var(--pro-ink); }
 .pro-donut-c small { font-size: 12px; color: var(--pro-ink-2); }
 .pro-legend { list-style: none; margin: 0; padding: 0; flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .pro-legend li { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; color: var(--pro-ink); }
@@ -980,6 +980,136 @@ table.mx th, table.mx td, .table-region th, .table-region td { border-color: var
 .hero .hero-legend .lg-b { background: var(--pro-ink-3); opacity: .6; }
 .hero .hero-legend span { color: var(--pro-ink-2); }
 .hero .hero-chart-box svg text { fill: var(--pro-ink-3); }
+
+/* Fordeling as a calm stacked bar with a legend (pro direction) */
+.pro-split { display: flex; height: 12px; border-radius: 99px; overflow: hidden; gap: 3px; margin: 14px 0 12px; }
+.pro-split-part { display: block; min-width: 0; border-radius: 99px; }
+.pro-spent { background: var(--pro-brand); }
+.pro-committed { background: #E9B864; }
+.pro-available { background: #B9D9C9; }
+.pro-split-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pro-split-legend li { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--pro-ink); }
+.pro-split-legend li b { font-weight: 800; letter-spacing: -.01em; }
+.pro-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.hero .pro-split-legend li { color: var(--pro-ink); }
+.hero .pro-split-legend li span { color: var(--pro-ink-2); font-weight: 500; }
+.hero .pro-split-legend li b { color: var(--pro-ink); }
+.hero .hero-note { margin-top: 10px; }
+/* ───────── Pro UI, round 2: one surface per page, no boxes inside boxes, calm lists ───────── */
+
+/* Donut centre */
+.pro-donut-c { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0 24px; }
+.pro-donut-val { font-size: 13px; font-weight: 800; letter-spacing: -.01em; color: var(--pro-ink); white-space: nowrap; }
+.pro-donut-lbl { font-size: 12px; color: var(--pro-ink-2); }
+
+/* Notification box: compact */
+.push-disclosure { margin: 0 0 14px; padding: 0 16px; border-radius: 20px; background: var(--pro-surface); }
+.push-disclosure > summary { min-height: 44px; display: flex; align-items: center; font-weight: 600; font-size: 13.5px; color: var(--pro-ink-2); }
+.push-preferences p:not(#push-status), .push-preferences .muted { font-size: 13px; color: var(--pro-ink-2); }
+
+/* Spending workspace (Forstå forbruket, Årsoversikt, Planlegg): one connected surface */
+.spending-workspace { background: var(--pro-surface); border-radius: 26px; padding: 22px; box-shadow: 0 1px 2px rgba(20,32,27,.04), 0 8px 24px -16px rgba(20,32,27,.18); }
+.spending-workspace .sp-section, .spending-workspace .sp-section + section { background: transparent; border: 0; box-shadow: none; border-radius: 0; padding: 18px 0 0; }
+.spending-workspace .sp-section + section { border-top: 1px solid var(--pro-line); margin-top: 18px; }
+.spending-workspace .sp-grid { display: block; }
+.spending-workspace .sp-metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; padding: 0; margin: 0 0 6px; border: 0; }
+.spending-workspace .sp-metric { background: var(--pro-bg); border: 0; border-radius: 18px; box-shadow: none; padding: 14px 16px; }
+.spending-workspace .sp-metric small, .spending-workspace .sp-eyebrow { font-size: 12px; color: var(--pro-ink-3); }
+.spending-workspace .sp-amount { font-size: 19px; font-weight: 800; color: var(--pro-ink); }
+.spending-workspace .sp-tabs { border: 0; background: var(--pro-bg); border-radius: 99px; padding: 4px; display: inline-flex; margin-bottom: 18px; }
+.spending-workspace .sp-tabs button { border-radius: 99px; min-height: 38px; padding: 0 16px; font-size: 13.5px; color: var(--pro-ink-2); border: 0; }
+.spending-workspace .sp-tabs button[aria-selected=true] { background: var(--pro-surface); color: var(--pro-ink); box-shadow: 0 1px 2px rgba(20,32,27,.08); }
+.spending-workspace .sp-filters { background: transparent; border: 0; box-shadow: none; padding: 0; margin-bottom: 12px; }
+.spending-workspace h2 { font-size: 17px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 4px; }
+.spending-workspace .sp-section-head p, .spending-workspace .sp-section > p:first-of-type { font-size: 13px; color: var(--pro-ink-2); }
+/* "Hvor gikk pengene?" as calm rows with one thin bar each */
+.spending-workspace #sp-breakdown { display: block; }
+.spending-workspace #sp-breakdown .sp-category { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px 12px; padding: 13px 0; margin: 0; background: transparent; border: 0; border-bottom: 1px solid var(--pro-line); border-radius: 0; box-shadow: none; transform: none; }
+.spending-workspace #sp-breakdown .sp-category:last-child { border-bottom: 0; }
+.spending-workspace #sp-breakdown .sp-category:hover { background: transparent; transform: none; box-shadow: none; }
+.spending-workspace #sp-breakdown .sp-cat-name { font-size: 14.5px; font-weight: 600; }
+.spending-workspace #sp-breakdown .sp-cat-value { font-size: 14.5px; font-weight: 800; text-align: right; }
+.spending-workspace #sp-breakdown .sp-cat-value small { font-size: 11.5px; }
+.spending-workspace #sp-breakdown .sp-bar-track { grid-column: 1 / -1; height: 5px; background: var(--pro-bg); border-radius: 99px; }
+.spending-workspace #sp-breakdown .sp-bar { border-radius: 99px; }
+.spending-workspace > p, .spending-workspace .sp-note, .spending-workspace .sp-muted { font-size: 12.5px; color: var(--pro-ink-3); }
+
+/* Gjeld & strategi */
+.gj-top { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 14px; }
+.gj-form { background: var(--pro-surface); border-radius: 24px; padding: 20px; box-shadow: 0 1px 2px rgba(20,32,27,.04), 0 8px 24px -16px rgba(20,32,27,.18); display: grid; gap: 10px; }
+.gj-form label { font-size: 13px; color: var(--pro-ink-2); font-weight: 600; }
+.gj-form select, .gj-form input { border: 1px solid var(--pro-line); background: var(--pro-bg); border-radius: 14px; min-height: 46px; padding: 0 14px; }
+.gj-form > p { font-size: 12.5px; color: var(--pro-ink-3); margin: 0; }
+.gj-result { background: var(--pro-brand-soft); border: 0; border-radius: 24px; padding: 20px; box-shadow: none; }
+.gj-result .big-r { color: var(--pro-brand); font-size: 26px; }
+.gj-result .eyebrow { color: var(--pro-brand); }
+.gj-result .gj-line { color: var(--pro-ink-2); font-size: 13.5px; }
+.gj-result .sheet-note { font-size: 12px; }
+.asset-row { border-radius: 24px; padding: 20px; margin-bottom: 12px; }
+.asset-row .stat-strip { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin: 12px 0 0; }
+.asset-row .stat-strip > div { background: var(--pro-bg); border: 0; border-radius: 16px; padding: 12px 14px; }
+.asset-row .stat-strip strong { font-size: 16px; color: var(--pro-ink); }
+.asset-row .stat-strip span { font-size: 12px; color: var(--pro-ink-3); }
+.asset-row h3 { font-size: 16px; font-weight: 700; margin: 0; }
+.asset-row > p { font-size: 13px; color: var(--pro-ink-2); margin: 4px 0 0; }
+
+/* Detail and change pages (Detaljer og endringer, Trygg retting, Historikk, Eksport) */
+.work-surface h2 { font-size: 18px; font-weight: 700; margin: 22px 0 10px; color: var(--pro-ink); }
+.work-surface > a, .work-surface > p > a, .work-surface > div > a { color: var(--pro-brand); font-weight: 600; text-decoration: none; font-size: 14px; }
+.work-surface > a:hover, .work-surface > p > a:hover { text-decoration: underline; }
+.work-surface dl:not(.calculation-details) { background: var(--pro-bg); border: 0; border-radius: 20px; padding: 16px 18px; }
+.work-surface dl:not(.calculation-details) dt { color: var(--pro-ink-3); font-size: 12.5px; font-weight: 600; }
+.work-surface dl:not(.calculation-details) dd { font-size: 15px; font-weight: 700; color: var(--pro-ink); }
+.work-surface details { background: var(--pro-bg); border-radius: 18px; padding: 12px 16px; }
+.work-surface details summary { font-weight: 600; font-size: 14px; color: var(--pro-ink); cursor: pointer; }
+.work-surface .row { border-bottom: 1px solid var(--pro-line); }
+.work-surface .sheet-note, .work-surface p.l { font-size: 13px; color: var(--pro-ink-2); }
+
+/* Shopping list rows */
+.shopping-panel-head h2 { font-size: 17px; font-weight: 700; margin: 0; }
+.shopping-item-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--pro-line); }
+.shopping-item-row:last-of-type { border-bottom: 0; }
+.shopping-item-main { gap: 14px; }
+.shopping-item-main strong { font-size: 15px; font-weight: 600; color: var(--pro-ink); }
+.shopping-item-main p { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--pro-ink-3); margin: 3px 0 0; }
+.shopping-item-main .ui-status { background: none; padding: 0; font-size: 12.5px; font-weight: 500; color: var(--pro-ink-3); }
+.shopping-item-main .ui-status.actual { color: var(--pro-brand); }
+.shopping-item-row.is-purchased strong { color: var(--pro-ink-3); }
+.shopping-check-badge { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--pro-line); }
+.shopping-check-badge.checked { background: var(--pro-brand); border-color: var(--pro-brand); }
+.shopping-item-action { background: transparent !important; border: 0 !important; box-shadow: none; color: var(--pro-brand) !important; min-height: 34px !important; padding: 0 4px !important; font-size: 13px; }
+.shopping-complete-banner { background: var(--pro-brand-soft); border-radius: 20px; }
+.shopping-list-card { padding: 16px 18px; }
+.shopping-list-card-body strong { font-size: 15px; font-weight: 700; }
+.shopping-list-card-body small { font-size: 12.5px; color: var(--pro-ink-3); }
+
+/* Family and access */
+.family-access-split { grid-template-columns: 1fr; gap: 14px; }
+.family-access-split .c { padding: 22px; }
+.family-access-split .c > b { display: block; font-size: 16px; font-weight: 700; color: var(--pro-ink); margin-bottom: 4px; }
+.family-access-split .l { font-size: 13px; color: var(--pro-ink-2); }
+.family-access-fields { display: grid; gap: 8px; margin-top: 12px; }
+.family-access-fields .inp { background: var(--pro-bg); border: 0; }
+.family-module-checks label { font-size: 14px; font-weight: 600; color: var(--pro-ink); border-bottom: 1px solid var(--pro-line); }
+.family-module-checks label:last-child { border-bottom: 0; }
+.fam-card { padding: 22px; }
+.family-member { padding: 14px 0; border-bottom: 1px solid var(--pro-line); }
+.family-member:last-of-type { border-bottom: 0; }
+.family-member small, .family-member .member-identity span:not(.av) { font-size: 12.5px; color: var(--pro-ink-3); }
+.family-member .av { width: 40px; height: 40px; }
+table.mx { font-size: 13.5px; }
+table.mx th { background: transparent; font-size: 11.5px; }
+.table-region { background: transparent; border: 0; box-shadow: none; padding: 0; }
+
+/* Scan page: calm notes */
+.work-surface .note { background: var(--pro-bg); color: var(--pro-ink-2); }
+
+/* Budget access table fits the phone width without sideways scrolling */
+.fam-card .table-region { overflow: visible; }
+.fam-card table.mx { table-layout: fixed; width: 100%; }
+.fam-card table.mx th, .fam-card table.mx td { padding: 10px 4px; font-size: 12.5px; overflow-wrap: anywhere; vertical-align: middle; }
+.fam-card table.mx th { font-size: 10.5px; }
+.fam-card table.mx td .ov-tag { font-size: 11px; padding: 3px 7px; white-space: normal; text-align: center; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
 /* ───────── Tablet ───────── */

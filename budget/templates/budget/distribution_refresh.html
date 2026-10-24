@@ -7,12 +7,12 @@
 
   <div class="hero-mode-panel" data-hero-panel="bar"{% if month_trend %} hidden{% endif %}>
     {% if distribution.chartable %}
-    <div class="seg" aria-hidden="true">
-      {% for part in distribution.parts %}{% if part.weight %}<div{% if part.kind == 'committed' %} class="hat" style="flex-grow:{{ part.weight }};color:#fff"{% elif part.kind == 'spent' %} style="flex-grow:{{ part.weight }};background:#fff;color:#0E4A38"{% else %} style="flex-grow:{{ part.weight }};background:#9CC4A3;color:#0A3A2C"{% endif %}>{{ part.label }}</div>{% endif %}{% endfor %}
+    <div class="pro-split" aria-hidden="true">
+      {% for part in distribution.parts %}{% if part.weight %}<span class="pro-split-part pro-{{ part.kind }}" style="flex-grow:{{ part.weight }}"></span>{% endif %}{% endfor %}
     </div>
-    <div class="seg-legend">
-      {% for part in distribution.parts %}<span{% if part.weight %} style="flex-grow:{{ part.weight }}"{% endif %}>{{ part.label }} ({{ part.amount|nok }})</span>{% endfor %}
-    </div>
+    <ul class="pro-split-legend">
+      {% for part in distribution.parts %}<li><i class="pro-dot pro-{{ part.kind }}" aria-hidden="true"></i><span>{{ part.label }}</span><b>{{ part.amount|nok }}</b></li>{% endfor %}
+    </ul>
     {% else %}<p class="hero-note">Ingen fordeling å vise ennå.</p>{% endif %}
   </div>
 

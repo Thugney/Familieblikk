@@ -78,7 +78,7 @@
 
     <div class="sheet">
       <div class="messages" aria-live="polite">{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}</div>
-      <details class="push-disclosure" data-push-disclosure{% if page == 'varsler' %} open{% endif %}><summary>Varsler på denne enheten</summary>{% include 'budget/push_preferences.html' %}<p><a href="{% url 'page' 'varsler' %}">Se varsler og enhetsinnstillinger</a></p></details>
+      <details class="push-disclosure" data-push-disclosure><summary>Varsler på denne enheten</summary>{% include 'budget/push_preferences.html' %}<p><a href="{% url 'page' 'varsler' %}">Se varsler og enhetsinnstillinger</a></p></details>
 {% else %}
 <div class="auth-shell">
 {% endif %}
