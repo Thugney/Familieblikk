@@ -2,6 +2,7 @@
 <section class="work-surface form-surface">{% include 'budget/scan_steps.html' with step=1 %}<h1>Skann kvittering eller faktura</h1>
 <p>Ta et tydelig bilde. Vi foreslår beløp, dato og betalingsmottaker – du kontrollerer og bekrefter før noe bokføres.</p>
 <p class="note"><svg class="note-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Bildet sendes midlertidig til familiens egen server for tekstgjenkjenning og slettes etter behandling. Vi beholder bare nødvendige felt. Ingen ekstern OCR-tjeneste brukes.</span></p>
+{% if request.financial_can_write %}<div class="vf" aria-hidden="true"><div class="rc"><b>BUTIKK</b><div><span>Vare</span><span>00,00</span></div><div><span>Vare</span><span>00,00</span></div><div><span><b style="display:inline">SUM</b></span><span>000,00</span></div></div><div class="scanline"></div><small>Hold kvitteringen innenfor rammen</small></div>{% endif %}
 {% if request.financial_can_write %}<form id="camera-scan-form" method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}
 <button id="camera-picker" type="button" class="secondary" hidden>Velg eksisterende bilde</button>
 <p id="camera-guidance" class="note">Ha alle kanter innenfor bildet, hold kameraet rett og bruk jevnt lys. Ta et nytt bilde eller fyll inn manuelt hvis felter mangler. JPEG eller PNG, høyst 10 MiB og 25 megapiksler.</p>

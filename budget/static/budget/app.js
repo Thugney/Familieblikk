@@ -15,7 +15,7 @@
   document.querySelectorAll('form').forEach(form => {
     form.addEventListener('input', () => { if (form.hasAttribute('data-dirty-warning')) form.dataset.dirty = 'true'; });
     form.addEventListener('submit', e => {
-      if (form.hasAttribute('data-calendar-form') || form.hasAttribute('data-spending-form')) return;
+      if (form.hasAttribute('data-calendar-form') || form.hasAttribute('data-spending-form') || form.hasAttribute('data-tick-form')) return;
       if (categorySearchEnhanced && form.id === 'category-filters') return;
       if (!navigator.onLine) { e.preventDefault(); state(); return; }
       if (form.dataset.submitting) { e.preventDefault(); return; }

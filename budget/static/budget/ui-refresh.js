@@ -180,4 +180,38 @@
       else if (event.key === 'Escape' && overlay) { event.preventDefault(); close(); }
     });
   }
+  // Calm entrance: count-up for the hero figure, bar growth and the pace line drawing in.
+  const calmMotion = typeof window !== 'undefined' && window.matchMedia && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (calmMotion && typeof requestAnimationFrame === 'function') {
+    document.querySelectorAll('.hero-big-amount').forEach(node => {
+      const text = (node.textContent || '').trim();
+      const match = /^(-?)([\d\s\u00a0]+),(\d{2})\s*kr$/.exec(text);
+      if (!match) return;
+      const target = Number(match[2].replace(/[\s\u00a0]/g, '') + '.' + match[3]) * (match[1] ? -1 : 1);
+      const fmt = new Intl.NumberFormat('nb-NO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      const unit = node.querySelector('.kr');
+      let start = null;
+      const tick = now => {
+        start = start === null ? now : start;
+        const t = Math.min((now - start) / 900, 1), eased = 1 - Math.pow(1 - t, 3);
+        const shown = fmt.format(target * eased).replace('-', match[1] || '-').replace(/\u202f/g, '\u00a0');
+        if (!unit) node.textContent = shown + ' kr';
+        if (t < 1) requestAnimationFrame(tick); else node.textContent = text;
+      };
+      if (!unit) requestAnimationFrame(tick);
+    });
+    document.querySelectorAll('.sheet .bar i').forEach(bar => {
+      const width = bar.style.width;
+      if (!width) return;
+      bar.style.width = '0';
+      requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = 'width .9s cubic-bezier(.2,.7,.2,1)'; bar.style.width = width; }));
+    });
+    document.querySelectorAll('.hero-chart-box polyline').forEach((line, index) => {
+      if (index === 0 && line.getAttribute('stroke-dasharray')) return;
+      line.setAttribute('pathLength', '1');
+      line.style.strokeDasharray = '1';
+      line.style.strokeDashoffset = '1';
+      requestAnimationFrame(() => requestAnimationFrame(() => { line.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(.2,.7,.2,1)'; line.style.strokeDashoffset = '0'; }));
+    });
+  }
 })();

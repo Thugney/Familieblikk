@@ -274,3 +274,60 @@ def group_bills(bills, today):
 @register.filter
 def minus(value, other):
     return (value or 0) - (other or 0)
+
+
+SIDEBAR_GROUPS = (
+    ('Daglig', (('oversikt', 'Oversikt'), ('poster', 'Poster'), ('regninger', 'Regninger'), ('kalender', 'Kalender'), ('handlelister', 'Handlelister'), ('dokumenter', 'Skann kvittering'))),
+    ('Planlegging', (('budsjett', 'Budsjett'), ('sparing', 'Sparing'), ('gjeld', 'Gjeld'), ('arsutgifter', 'Årsutgifter'), ('utland', 'Sendt utenlands'), ('arsoversikt', 'Årsoversikt'))),
+    ('Familie', (('familie', 'Medlemmer og tilgang'), ('tilpass', 'Tilpass appen'), ('varsler', 'Varsler'), ('import', 'Kildeimport'))),
+)
+
+
+@register.simple_tag(takes_context=True)
+def sidebar_groups(context, member):
+    """The existing, permission-checked navigation regrouped as Daglig / Planlegging / Familie."""
+    from budget.access import can_page
+    allowed = {key for key, _label in context.get('nav', []) if can_page(member, key)}
+    allowed |= {key for key, _label in module_navigation(context, member)}
+    if can_page(member, 'dokumenter'): allowed.add('dokumenter')
+    groups = []
+    for title, links in SIDEBAR_GROUPS:
+        visible = [(key, label) for key, label in links if key in allowed]
+        if visible: groups.append((title, visible))
+    return groups
+
+
+@register.simple_tag(takes_context=True)
+def dock_links(context, member):
+    """Mobile bar: Oversikt, Poster | + | Kalender, Mer (only pages this member may open)."""
+    from budget.access import can_page
+    nav = {key: label for key, label in context.get('nav', []) if can_page(member, key)}
+    return {'left': [(key, nav[key]) for key in ('oversikt', 'poster') if key in nav],
+            'right': [(key, 'Mer' if key == 'mer' else nav[key]) for key in ('kalender', 'mer') if key in nav]}
+
+
+@register.simple_tag
+def new_key():
+    import uuid
+    return uuid.uuid4()
+
+
+@register.simple_tag
+def access_matrix(member):
+    """Who holds which role in the budgets this member can already open (never reveals other budgets)."""
+    from budget.financial_models import FinancialAreaGrant
+    if not getattr(member, 'pk', None): return {'members': [], 'rows': []}
+    own = FinancialAreaGrant.objects.filter(member_id=member.pk, area__household_id=member.household_id, area__status='active').values_list('area_id', flat=True)
+    grants = list(FinancialAreaGrant.objects.filter(area_id__in=list(own), member__user__is_active=True).select_related('member__user', 'area').order_by('area__name', 'area_id'))
+    people, order = {}, []
+    for grant in grants:
+        if grant.member_id not in people:
+            user = grant.member.user
+            people[grant.member_id] = (user.first_name or user.get_full_name() or user.email.split('@')[0]).capitalize()
+            order.append(grant.member_id)
+    labels = {'owner': ('Eier', 'ok'), 'editor': ('Redigerer', 'ok'), 'reader': ('Innsyn', 'info')}
+    rows = {}
+    for grant in grants:
+        rows.setdefault(grant.area_id, {'name': grant.area.name, 'roles': {}})['roles'][grant.member_id] = labels.get(grant.role, (grant.role, ''))
+    return {'members': [people[mid] for mid in order],
+            'rows': [{'name': row['name'], 'cells': [row['roles'].get(mid, ('Ingen', '')) for mid in order]} for row in rows.values()]}

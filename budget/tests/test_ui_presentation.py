@@ -149,7 +149,8 @@ class OverviewPresentationTests(SimpleTestCase):
         self.assertIn('Felles budsjett', overview_html)
         self.assertIn('Kun innsyn', overview_html)
         self.assertIn('href="/app/handlelister/?month=2026-10"', overview_html)
-        self.assertNotIn('href="/app/dokumenter/?month=2026-10"', overview_html)
+        # Accepted Calm Ledger design: "Skann kvittering" is a sidebar item under Daglig (module permission still applies).
+        self.assertIn('href="/app/dokumenter/?month=2026-10"', overview_html)
         self.assertIn('data-mobile-quick-actions', overview_html)
         self.assertIn('data-mobile-fab', overview_html)
         self.assertIn('Utgift / ny post', overview_html)

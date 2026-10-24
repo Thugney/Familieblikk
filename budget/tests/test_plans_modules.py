@@ -49,7 +49,7 @@ class PlansModulesTests(TestCase):
         for page in ('regninger', 'gjeld', 'arsutgifter', 'utland', 'familie', 'tilpass', 'varsler'):
             self.assertContains(response, f'/app/{page}/?month=2026-09')
         self.assertContains(response, '/app/arsoversikt/?month=2026-09&amp;view=matrix')
-        self.assertContains(response, 'Planer &amp; moduler')
+        self.assertContains(response, '>Planlegging<')  # sidebar group in the accepted Calm Ledger design
         self.assertContains(response, 'id="notification-bell"')
         self.area.modules = dict(debt=False, fund=False, remittance=False, annual_navigation=False)
         self.area.save()

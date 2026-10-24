@@ -5,11 +5,9 @@
   <div class="entry-filters-bar">
     <input type="search" name="q" class="inp" style="max-width:340px;margin-top:0;background:#fff" placeholder="Søk automatisk etter mottaker, kategori eller notat…" value="{{ filter_form.q.value|default:'' }}" aria-label="Søk i poster" maxlength="120">
     {% if page == 'poster' %}
-    <div class="pills" role="group" aria-label="Filtrer poster">
-      <a class="pill{% if poster_status == 'alle' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=alle">Alle</a>
-      <a class="pill{% if poster_status == 'obs' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=obs">Obs / Forfalt</a>
-      <a class="pill{% if poster_status == 'faste' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=faste">Faste regninger</a>
-      <a class="pill{% if poster_status == 'siste' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=siste">Faktiske kjøp</a>
+    <div class="fchips" role="group" aria-label="Filtrer etter kategori">
+      <a class="fchip{% if not filter_form.category.value %} on{% endif %}" href="?month={{ month|date:'Y-m' }}{% if poster_status != 'alle' %}&amp;poster_status={{ poster_status }}{% endif %}{% if filter_form.q.value %}&amp;q={{ filter_form.q.value|urlencode }}{% endif %}"{% if not filter_form.category.value %} aria-current="true"{% endif %}>Alle</a>
+      {% for item in categories %}{% if not item.row.archived %}<a class="fchip{% if filter_form.category.value == item.row.pk|stringformat:'s' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;category={{ item.row.pk }}{% if poster_status != 'alle' %}&amp;poster_status={{ poster_status }}{% endif %}{% if filter_form.q.value %}&amp;q={{ filter_form.q.value|urlencode }}{% endif %}"{% if filter_form.category.value == item.row.pk|stringformat:'s' %} aria-current="true"{% endif %}><i class="dot" style="background:{{ item.row.color }}" aria-hidden="true"></i>{{ item.row.name }}</a>{% endif %}{% endfor %}
     </div>
     {% else %}
     <div>{{ filter_form.kind.label_tag }}{{ filter_form.kind }}{{ filter_form.kind.errors }}</div>
@@ -17,6 +15,12 @@
   </div>
   <details class="advanced-filters" {% if filter_form.advanced_open %}open{% endif %}>
     <summary>Flere filtre</summary>
+    {% if page == 'poster' %}<div class="pills" role="group" aria-label="Filtrer poster">
+      <a class="pill{% if poster_status == 'alle' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=alle">Alle</a>
+      <a class="pill{% if poster_status == 'obs' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=obs">Obs / Forfalt</a>
+      <a class="pill{% if poster_status == 'faste' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=faste">Faste regninger</a>
+      <a class="pill{% if poster_status == 'siste' %} on{% endif %}" href="?month={{ month|date:'Y-m' }}&amp;poster_status=siste">Faktiske kjøp</a>
+    </div>{% endif %}
     <div class="advanced-fields">
       {% for field in filter_form %}
         {% if field.name != 'q' and field.name != 'kind' %}
